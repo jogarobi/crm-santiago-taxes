@@ -13,10 +13,19 @@ import {
   CalendarIcon,
   CheckCheckIcon,
   CircleDollarSignIcon,
+  PlusIcon,
   Search,
   UserPlusIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const onest = Onest({
   subsets: ['latin'],
@@ -33,7 +42,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en'>
-      <body className={clsx(onest.className, 'antialiased')}>
+      <body className={clsx(onest.className, 'antialiased bg-neutral-50')}>
         <SidebarProvider>
           <Sidebar />
 
@@ -44,30 +53,35 @@ export default function RootLayout({
 
                 <h1 className='text-2xl font-semibold'>Dashboard</h1>
 
-                <div className='ml-auto flex items-center gap-3'>
-                  <Button variant='outline'>
-                    <CalendarIcon className='stroke-neutral-500' />
-                    <span className=' font-normal'>Schedule appointment</span>
-                  </Button>
-
-                  <Button variant='outline'>
-                    <UserPlusIcon className='stroke-neutral-500' />
-                    <span className=' font-normal'>Create client</span>
-                  </Button>
-
-                  <Button variant='outline'>
-                    <CircleDollarSignIcon className='stroke-neutral-500' />
-                    <span className=' font-normal'>Take payment</span>
-                  </Button>
-
-                  <Button variant='outline'>
-                    <CheckCheckIcon className='stroke-neutral-500' />
-                    <span className=' font-normal'>Create task</span>
-                  </Button>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className='ml-auto' asChild>
+                    <Button className='bg-purple'>
+                      <span>New activity</span>
+                      <PlusIcon />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align='end'>
+                    <DropdownMenuItem className='px-4 py-3'>
+                      <CalendarIcon className='stroke-neutral-500' />
+                      <span className=' font-normal'>Schedule appointment</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className='px-4 py-3'>
+                      <UserPlusIcon className='stroke-neutral-500' />
+                      <span className=' font-normal'>Create client</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className='px-4 py-3'>
+                      <CircleDollarSignIcon className='stroke-neutral-500' />
+                      <span className=' font-normal'>Take payment</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className='px-4 py-3'>
+                      <CheckCheckIcon className='stroke-neutral-500' />
+                      <span className=' font-normal'>Create task</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
-              <InputGroup className='py-5'>
+              <InputGroup className='py-6 bg-white'>
                 <InputGroupInput placeholder='Search client...' />
                 <InputGroupAddon>
                   <Search />

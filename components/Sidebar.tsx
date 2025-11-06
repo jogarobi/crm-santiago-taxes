@@ -47,7 +47,7 @@ const items = [
 export default function Sidebar() {
   return (
     <CNSidebar>
-      <SidebarHeader className='flex flex-row items-center gap-2 px-3 py-4'>
+      <SidebarHeader className='flex flex-row items-center gap-2 px-3 py-4 bg-white'>
         <Image
           src='/santiago-taxes-logo.png'
           alt='Company Logo'
@@ -63,7 +63,7 @@ export default function Sidebar() {
           <p className='text-[13px] text-muted-foreground'>CRM</p>
         </div>
       </SidebarHeader>
-      <SidebarContent className='pt-4 px-1'>
+      <SidebarContent className='pt-4 px-1 bg-white'>
         <SidebarGroup className='gap-2'>
           <SidebarGroupLabel className='text-[13px]'>General</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -82,7 +82,7 @@ export default function Sidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className='bg-white'>
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
@@ -93,7 +93,7 @@ export default function Sidebar() {
                       GS
                     </span>
                     <div>
-                      <p className='w-max text-[15px] font-semibold text-zinc-800'>
+                      <p className='w-max text-sm font-semibold text-zinc-800'>
                         Guelmie Santiago
                       </p>
                       <p className='text-muted-foreground text-sm'>Admin</p>
