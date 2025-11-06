@@ -32,7 +32,7 @@ import {
 
 const items = [
   {
-    title: 'Dashboard',
+    title: 'Home',
     url: '#',
     icon: HomeIcon,
   },

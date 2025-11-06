@@ -5,15 +5,12 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import {
-  ArrowUpRightIcon,
-  CheckCheckIcon,
-} from 'lucide-react';
+import { ArrowUpRightIcon, CheckCheckIcon } from 'lucide-react';
 import Link from 'next/link';
 import { UpcomingAppointments } from '@/components/UpcomingAppointments';
 
 export const metadata: Metadata = {
-  title: 'Dashboard | Santiago Taxes CRM',
+  title: 'Home | Santiago Taxes CRM',
   description: 'View your business overview and upcoming appointments',
 };
 

@@ -128,7 +128,7 @@ export function UpcomingAppointments() {
         return (
           <Link
             key={appointment.id}
-            href={`/dashboard/appointments/${appointment.id}`}
+            href={`/appointments/${appointment.id}`}
             className='block bg-white border rounded-lg p-4 hover:shadow-md transition-shadow'
           >
             <div className='flex items-start justify-between'>
@@ -177,7 +177,7 @@ export function UpcomingAppointments() {
 
       {appointments.length > 0 && (
         <Link
-          href='/dashboard/appointments'
+          href='/appointments'
           className='block text-center text-purple text-sm font-medium hover:underline pt-2'
         >
           View all appointments

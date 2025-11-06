@@ -1,7 +1,10 @@
 'use client';
 
 import { use, useEffect } from 'react';
-import { useAppointment, useCancelAppointment } from '@/lib/hooks/use-appointments';
+import {
+  useAppointment,
+  useCancelAppointment,
+} from '@/lib/hooks/use-appointments';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -87,7 +90,7 @@ export default function AppointmentDetailPage({
         id: appointment.id,
         bookingVersion: appointment.version,
       });
-      router.push('/dashboard/appointments');
+      router.push('/appointments');
     } catch (error) {
       console.error('Failed to cancel appointment:', error);
       alert('Failed to cancel appointment. Please try again.');
@@ -113,7 +116,7 @@ export default function AppointmentDetailPage({
             Failed to load appointment details. Please try again later.
           </p>
         </div>
-        <Link href='/dashboard/appointments'>
+        <Link href='/appointments'>
           <Button variant='outline'>
             <ArrowLeftIcon className='w-4 h-4' />
             <span>Back to Appointments</span>
@@ -129,7 +132,7 @@ export default function AppointmentDetailPage({
         <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-md'>
           <p className='text-yellow-800 text-center'>Appointment not found</p>
         </div>
-        <Link href='/dashboard/appointments'>
+        <Link href='/appointments'>
           <Button variant='outline'>
             <ArrowLeftIcon className='w-4 h-4' />
             <span>Back to Appointments</span>
@@ -145,7 +148,7 @@ export default function AppointmentDetailPage({
     <div className='flex flex-col gap-6 max-w-4xl'>
       {/* Header */}
       <div className='flex items-center gap-4'>
-        <Link href='/dashboard/appointments'>
+        <Link href='/appointments'>
           <Button variant='outline' size='icon'>
             <ArrowLeftIcon className='w-4 h-4' />
           </Button>
@@ -209,7 +212,9 @@ export default function AppointmentDetailPage({
           <h2 className='text-lg font-semibold mb-4'>Status</h2>
           <Badge
             variant='secondary'
-            className={`${getStatusColor(appointment.status)} text-base px-4 py-2`}
+            className={`${getStatusColor(
+              appointment.status
+            )} text-base px-4 py-2`}
           >
             {appointment.status || 'UNKNOWN'}
           </Badge>

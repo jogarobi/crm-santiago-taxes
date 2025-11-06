@@ -155,8 +155,8 @@ export default function AppointmentsPage() {
             {timeFilter === 'upcoming'
               ? 'You have no upcoming appointments scheduled.'
               : timeFilter === 'past'
-                ? 'You have no past appointments.'
-                : 'No appointments available.'}
+              ? 'You have no past appointments.'
+              : 'No appointments available.'}
           </p>
           <Button className='bg-purple'>
             <PlusIcon className='w-4 h-4' />
@@ -178,7 +178,7 @@ export default function AppointmentsPage() {
             return (
               <Link
                 key={appointment.id}
-                href={`/dashboard/appointments/${appointment.id}`}
+                href={`/appointments/${appointment.id}`}
                 className='block bg-white border rounded-lg p-5 hover:shadow-md transition-shadow'
               >
                 <div className='flex items-start justify-between'>

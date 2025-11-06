@@ -17,49 +17,46 @@ export function useBreadcrumbs(): PageInfo {
   const pathname = usePathname();
 
   return useMemo(() => {
-    // Home/Dashboard
     if (pathname === '/') {
       return {
-        title: 'Dashboard',
-        breadcrumbs: [{ label: 'Dashboard', href: '/' }],
+        title: 'Home',
+        breadcrumbs: [{ label: 'Home', href: '/' }],
       };
     }
 
-    // Accounts
-    if (pathname === '/dashboard/accounts') {
+    if (pathname === '/accounts') {
       return {
         title: 'Accounts',
         breadcrumbs: [
-          { label: 'Dashboard', href: '/' },
-          { label: 'Accounts', href: '/dashboard/accounts' },
+          { label: 'Home', href: '/' },
+          { label: 'Accounts', href: '/accounts' },
         ],
       };
     }
 
-    if (pathname.startsWith('/dashboard/accounts/')) {
+    if (pathname.startsWith('/accounts/')) {
       const id = pathname.split('/').pop();
       return {
         title: 'Account Details',
         breadcrumbs: [
-          { label: 'Dashboard', href: '/' },
-          { label: 'Accounts', href: '/dashboard/accounts' },
+          { label: 'Home', href: '/' },
+          { label: 'Accounts', href: '/accounts' },
           { label: `Account #${id}`, href: pathname },
         ],
       };
     }
 
-    // Appointments
-    if (pathname === '/dashboard/appointments') {
+    if (pathname === '/appointments') {
       return {
         title: 'Appointments',
         breadcrumbs: [
-          { label: 'Dashboard', href: '/' },
-          { label: 'Appointments', href: '/dashboard/appointments' },
+          { label: 'Home', href: '/' },
+          { label: 'Appointments', href: '/appointments' },
         ],
       };
     }
 
-    if (pathname.startsWith('/dashboard/appointments/')) {
+    if (pathname.startsWith('/appointments/')) {
       const segments = pathname.split('/');
       const id = segments.pop();
 
@@ -67,8 +64,8 @@ export function useBreadcrumbs(): PageInfo {
         return {
           title: 'New Appointment',
           breadcrumbs: [
-            { label: 'Dashboard', href: '/' },
-            { label: 'Appointments', href: '/dashboard/appointments' },
+            { label: 'Home', href: '/' },
+            { label: 'Appointments', href: '/appointments' },
             { label: 'New Appointment', href: pathname },
           ],
         };
@@ -77,64 +74,60 @@ export function useBreadcrumbs(): PageInfo {
       return {
         title: 'Appointment Details',
         breadcrumbs: [
-          { label: 'Dashboard', href: '/' },
-          { label: 'Appointments', href: '/dashboard/appointments' },
+          { label: 'Home', href: '/' },
+          { label: 'Appointments', href: '/appointments' },
           { label: `Appointment #${id}`, href: pathname },
         ],
       };
     }
 
-    // Clients
-    if (pathname === '/dashboard/clients') {
+    if (pathname === '/clients') {
       return {
         title: 'Clients',
         breadcrumbs: [
-          { label: 'Dashboard', href: '/' },
-          { label: 'Clients', href: '/dashboard/clients' },
+          { label: 'Home', href: '/' },
+          { label: 'Clients', href: '/clients' },
         ],
       };
     }
 
-    if (pathname.startsWith('/dashboard/clients/')) {
+    if (pathname.startsWith('/clients/')) {
       const id = pathname.split('/').pop();
       return {
         title: 'Client Details',
         breadcrumbs: [
-          { label: 'Dashboard', href: '/' },
-          { label: 'Clients', href: '/dashboard/clients' },
+          { label: 'Home', href: '/' },
+          { label: 'Clients', href: '/clients' },
           { label: `Client #${id}`, href: pathname },
         ],
       };
     }
 
-    // Tasks
-    if (pathname === '/dashboard/tasks') {
+    if (pathname === '/tasks') {
       return {
         title: 'Tasks',
         breadcrumbs: [
-          { label: 'Dashboard', href: '/' },
-          { label: 'Tasks', href: '/dashboard/tasks' },
+          { label: 'Home', href: '/' },
+          { label: 'Tasks', href: '/tasks' },
         ],
       };
     }
 
-    // Settings
-    if (pathname === '/dashboard/settings') {
+    if (pathname === '/settings') {
       return {
         title: 'Settings',
         breadcrumbs: [
-          { label: 'Dashboard', href: '/' },
-          { label: 'Settings', href: '/dashboard/settings' },
+          { label: 'Home', href: '/' },
+          { label: 'Settings', href: '/settings' },
         ],
       };
     }
 
-    // Default fallback
     const segments = pathname.split('/').filter(Boolean);
-    const breadcrumbs: Breadcrumb[] = [{ label: 'Dashboard', href: '/' }];
+    const breadcrumbs: Breadcrumb[] = [{ label: 'Home', href: '/' }];
 
     let currentPath = '';
-    segments.forEach((segment, index) => {
+    segments.forEach((segment) => {
       currentPath += `/${segment}`;
       const label = segment
         .split('-')
@@ -147,7 +140,7 @@ export function useBreadcrumbs(): PageInfo {
       });
     });
 
-    const title = breadcrumbs[breadcrumbs.length - 1]?.label || 'Dashboard';
+    const title = breadcrumbs[breadcrumbs.length - 1]?.label || 'Home';
 
     return {
       title,

@@ -8,7 +8,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 
-export default function Dashboard() {
+export default function Home() {
   return (
     <section>
       <Card>
