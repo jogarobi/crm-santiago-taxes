@@ -4,8 +4,8 @@ dotenv.config();
 import type { Config } from 'drizzle-kit';
 
 export default {
-  schema: './drizzle/schema.ts',
-  out: './drizzle/migrations',
+  schema: '@/db/schema.ts',
+  out: '@/db/migrations',
   dialect: 'turso',
   dbCredentials: {
     url: process.env.TURSO_DATABASE_URL!,
