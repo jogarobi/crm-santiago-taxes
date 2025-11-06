@@ -14,7 +14,6 @@ import {
   CalendarIcon,
   CheckCheckIcon,
   CircleDollarSignIcon,
-  LinkIcon,
   PlusIcon,
   Search,
   UserPlusIcon,
@@ -24,8 +23,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
