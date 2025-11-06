@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Badge } from '@/components/ui/badge';
 import {
   Empty,
   EmptyHeader,
@@ -9,8 +8,6 @@ import {
 import {
   ArrowUpRightIcon,
   CheckCheckIcon,
-  TrendingDownIcon,
-  TrendingUpIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { UpcomingAppointments } from '@/components/UpcomingAppointments';
@@ -27,36 +24,18 @@ export default function Home() {
         <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
           <div className='flex items-center justify-between'>
             <p className='text-[15px] text-neutral-600'>Total clients</p>
-            <Badge variant='outline' asChild>
-              <div>
-                <TrendingUpIcon strokeWidth={2.5} />
-                <span>+13.6%</span>
-              </div>
-            </Badge>
           </div>
           <p className='font-bold text-2xl text-purple'>3,205</p>
         </div>
         <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
           <div className='flex items-center justify-between'>
             <p className='text-[15px] text-neutral-600'>Revenue</p>
-            <Badge variant='outline' asChild>
-              <div>
-                <TrendingUpIcon strokeWidth={2.5} />
-                <span>+30.6%</span>
-              </div>
-            </Badge>
           </div>
           <p className='font-bold text-2xl text-purple'>$14,450.25</p>
         </div>
         <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
           <div className='flex items-center justify-between'>
             <p className='text-[15px] text-neutral-600'>Appointments</p>
-            <Badge variant='outline' asChild>
-              <div>
-                <TrendingDownIcon strokeWidth={2.5} />
-                <span>-11.6%</span>
-              </div>
-            </Badge>
           </div>
           <p className='font-bold text-2xl text-purple'>27</p>
         </div>
@@ -98,7 +77,7 @@ export default function Home() {
                   No pending tasks
                 </EmptyTitle>
                 <Link
-                  className='text-neutral-500 text-[15px] hover:underline mt-1'
+                  className='text-purple text-[15px] hover:underline mt-1'
                   href='/appointments'
                 >
                   Create task

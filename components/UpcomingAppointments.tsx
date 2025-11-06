@@ -108,7 +108,7 @@ export function UpcomingAppointments() {
               No upcoming appointments
             </EmptyTitle>
             <Link
-              className='text-neutral-600 text-[15px] hover:underline mt-1'
+              className='text-purple text-[15px] hover:underline mt-1'
               href='/appointments'
             >
               Schedule an appointment
