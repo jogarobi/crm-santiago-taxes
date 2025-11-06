@@ -1,5 +1,24 @@
+import type { Metadata } from 'next';
 import { Badge } from '@/components/ui/badge';
-import { TrendingDownIcon, TrendingUpIcon } from 'lucide-react';
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import {
+  ArrowUpRightIcon,
+  CheckCheckIcon,
+  TrendingDownIcon,
+  TrendingUpIcon,
+} from 'lucide-react';
+import Link from 'next/link';
+import { UpcomingAppointments } from '@/components/UpcomingAppointments';
+
+export const metadata: Metadata = {
+  title: 'Dashboard | Santiago Taxes CRM',
+  description: 'View your business overview and upcoming appointments',
+};
 
 export default function Home() {
   return (
@@ -54,14 +73,39 @@ export default function Home() {
         <div className='w-full'>
           <div className='flex items-center justify-between'>
             <h3 className='font-semibold text-[17px]'>Upcoming appointments</h3>
-            <span className='text-neutral-600 text-[15px]'>Nov 6</span>
+            <span className='text-neutral-600 text-[15px]'>Next 7 days</span>
           </div>
+
+          <UpcomingAppointments />
         </div>
 
         <div className='w-full'>
           <div className='flex items-center justify-between'>
             <h3 className='font-semibold text-[17px]'>Pending tasks</h3>
-            <span className='text-neutral-600 text-[15px]'>4</span>
+            <span className='text-neutral-500 text-[15px]'>4</span>
+          </div>
+
+          <div>
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia
+                  variant='default'
+                  className='py-2 px-3 bg-white border rounded-md'
+                >
+                  <CheckCheckIcon className='w-5 stroke-neutral-500' />
+                </EmptyMedia>
+                <EmptyTitle className='text-[16px] font-normal'>
+                  No pending tasks
+                </EmptyTitle>
+                <Link
+                  className='text-neutral-500 text-[15px] hover:underline mt-1'
+                  href='/appointments'
+                >
+                  Create task
+                  <ArrowUpRightIcon className='w-4 inline-block ml-1' />
+                </Link>
+              </EmptyHeader>
+            </Empty>
           </div>
         </div>
       </div>

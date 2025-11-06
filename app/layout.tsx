@@ -6,6 +6,7 @@ import clsx from 'clsx';
 import Sidebar from '@/components/Sidebar';
 import { QueryProvider } from '@/components/providers/query-provider';
 import { SearchAccounts } from '@/components/SearchAccounts';
+import { PageHeader } from '@/components/PageHeader';
 import {
   ArrowUpRightIcon,
   CalendarIcon,
@@ -45,12 +46,13 @@ export default function RootLayout({
 
             <main className='w-full'>
               <header className='p-8 flex flex-col gap-7'>
-                <div className='flex items-center gap-2'>
-                  <SidebarTrigger />
+                <div className='flex items-center justify-between gap-4'>
+                  <div className='flex items-center gap-3'>
+                    <SidebarTrigger />
+                    <PageHeader />
+                  </div>
 
-                  <h1 className='text-2xl font-semibold'>Dashboard</h1>
-
-                  <div className='flex items-center gap-3 ml-auto'>
+                  <div className='flex items-center gap-3'>
                     <Button>
                       <Link href='https://online.taxslayerpro.com/'>
                         Go to TaxSlayerPro
