@@ -12,12 +12,18 @@ import {
   SidebarMenuItem,
 } from './ui/sidebar';
 import {
+  BriefcaseIcon,
   CalendarIcon,
+  CheckCheckIcon,
   ChevronUp,
+  DollarSignIcon,
+  GroupIcon,
   HomeIcon,
   LogOut,
   Settings,
+  SettingsIcon,
   UserIcon,
+  UsersIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -41,6 +47,30 @@ const items = [
     title: 'Appointments',
     url: '#',
     icon: CalendarIcon,
+  },
+  {
+    title: 'Payments',
+    url: '#',
+    icon: DollarSignIcon,
+  },
+  {
+    title: 'Tasks',
+    url: '#',
+    icon: CheckCheckIcon,
+  },
+];
+
+const managementItems = [
+  {
+    title: 'Staff',
+    url: '#',
+    icon: BriefcaseIcon,
+  },
+  { title: 'Users', url: '#', icon: UsersIcon },
+  {
+    title: 'Settings',
+    url: '#',
+    icon: SettingsIcon,
   },
 ];
 
@@ -81,6 +111,26 @@ export default function Sidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarGroup className='gap-2'>
+          <SidebarGroupLabel className='text-[13px]'>
+            Management
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className='gap-2'>
+              {managementItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton className='py-5 px-3' asChild>
+                    <a className='block' href={item.url}>
+                      <item.icon />
+                      <span className='text-sm'>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className='bg-white'>
         <SidebarMenu>
@@ -106,12 +156,8 @@ export default function Sidebar() {
                 side='top'
                 className='w-[--radix-popper-anchor-width]'
               >
-                <DropdownMenuItem>
-                  <Settings className='mr-2 h-4 w-4' />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <LogOut className='mr-2 h-4 w-4' />
+                <DropdownMenuItem className='cursor-pointer text-destructive'>
+                  <LogOut className='mr-2 h-4 w-4 stroke-destructive' />
                   <span>Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
