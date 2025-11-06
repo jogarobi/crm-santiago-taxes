@@ -156,7 +156,7 @@ export default function AppointmentDetailPage({
             Booking ID: {appointment.id}
           </p>
         </div>
-        {appointment.status !== 'CANCELLED' && (
+        {appointment.status !== ('CANCELLED' as any) && (
           <Button
             variant='outline'
             onClick={handleCancel}

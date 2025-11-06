@@ -8,7 +8,6 @@ export type AppointmentResponse = {
   success: true;
   appointments: Appointment[];
   count: number;
-  cursor?: string;
 };
 
 export type SingleAppointmentResponse = {
@@ -53,6 +52,7 @@ export type UpdateAppointmentInput = {
   customerId?: string;
   customerNote?: string;
   sellerNote?: string;
+  version?: number;
   appointmentSegments?: Array<{
     durationMinutes: number;
     serviceVariationId: string;

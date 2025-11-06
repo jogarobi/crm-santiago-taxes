@@ -39,7 +39,6 @@ export async function GET(request: Request) {
       success: true,
       appointments: serializedAppointments,
       count: serializedAppointments.length,
-      cursor: response.cursor,
     };
 
     return NextResponse.json(appointmentResponse);
@@ -48,7 +47,10 @@ export async function GET(request: Request) {
     const errorResponse: AppointmentErrorResponse = {
       success: false,
       error: 'Failed to fetch appointments',
-      message: error instanceof Error ? error.message : 'Internal server error occurred',
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Internal server error occurred',
     };
 
     return NextResponse.json(errorResponse, { status: 500 });
@@ -73,17 +75,19 @@ export async function POST(request: Request) {
     }
 
     const response = await square.bookings.create({
-      startAt: body.startAt,
-      locationId: body.locationId,
-      customerId: body.customerId,
-      customerNote: body.customerNote,
-      sellerNote: body.sellerNote,
-      appointmentSegments: body.appointmentSegments,
+      booking: {
+        startAt: body.startAt,
+        locationId: body.locationId,
+        customerId: body.customerId,
+        customerNote: body.customerNote,
+        sellerNote: body.sellerNote,
+        appointmentSegments: body.appointmentSegments,
+      },
     });
 
     // Serialize BigInt values
     const serializedAppointment: Appointment = JSON.parse(
-      JSON.stringify(response.data, (_, value) =>
+      JSON.stringify(response, (_, value) =>
         typeof value === 'bigint' ? value.toString() : value
       )
     );
@@ -100,7 +104,10 @@ export async function POST(request: Request) {
     const errorResponse: AppointmentErrorResponse = {
       success: false,
       error: 'Failed to create appointment',
-      message: error instanceof Error ? error.message : 'Internal server error occurred',
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Internal server error occurred',
     };
 
     return NextResponse.json(errorResponse, { status: 500 });
