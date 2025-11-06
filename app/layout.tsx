@@ -4,18 +4,14 @@ import './globals.css';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import clsx from 'clsx';
 import Sidebar from '@/components/Sidebar';
-import {
-  InputGroup,
-  InputGroupInput,
-  InputGroupAddon,
-} from '@/components/ui/input-group';
+import { QueryProvider } from '@/components/providers/query-provider';
+import { SearchAccounts } from '@/components/SearchAccounts';
 import {
   ArrowUpRightIcon,
   CalendarIcon,
   CheckCheckIcon,
   CircleDollarSignIcon,
   PlusIcon,
-  Search,
   UserPlusIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,66 +39,63 @@ export default function RootLayout({
   return (
     <html lang='en'>
       <body className={clsx(onest.className, 'antialiased bg-neutral-50')}>
-        <SidebarProvider>
-          <Sidebar />
+        <QueryProvider>
+          <SidebarProvider>
+            <Sidebar />
 
-          <main className='w-full'>
-            <header className='p-8 flex flex-col gap-7'>
-              <div className='flex items-center gap-2'>
-                <SidebarTrigger />
+            <main className='w-full'>
+              <header className='p-8 flex flex-col gap-7'>
+                <div className='flex items-center gap-2'>
+                  <SidebarTrigger />
 
-                <h1 className='text-2xl font-semibold'>Dashboard</h1>
+                  <h1 className='text-2xl font-semibold'>Dashboard</h1>
 
-                <div className='flex items-center gap-3 ml-auto'>
-                  <Button>
-                    <Link href='https://online.taxslayerpro.com/'>
-                      Go to TaxSlayerPro
-                    </Link>
-                    <ArrowUpRightIcon />
-                  </Button>
+                  <div className='flex items-center gap-3 ml-auto'>
+                    <Button>
+                      <Link href='https://online.taxslayerpro.com/'>
+                        Go to TaxSlayerPro
+                      </Link>
+                      <ArrowUpRightIcon />
+                    </Button>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button className='bg-purple'>
-                        <span>New activity</span>
-                        <PlusIcon />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align='end'>
-                      <DropdownMenuItem className='px-4 py-3'>
-                        <CalendarIcon className='stroke-neutral-500' />
-                        <span className=' font-normal'>
-                          Schedule appointment
-                        </span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className='px-4 py-3'>
-                        <UserPlusIcon className='stroke-neutral-500' />
-                        <span className=' font-normal'>Create client</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className='px-4 py-3'>
-                        <CircleDollarSignIcon className='stroke-neutral-500' />
-                        <span className=' font-normal'>Take payment</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className='px-4 py-3'>
-                        <CheckCheckIcon className='stroke-neutral-500' />
-                        <span className=' font-normal'>Create task</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button className='bg-purple'>
+                          <span>New activity</span>
+                          <PlusIcon />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align='end'>
+                        <DropdownMenuItem className='px-4 py-3'>
+                          <CalendarIcon className='stroke-neutral-500' />
+                          <span className=' font-normal'>
+                            Schedule appointment
+                          </span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className='px-4 py-3'>
+                          <UserPlusIcon className='stroke-neutral-500' />
+                          <span className=' font-normal'>Create client</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className='px-4 py-3'>
+                          <CircleDollarSignIcon className='stroke-neutral-500' />
+                          <span className=' font-normal'>Take payment</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className='px-4 py-3'>
+                          <CheckCheckIcon className='stroke-neutral-500' />
+                          <span className=' font-normal'>Create task</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
-              </div>
 
-              <InputGroup className='py-6 bg-white'>
-                <InputGroupInput placeholder='Search client...' />
-                <InputGroupAddon>
-                  <Search />
-                </InputGroupAddon>
-              </InputGroup>
-            </header>
+                <SearchAccounts />
+              </header>
 
-            <section className='px-8 pt-2'>{children}</section>
-          </main>
-        </SidebarProvider>
+              <section className='px-8 pt-2'>{children}</section>
+            </main>
+          </SidebarProvider>
+        </QueryProvider>
       </body>
     </html>
   );
