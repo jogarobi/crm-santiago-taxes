@@ -1,0 +1,387 @@
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "prevId": "",
+  "version": "6",
+  "dialect": "sqlite",
+  "tables": {
+    "AccountRelation": {
+      "name": "AccountRelation",
+      "columns": {
+        "id": {
+          "autoincrement": true,
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": false
+        },
+        "accountId": {
+          "autoincrement": false,
+          "name": "accountId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "relatedAccountId": {
+          "autoincrement": false,
+          "name": "relatedAccountId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "relationship": {
+          "autoincrement": false,
+          "name": "relationship",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "default": "(DATETIME('NOW'))",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdBy": {
+          "autoincrement": false,
+          "name": "createdBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updatedBy": {
+          "autoincrement": false,
+          "name": "updatedBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {
+        "AccountRelation_relatedAccountId_Account_id_fk": {
+          "name": "AccountRelation_relatedAccountId_Account_id_fk",
+          "tableFrom": "AccountRelation",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "relatedAccountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "AccountRelation_accountId_Account_id_fk": {
+          "name": "AccountRelation_accountId_Account_id_fk",
+          "tableFrom": "AccountRelation",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "accountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "AccountContact": {
+      "name": "AccountContact",
+      "columns": {
+        "id": {
+          "autoincrement": true,
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": false
+        },
+        "accountId": {
+          "autoincrement": false,
+          "name": "accountId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "autoincrement": false,
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phoneNumber": {
+          "autoincrement": false,
+          "name": "phoneNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "default": "'(DATETIME(''NOW''))'",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdBy": {
+          "autoincrement": false,
+          "name": "createdBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updatedBy": {
+          "autoincrement": false,
+          "name": "updatedBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {
+        "AccountContact_accountId_Account_id_fk": {
+          "name": "AccountContact_accountId_Account_id_fk",
+          "tableFrom": "AccountContact",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "accountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "Business": {
+      "name": "Business",
+      "columns": {
+        "id": {
+          "autoincrement": true,
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": false
+        },
+        "accountId": {
+          "autoincrement": false,
+          "name": "accountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "registeredName": {
+          "autoincrement": false,
+          "name": "registeredName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "establishedDate": {
+          "autoincrement": false,
+          "name": "establishedDate",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ein": {
+          "autoincrement": false,
+          "name": "ein",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "default": "'(DATETIME(''NOW''))'",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdBy": {
+          "autoincrement": false,
+          "name": "createdBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updatedBy": {
+          "autoincrement": false,
+          "name": "updatedBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {
+        "Business_accountId_Account_id_fk": {
+          "name": "Business_accountId_Account_id_fk",
+          "tableFrom": "Business",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "accountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "Account": {
+      "name": "Account",
+      "columns": {
+        "id": {
+          "autoincrement": true,
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": false
+        },
+        "firstName": {
+          "autoincrement": false,
+          "name": "firstName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lastName": {
+          "autoincrement": false,
+          "name": "lastName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dateOfBirth": {
+          "autoincrement": false,
+          "name": "dateOfBirth",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ssnLastFour": {
+          "autoincrement": false,
+          "name": "ssnLastFour",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "autoincrement": false,
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "city": {
+          "autoincrement": false,
+          "name": "city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state": {
+          "autoincrement": false,
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "zipCode": {
+          "autoincrement": false,
+          "name": "zipCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "default": "(DATETIME('now'))",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdBy": {
+          "autoincrement": false,
+          "name": "createdBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updatedBy": {
+          "autoincrement": false,
+          "name": "updatedBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "squareId": {
+          "autoincrement": false,
+          "name": "squareId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
+}

@@ -54,7 +54,7 @@ export default function Home() {
         <div className='w-full'>
           <div className='flex items-center justify-between'>
             <h3 className='font-semibold text-[17px]'>Upcoming appointments</h3>
-            <span className='text-neutral-600 text-[15px]'>27</span>
+            <span className='text-neutral-600 text-[15px]'>Nov 6</span>
           </div>
         </div>
 

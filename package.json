@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
@@ -17,6 +20,8 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.44.7",
     "lucide-react": "^0.552.0",
     "next": "16.0.1",
     "react": "19.2.0",
@@ -28,6 +33,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.6",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
     "tailwindcss": "^4",

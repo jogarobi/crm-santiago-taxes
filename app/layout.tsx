@@ -10,9 +10,11 @@ import {
   InputGroupAddon,
 } from '@/components/ui/input-group';
 import {
+  ArrowUpRightIcon,
   CalendarIcon,
   CheckCheckIcon,
   CircleDollarSignIcon,
+  LinkIcon,
   PlusIcon,
   Search,
   UserPlusIcon,
@@ -26,6 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import Link from 'next/link';
 
 const onest = Onest({
   subsets: ['latin'],
@@ -53,32 +56,43 @@ export default function RootLayout({
 
                 <h1 className='text-2xl font-semibold'>Dashboard</h1>
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger className='ml-auto' asChild>
-                    <Button className='bg-purple'>
-                      <span>New activity</span>
-                      <PlusIcon />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align='end'>
-                    <DropdownMenuItem className='px-4 py-3'>
-                      <CalendarIcon className='stroke-neutral-500' />
-                      <span className=' font-normal'>Schedule appointment</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className='px-4 py-3'>
-                      <UserPlusIcon className='stroke-neutral-500' />
-                      <span className=' font-normal'>Create client</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className='px-4 py-3'>
-                      <CircleDollarSignIcon className='stroke-neutral-500' />
-                      <span className=' font-normal'>Take payment</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className='px-4 py-3'>
-                      <CheckCheckIcon className='stroke-neutral-500' />
-                      <span className=' font-normal'>Create task</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div className='flex items-center gap-3 ml-auto'>
+                  <Button>
+                    <Link href='https://online.taxslayerpro.com/'>
+                      Go to TaxSlayerPro
+                    </Link>
+                    <ArrowUpRightIcon />
+                  </Button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button className='bg-purple'>
+                        <span>New activity</span>
+                        <PlusIcon />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align='end'>
+                      <DropdownMenuItem className='px-4 py-3'>
+                        <CalendarIcon className='stroke-neutral-500' />
+                        <span className=' font-normal'>
+                          Schedule appointment
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className='px-4 py-3'>
+                        <UserPlusIcon className='stroke-neutral-500' />
+                        <span className=' font-normal'>Create client</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className='px-4 py-3'>
+                        <CircleDollarSignIcon className='stroke-neutral-500' />
+                        <span className=' font-normal'>Take payment</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className='px-4 py-3'>
+                        <CheckCheckIcon className='stroke-neutral-500' />
+                        <span className=' font-normal'>Create task</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
               <InputGroup className='py-6 bg-white'>
