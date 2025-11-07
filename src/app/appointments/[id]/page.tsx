@@ -7,6 +7,7 @@ import {
 } from '@/lib/hooks/use-appointments';
 import { CustomerName } from '@/components/CustomerName';
 import { ServiceName } from '@/components/ServiceName';
+import { TeamMemberName } from '@/components/TeamMemberName';
 import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -265,7 +266,20 @@ export default function AppointmentDetailPage({
         {appointment.customerId && (
           <div className='bg-white border rounded-lg p-6'>
             <h2 className='text-lg font-semibold mb-4'>Customer</h2>
-            <CustomerName customerId={appointment.customerId} showIcon={false} />
+            <div className='flex items-center gap-2 flex-wrap'>
+              <CustomerName customerId={appointment.customerId} showIcon={false} />
+              {appointment.appointmentSegments?.[0]?.teamMemberId && (
+                <>
+                  <span className='text-[15px] text-neutral-500'>with</span>
+                  <TeamMemberName
+                    teamMemberId={
+                      appointment.appointmentSegments[0].teamMemberId
+                    }
+                    className='text-[15px] text-neutral-700'
+                  />
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -336,7 +350,11 @@ export default function AppointmentDetailPage({
                       </p>
                       {segment.teamMemberId && (
                         <p className='text-sm text-neutral-600'>
-                          Team Member: {segment.teamMemberId}
+                          Team Member:{' '}
+                          <TeamMemberName
+                            teamMemberId={segment.teamMemberId}
+                            className='text-sm text-neutral-600'
+                          />
                         </p>
                       )}
                     </div>

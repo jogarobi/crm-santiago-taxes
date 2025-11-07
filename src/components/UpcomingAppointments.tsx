@@ -156,7 +156,7 @@ export function UpcomingAppointments() {
   }
 
   return (
-    <div className='mt-4 space-y-3'>
+    <div className='mt-4 flex flex-col gap-5'>
       {appointments.map((appointment) => {
         const durationMinutes =
           appointment.appointmentSegments?.[0]?.durationMinutes || undefined;
@@ -198,10 +198,20 @@ export function UpcomingAppointments() {
                   )}
                 </div>
 
-                <CustomerName
-                  customerId={appointment.customerId}
-                  className='mb-3'
-                />
+                <div className='mb-3 flex items-center gap-2 flex-wrap'>
+                  <CustomerName customerId={appointment.customerId} />
+                  {/*                   {appointment.appointmentSegments?.[0]?.teamMemberId && (
+                    <>
+                      <span className='text-[15px] text-neutral-500'>with</span>
+                      <TeamMemberName
+                        teamMemberId={
+                          appointment.appointmentSegments[0].teamMemberId
+                        }
+                        className='text-[15px] text-neutral-700'
+                      />
+                    </>
+                  )} */}
+                </div>
 
                 <div className='flex items-center justify-between'>
                   <div className='flex items-center gap-2'>

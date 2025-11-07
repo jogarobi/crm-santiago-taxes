@@ -66,11 +66,11 @@ export default function Home() {
               <EmptyHeader>
                 <EmptyMedia
                   variant='default'
-                  className='py-2 px-3 bg-white border rounded-md'
+                  className='py-2 px-3 border rounded-md'
                 >
                   <CheckCheckIcon className='w-5 stroke-neutral-500' />
                 </EmptyMedia>
-                <EmptyTitle className='text-[16px] font-normal'>
+                <EmptyTitle className='text-[16px] text-neutral-500 font-normal'>
                   No pending tasks
                 </EmptyTitle>
                 <Link

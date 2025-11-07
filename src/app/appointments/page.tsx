@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppointments } from '@/lib/hooks/use-appointments';
 import { CustomerName } from '@/components/CustomerName';
 import { ServiceName } from '@/components/ServiceName';
+import { TeamMemberName } from '@/components/TeamMemberName';
 import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -236,7 +237,20 @@ export default function AppointmentsPage() {
                     </div>
 
                     <div className='space-y-2'>
-                      <CustomerName customerId={appointment.customerId} />
+                      <div className='flex items-center gap-2 flex-wrap'>
+                        <CustomerName customerId={appointment.customerId} />
+                        {appointment.appointmentSegments?.[0]?.teamMemberId && (
+                          <>
+                            <span className='text-[15px] text-neutral-500'>with</span>
+                            <TeamMemberName
+                              teamMemberId={
+                                appointment.appointmentSegments[0].teamMemberId
+                              }
+                              className='text-[15px] text-neutral-700'
+                            />
+                          </>
+                        )}
+                      </div>
 
                       {appointment.appointmentSegments?.[0]
                         ?.serviceVariationId && (
