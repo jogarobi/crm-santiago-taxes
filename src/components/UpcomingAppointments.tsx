@@ -168,7 +168,8 @@ export function UpcomingAppointments() {
         return (
           <Link
             key={appointment.id}
-            href={`/appointments/${appointment.id}`}
+            href='#'
+            /* href={`/appointments/${appointment.id}`} */
             className='block bg-white border rounded-lg p-4 hover:shadow-xs transition-shadow'
           >
             <div className='flex items-start justify-between'>
