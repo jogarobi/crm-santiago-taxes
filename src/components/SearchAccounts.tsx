@@ -74,7 +74,9 @@ export function SearchAccounts() {
       {isOpen && debouncedSearch && (
         <div className='absolute top-full left-0 right-0 mt-2 bg-white border rounded-lg shadow-lg max-h-96 overflow-y-auto z-50'>
           {isLoading ? (
-            <div className='p-4 text-center text-neutral-500'>Searching...</div>
+            <div className='p-4 text-center text-sm text-neutral-500'>
+              Searching...
+            </div>
           ) : filteredAccounts && filteredAccounts.length > 0 ? (
             <div className='py-2'>
               <div className='px-4 py-2 text-sm text-neutral-500 font-medium'>

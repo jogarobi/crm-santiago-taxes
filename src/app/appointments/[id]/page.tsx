@@ -5,13 +5,15 @@ import {
   useAppointment,
   useCancelAppointment,
 } from '@/lib/hooks/use-appointments';
+import { CustomerName } from '@/components/CustomerName';
+import { ServiceName } from '@/components/ServiceName';
+import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   CalendarIcon,
   ClockIcon,
   Loader2,
-  UserIcon,
   MapPinIcon,
   FileTextIcon,
   ArrowLeftIcon,
@@ -40,20 +42,52 @@ export default function AppointmentDetailPage({
     }
   }, [appointment?.id]);
 
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const dateFormatted = date.toLocaleDateString('en-US', {
+  const formatDateTime = (
+    dateString: string,
+    durationMinutes?: number
+  ): { date: string; time: string } => {
+    const startDate = new Date(dateString);
+
+    // Get relative date (Today, Tomorrow, In 3 days, etc.)
+    const relativeDate = getRelativeDate(dateString);
+
+    // Get formatted date
+    const formattedDate = startDate.toLocaleDateString('en-US', {
       weekday: 'long',
       month: 'long',
       day: 'numeric',
       year: 'numeric',
     });
-    const timeFormatted = date.toLocaleTimeString('en-US', {
+
+    // Combine relative date with formatted date (except for "Today")
+    let dateFormatted: string;
+    if (relativeDate === 'Today') {
+      dateFormatted = 'Today';
+    } else {
+      dateFormatted = `${relativeDate}, ${formattedDate}`;
+    }
+
+    const startTimeFormatted = startDate.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
     });
-    return { date: dateFormatted, time: timeFormatted };
+
+    // Calculate end time if duration is provided
+    if (durationMinutes) {
+      const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+      const endTimeFormatted = endDate.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+      return {
+        date: dateFormatted,
+        time: `${startTimeFormatted} - ${endTimeFormatted}`,
+      };
+    }
+
+    return { date: dateFormatted, time: startTimeFormatted };
   };
 
   const getStatusColor = (status?: string) => {
@@ -142,7 +176,9 @@ export default function AppointmentDetailPage({
     );
   }
 
-  const { date, time } = formatDateTime(appointment.startAt || '');
+  const durationMinutes =
+    appointment.appointmentSegments?.[0]?.durationMinutes || undefined;
+  const { date, time } = formatDateTime(appointment.startAt || '', durationMinutes);
 
   return (
     <div className='flex flex-col gap-6 max-w-4xl'>
@@ -216,7 +252,7 @@ export default function AppointmentDetailPage({
               appointment.status
             )} text-base px-4 py-2`}
           >
-            {appointment.status || 'UNKNOWN'}
+            {capitalizeFirst(appointment.status || 'UNKNOWN')}
           </Badge>
           {appointment.version && (
             <p className='text-sm text-neutral-600 mt-4'>
@@ -229,15 +265,7 @@ export default function AppointmentDetailPage({
         {appointment.customerId && (
           <div className='bg-white border rounded-lg p-6'>
             <h2 className='text-lg font-semibold mb-4'>Customer</h2>
-            <div className='flex items-center gap-3'>
-              <UserIcon className='w-5 h-5 text-purple' />
-              <div>
-                <p className='font-medium'>Customer ID</p>
-                <p className='text-sm text-neutral-600'>
-                  {appointment.customerId}
-                </p>
-              </div>
-            </div>
+            <CustomerName customerId={appointment.customerId} showIcon={false} />
           </div>
         )}
 
@@ -300,9 +328,11 @@ export default function AppointmentDetailPage({
                 <div key={index} className='border-l-4 border-purple pl-4'>
                   <div className='flex justify-between items-start'>
                     <div>
-                      <p className='font-medium'>Service {index + 1}</p>
-                      <p className='text-sm text-neutral-600'>
-                        Service ID: {segment.serviceVariationId}
+                      <p className='font-medium'>
+                        <ServiceName
+                          serviceVariationId={segment.serviceVariationId}
+                          className='font-medium'
+                        />
                       </p>
                       {segment.teamMemberId && (
                         <p className='text-sm text-neutral-600'>

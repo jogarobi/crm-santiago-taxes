@@ -2,6 +2,9 @@
 
 import { useMemo } from 'react';
 import { useAppointments } from '@/lib/hooks/use-appointments';
+import { CustomerName } from '@/components/CustomerName';
+import { ServiceName } from '@/components/ServiceName';
+import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
 import {
   Empty,
   EmptyHeader,
@@ -13,10 +16,10 @@ import {
   CalendarIcon,
   ClockIcon,
   Loader2,
-  UserIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from './ui/badge';
+import clsx from 'clsx';
 
 export function UpcomingAppointments() {
   const dateRange = useMemo(() => {
@@ -42,19 +45,49 @@ export function UpcomingAppointments() {
     ...dateRange,
   });
 
-  // Format date and time
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const dateFormatted = date.toLocaleDateString('en-US', {
+  const formatDateTime = (
+    dateString: string,
+    durationMinutes?: number
+  ): { date: string; time: string } => {
+    const startDate = new Date(dateString);
+
+    // Get relative date (Today, Tomorrow, In 3 days, etc.)
+    const relativeDate = getRelativeDate(dateString);
+
+    // Get formatted date
+    const formattedDate = startDate.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
     });
-    const timeFormatted = date.toLocaleTimeString('en-US', {
+
+    // Combine relative date with formatted date (except for "Today")
+    let dateFormatted: string;
+    if (relativeDate === 'Today') {
+      dateFormatted = 'Today';
+    } else {
+      dateFormatted = `${relativeDate}, ${formattedDate}`;
+    }
+
+    const startTimeFormatted = startDate.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
     });
-    return { date: dateFormatted, time: timeFormatted };
+
+    if (durationMinutes) {
+      const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+      const endTimeFormatted = endDate.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+      return {
+        date: dateFormatted,
+        time: `${startTimeFormatted} - ${endTimeFormatted}`,
+      };
+    }
+
+    return { date: dateFormatted, time: startTimeFormatted };
   };
 
   const getStatusColor = (status?: string) => {
@@ -78,7 +111,9 @@ export function UpcomingAppointments() {
     return (
       <div className='flex items-center justify-center py-8'>
         <Loader2 className='w-6 h-6 animate-spin text-purple' />
-        <span className='ml-2 text-neutral-600'>Loading appointments...</span>
+        <span className='ml-2 text-neutral-600 text-sm'>
+          Loading appointments...
+        </span>
       </div>
     );
   }
@@ -123,20 +158,55 @@ export function UpcomingAppointments() {
   return (
     <div className='mt-4 space-y-3'>
       {appointments.map((appointment) => {
-        const { date, time } = formatDateTime(appointment.startAt || '');
+        const durationMinutes =
+          appointment.appointmentSegments?.[0]?.durationMinutes || undefined;
+        const { date, time } = formatDateTime(
+          appointment.startAt || '',
+          durationMinutes
+        );
 
         return (
           <Link
             key={appointment.id}
             href={`/appointments/${appointment.id}`}
-            className='block bg-white border rounded-lg p-4 hover:shadow-md transition-shadow'
+            className='block bg-white border rounded-lg p-4 hover:shadow-xs transition-shadow'
           >
             <div className='flex items-start justify-between'>
               <div className='flex-1'>
-                <div className='flex items-center gap-3 mb-2'>
+                <div className='flex items-center gap-3 justify-between mb-2'>
+                  {appointment.appointmentSegments?.[0]?.serviceVariationId && (
+                    <div>
+                      <ServiceName
+                        serviceVariationId={
+                          appointment.appointmentSegments[0].serviceVariationId
+                        }
+                        className='font-semibold'
+                      />
+                    </div>
+                  )}
+
+                  {appointment.status && (
+                    <Badge
+                      variant='secondary'
+                      className={clsx(
+                        getStatusColor(appointment.status),
+                        'text-[13px] font-medium'
+                      )}
+                    >
+                      {capitalizeFirst(appointment.status)}
+                    </Badge>
+                  )}
+                </div>
+
+                <CustomerName
+                  customerId={appointment.customerId}
+                  className='mb-3'
+                />
+
+                <div className='flex items-center justify-between'>
                   <div className='flex items-center gap-2'>
                     <CalendarIcon className='w-4 h-4 text-neutral-500' />
-                    <span className='text-sm font-medium text-neutral-700'>
+                    <span className='text-sm font-medium text-neutral-500'>
                       {date}
                     </span>
                   </div>
@@ -146,44 +216,26 @@ export function UpcomingAppointments() {
                   </div>
                 </div>
 
-                {appointment.customerId && (
-                  <div className='flex items-center gap-2 mb-2'>
-                    <UserIcon className='w-4 h-4 text-neutral-500' />
-                    <span className='text-sm text-neutral-700'>
-                      Customer ID: {appointment.customerId}
-                    </span>
-                  </div>
-                )}
-
                 {appointment.customerNote && (
                   <p className='text-sm text-neutral-600 mt-1'>
                     {appointment.customerNote}
                   </p>
                 )}
               </div>
-
-              {appointment.status && (
-                <Badge
-                  variant='secondary'
-                  className={getStatusColor(appointment.status)}
-                >
-                  {appointment.status}
-                </Badge>
-              )}
             </div>
           </Link>
         );
       })}
 
-      {appointments.length > 0 && (
+      {/*       {appointments.length > 0 && (
         <Link
           href='/appointments'
-          className='block text-center text-purple text-sm font-medium hover:underline pt-2'
+          className='block text-center text-purple text-[15px] font-normal hover:underline pt-2'
         >
           View all appointments
           <ArrowUpRightIcon className='w-4 inline-block ml-1' />
         </Link>
-      )}
+      )} */}
     </div>
   );
 }

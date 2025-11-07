@@ -22,32 +22,32 @@ export default function Home() {
           <div className='flex items-center justify-between'>
             <p className='text-[15px] text-neutral-600'>Total clients</p>
           </div>
-          <p className='font-bold text-2xl text-purple'>3,205</p>
+          <p className='font-bold text-[22px] text-purple'>3,205</p>
         </div>
         <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
           <div className='flex items-center justify-between'>
             <p className='text-[15px] text-neutral-600'>Revenue</p>
           </div>
-          <p className='font-bold text-2xl text-purple'>$14,450.25</p>
+          <p className='font-bold text-[22px] text-purple'>$14,450.25</p>
         </div>
         <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
           <div className='flex items-center justify-between'>
             <p className='text-[15px] text-neutral-600'>Appointments</p>
           </div>
-          <p className='font-bold text-2xl text-purple'>27</p>
+          <p className='font-bold text-[22px] text-purple'>27</p>
         </div>
 
         <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
           <div className='flex items-center justify-between'>
             <p className='text-[15px] text-neutral-600'>Most popular service</p>
           </div>
-          <p className='font-bold text-[22px] text-purple'>Tax Preparation</p>
+          <p className='font-bold text-xl text-purple'>Tax Preparation</p>
         </div>
       </div>
 
       <div className='flex gap-14'>
         <div className='w-full'>
-          <div className='flex items-center justify-between'>
+          <div className='flex items-center justify-between mb-5'>
             <h3 className='font-semibold text-[17px]'>Upcoming appointments</h3>
             <span className='text-neutral-600 text-[15px]'>Next 7 days</span>
           </div>
@@ -58,7 +58,7 @@ export default function Home() {
         <div className='w-full'>
           <div className='flex items-center justify-between'>
             <h3 className='font-semibold text-[17px]'>Pending tasks</h3>
-            <span className='text-neutral-500 text-[15px]'>4</span>
+            <span className='text-neutral-500 text-[15px]'></span>
           </div>
 
           <div>

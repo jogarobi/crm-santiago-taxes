@@ -10,7 +10,6 @@ import type {
   SearchAvailabilityInput,
 } from '@/lib/types/appointment';
 
-// Query Keys
 export const appointmentKeys = {
   all: ['appointments'] as const,
   lists: () => [...appointmentKeys.all, 'list'] as const,
@@ -22,7 +21,6 @@ export const appointmentKeys = {
     [...appointmentKeys.all, 'availability', { input }] as const,
 };
 
-// API Functions
 async function fetchAppointments(
   params?: ListAppointmentsParams
 ): Promise<Appointment[]> {
@@ -30,18 +28,16 @@ async function fetchAppointments(
 
   if (params?.limit) queryParams.append('limit', params.limit.toString());
   if (params?.cursor) queryParams.append('cursor', params.cursor);
-  if (params?.customerId)
-    queryParams.append('customer_id', params.customerId);
+  if (params?.customerId) queryParams.append('customer_id', params.customerId);
   if (params?.teamMemberId)
     queryParams.append('team_member_id', params.teamMemberId);
-  if (params?.locationId)
-    queryParams.append('location_id', params.locationId);
-  if (params?.startAtMin)
-    queryParams.append('start_at_min', params.startAtMin);
-  if (params?.startAtMax)
-    queryParams.append('start_at_max', params.startAtMax);
+  if (params?.locationId) queryParams.append('location_id', params.locationId);
+  if (params?.startAtMin) queryParams.append('start_at_min', params.startAtMin);
+  if (params?.startAtMax) queryParams.append('start_at_max', params.startAtMax);
 
-  const url = `/api/appointments${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+  const url = `/api/appointments${
+    queryParams.toString() ? `?${queryParams.toString()}` : ''
+  }`;
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -145,19 +141,12 @@ export function useAppointments(params?: ListAppointmentsParams) {
     if (!params) return undefined;
 
     const filtered = Object.fromEntries(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       Object.entries(params).filter(([_, v]) => v !== undefined)
     );
 
     return Object.keys(filtered).length > 0 ? filtered : undefined;
-  }, [
-    params?.limit,
-    params?.cursor,
-    params?.customerId,
-    params?.teamMemberId,
-    params?.locationId,
-    params?.startAtMin,
-    params?.startAtMax,
-  ]);
+  }, [params]);
 
   return useQuery({
     queryKey: appointmentKeys.list(normalizedParams as ListAppointmentsParams),

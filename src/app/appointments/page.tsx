@@ -2,13 +2,15 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useAppointments } from '@/lib/hooks/use-appointments';
+import { CustomerName } from '@/components/CustomerName';
+import { ServiceName } from '@/components/ServiceName';
+import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   CalendarIcon,
   ClockIcon,
   Loader2,
-  UserIcon,
   PlusIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -55,20 +57,52 @@ export default function AppointmentsPage() {
     ...filterDates,
   });
 
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const dateFormatted = date.toLocaleDateString('en-US', {
+  const formatDateTime = (
+    dateString: string,
+    durationMinutes?: number
+  ): { date: string; time: string } => {
+    const startDate = new Date(dateString);
+
+    // Get relative date (Today, Tomorrow, In 3 days, etc.)
+    const relativeDate = getRelativeDate(dateString);
+
+    // Get formatted date
+    const formattedDate = startDate.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
       year: 'numeric',
     });
-    const timeFormatted = date.toLocaleTimeString('en-US', {
+
+    // Combine relative date with formatted date (except for "Today")
+    let dateFormatted: string;
+    if (relativeDate === 'Today') {
+      dateFormatted = 'Today';
+    } else {
+      dateFormatted = `${relativeDate}, ${formattedDate}`;
+    }
+
+    const startTimeFormatted = startDate.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
     });
-    return { date: dateFormatted, time: timeFormatted };
+
+    // Calculate end time if duration is provided
+    if (durationMinutes) {
+      const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+      const endTimeFormatted = endDate.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+      return {
+        date: dateFormatted,
+        time: `${startTimeFormatted} - ${endTimeFormatted}`,
+      };
+    }
+
+    return { date: dateFormatted, time: startTimeFormatted };
   };
 
   const getStatusColor = (status?: string) => {
@@ -173,7 +207,12 @@ export default function AppointmentsPage() {
           </p>
 
           {appointments.map((appointment) => {
-            const { date, time } = formatDateTime(appointment.startAt || '');
+            const durationMinutes =
+              appointment.appointmentSegments?.[0]?.durationMinutes || undefined;
+            const { date, time } = formatDateTime(
+              appointment.startAt || '',
+              durationMinutes
+            );
 
             return (
               <Link
@@ -197,12 +236,18 @@ export default function AppointmentsPage() {
                     </div>
 
                     <div className='space-y-2'>
-                      {appointment.customerId && (
-                        <div className='flex items-center gap-2'>
-                          <UserIcon className='w-4 h-4 text-neutral-500' />
-                          <span className='text-sm text-neutral-700'>
-                            Customer: {appointment.customerId}
-                          </span>
+                      <CustomerName customerId={appointment.customerId} />
+
+                      {appointment.appointmentSegments?.[0]
+                        ?.serviceVariationId && (
+                        <div>
+                          <ServiceName
+                            serviceVariationId={
+                              appointment.appointmentSegments[0]
+                                .serviceVariationId
+                            }
+                            className='text-sm text-neutral-700 font-medium'
+                          />
                         </div>
                       )}
 
@@ -228,7 +273,7 @@ export default function AppointmentsPage() {
                         variant='secondary'
                         className={getStatusColor(appointment.status)}
                       >
-                        {appointment.status}
+                        {capitalizeFirst(appointment.status)}
                       </Badge>
                     )}
                     {appointment.appointmentSegments &&
