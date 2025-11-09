@@ -135,11 +135,11 @@ export function UpcomingAppointments() {
           <EmptyHeader>
             <EmptyMedia
               variant='default'
-              className='py-2 px-3 bg-white border rounded-md'
+              className='py-2 px-3 border rounded-md'
             >
               <CalendarIcon className='w-5 stroke-neutral-500' />
             </EmptyMedia>
-            <EmptyTitle className='text-[16px] font-normal'>
+            <EmptyTitle className='text-[16px] text-neutral-500 font-normal'>
               No upcoming appointments
             </EmptyTitle>
             <Link
