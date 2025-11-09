@@ -18,13 +18,13 @@ export function Breadcrumbs() {
               <ChevronRightIcon className='w-4 h-4 text-neutral-400' />
             )}
             {isLast ? (
-              <span className='text-neutral-900 font-medium'>
+              <span className='text-neutral-900 text-[15px] font-medium'>
                 {breadcrumb.label}
               </span>
             ) : (
               <Link
                 href={breadcrumb.href}
-                className='text-neutral-600 hover:text-neutral-900 transition-colors'
+                className='text-neutral-600 hover:text-neutral-900 text-[15px] transition-colors'
               >
                 {breadcrumb.label}
               </Link>

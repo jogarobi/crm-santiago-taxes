@@ -4,11 +4,11 @@ import { use } from 'react';
 import { useAccount } from '@/lib/hooks/use-accounts';
 import { Loader2 } from 'lucide-react';
 
-export default function AccountDetailPage({
-  params,
-}: {
+type Props = {
   params: Promise<{ id: string }>;
-}) {
+};
+
+export default function AccountDetailPage({ params }: Props) {
   const { id } = use(params);
   const accountId = parseInt(id);
   const { data: account, isLoading, error } = useAccount(accountId);

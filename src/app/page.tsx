@@ -8,6 +8,7 @@ import {
 import { ArrowUpRightIcon, CheckCheckIcon } from 'lucide-react';
 import Link from 'next/link';
 import { UpcomingAppointments } from '@/components/UpcomingAppointments';
+import { SearchAccounts } from '@/components/SearchAccounts';
 
 export const metadata: Metadata = {
   title: 'Home | Santiago Taxes CRM',
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <div className='flex flex-col gap-10'>
+      <SearchAccounts />
       <div className='flex items-center gap-7'>
         <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
           <div className='flex items-center justify-between'>

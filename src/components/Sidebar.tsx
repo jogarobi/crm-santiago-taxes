@@ -1,4 +1,8 @@
+'use client';
+
 import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   Sidebar as CNSidebar,
   SidebarContent,
@@ -33,17 +37,17 @@ import {
 const items = [
   {
     title: 'Home',
-    url: '#',
+    url: '/',
     icon: HomeIcon,
   },
   {
     title: 'Clients',
-    url: '#',
+    url: '/clients',
     icon: UserIcon,
   },
   {
     title: 'Appointments',
-    url: '#',
+    url: '/appointments',
     icon: CalendarIcon,
   },
   {
@@ -73,6 +77,8 @@ const managementItems = [
 ];
 
 export default function Sidebar() {
+  const pathname = usePathname();
+
   return (
     <CNSidebar>
       <SidebarHeader className='flex flex-row items-center gap-2 px-3 py-4 bg-white'>
@@ -96,16 +102,26 @@ export default function Sidebar() {
           <SidebarGroupLabel className='text-[13px]'>General</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className='gap-2'>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton className='py-5 px-3' asChild>
-                    <a className='block' href={item.url}>
-                      <item.icon />
-                      <span className='text-sm'>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {items.map((item) => {
+                const isActive =
+                  item.url === '/'
+                    ? pathname === '/'
+                    : pathname.startsWith(item.url);
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      className='py-5 px-3 data-[active=true]:bg-neutral-100 data-[active=true]:text-purple'
+                      isActive={isActive}
+                      asChild
+                    >
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span className='text-sm'>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -116,16 +132,26 @@ export default function Sidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className='gap-2'>
-              {managementItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton className='py-5 px-3' asChild>
-                    <a className='block' href={item.url}>
-                      <item.icon />
-                      <span className='text-sm'>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {managementItems.map((item) => {
+                const isActive =
+                  item.url === '/'
+                    ? pathname === '/'
+                    : pathname.startsWith(item.url);
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      className='py-5 px-3 data-[active=true]:bg-neutral-100 data-[active=true]:text-purple'
+                      isActive={isActive}
+                      asChild
+                    >
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span className='text-sm'>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -24,28 +24,6 @@ export function useBreadcrumbs(): PageInfo {
       };
     }
 
-    if (pathname === '/accounts') {
-      return {
-        title: 'Accounts',
-        breadcrumbs: [
-          { label: 'Home', href: '/' },
-          { label: 'Accounts', href: '/accounts' },
-        ],
-      };
-    }
-
-    if (pathname.startsWith('/accounts/')) {
-      const id = pathname.split('/').pop();
-      return {
-        title: 'Account Details',
-        breadcrumbs: [
-          { label: 'Home', href: '/' },
-          { label: 'Accounts', href: '/accounts' },
-          { label: `Account #${id}`, href: pathname },
-        ],
-      };
-    }
-
     if (pathname === '/appointments') {
       return {
         title: 'Appointments',

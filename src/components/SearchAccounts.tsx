@@ -86,8 +86,7 @@ export function SearchAccounts() {
               {filteredAccounts.map((account) => (
                 <Link
                   key={account.id}
-                  href='#'
-                  // href={`/clients/${account.id}`}
+                  href={`/clients/${account.id}`}
                   onClick={handleResultClick}
                   className='block px-4 py-4 hover:bg-neutral-50 transition-colors border-b last:border-b-0'
                 >
