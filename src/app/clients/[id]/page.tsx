@@ -37,7 +37,7 @@ export default function AccountDetailPage({ params }: Props) {
   if (error) {
     return (
       <div className='p-8'>
-        <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
+        <div className='bg-red-50 border border-red-200 rounded-xl p-4'>
           <p className='text-red-800'>Error loading account: {error.message}</p>
         </div>
       </div>
@@ -47,7 +47,7 @@ export default function AccountDetailPage({ params }: Props) {
   if (!account) {
     return (
       <div className='p-8'>
-        <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-4'>
+        <div className='bg-yellow-50 border border-yellow-200 rounded-xl p-4'>
           <p className='text-yellow-800'>Account not found</p>
         </div>
       </div>
@@ -101,7 +101,7 @@ export default function AccountDetailPage({ params }: Props) {
           </div>
         </div>
 
-        <div className='ml-auto flex gap-5'>
+        <div className='ml-auto flex flex-col gap-3'>
           <div className='flex items-center gap-2'>
             <Edit2Icon size={15} strokeWidth={2.4} />
             <span className='text-[15px] font-medium'>Edit</span>
@@ -134,7 +134,7 @@ export default function AccountDetailPage({ params }: Props) {
         </TabsList>
 
         <TabsContent value='activity-overview' className='flex gap-8'>
-          <div className='bg-white border rounded-lg p-6 flex-2 flex flex-col gap-6'>
+          <div className='bg-white border rounded-xl p-6 flex-2 flex flex-col gap-6'>
             <div className='flex items-center justify-between'>
               <h3 className='text-lg font-semibold'>Activity</h3>
               <Button className='bg-purple'>
@@ -144,7 +144,7 @@ export default function AccountDetailPage({ params }: Props) {
             </div>
             <div className='grid grid-cols-2 gap-6'></div>
           </div>
-          <div className='bg-white border rounded-lg flex-1 p-6 w-full flex flex-col gap-6'>
+          <div className='bg-white border rounded-xl flex-1 p-6 w-full flex flex-col gap-6'>
             <h3 className='text-lg font-semibold'>Details</h3>
             <div className='grid grid-cols-2 gap-6'>
               {account.address && (
@@ -232,13 +232,13 @@ export default function AccountDetailPage({ params }: Props) {
         </TabsContent>
 
         <TabsContent value='documents'>
-          <div className='bg-white border rounded-lg p-6'>
+          <div className='bg-white border rounded-xl p-6'>
             <p className='text-neutral-500'>Documents content coming soon...</p>
           </div>
         </TabsContent>
 
         <TabsContent value='appointments'>
-          <div className='bg-white border rounded-lg p-6'>
+          <div className='bg-white border rounded-xl p-6'>
             <p className='text-neutral-500'>
               Appointments content coming soon...
             </p>
@@ -246,7 +246,7 @@ export default function AccountDetailPage({ params }: Props) {
         </TabsContent>
 
         <TabsContent value='businesses'>
-          <div className='bg-white border rounded-lg p-6'>
+          <div className='bg-white border rounded-xl p-6'>
             <p className='text-neutral-500'>
               Businesses content coming soon...
             </p>
