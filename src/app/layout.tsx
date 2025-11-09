@@ -43,16 +43,16 @@ export default function RootLayout({
           <Sidebar />
 
           <main className='w-full'>
-            <header className='px-8 pt-8 pb-4 flex items-center gap-3'>
+            <header className='px-10 pt-8 pb-4 flex items-center gap-3'>
               <SidebarTrigger />
               <PageHeader />
               <div className='flex items-center gap-3'>
-                <Button>
-                  <Link href='https://online.taxslayerpro.com/'>
-                    Go to TaxSlayerPro
-                  </Link>
-                  <ArrowUpRightIcon />
-                </Button>
+                <Link href='https://online.taxslayerpro.com/'>
+                  <Button className='cursor-pointer'>
+                    <span>Go to TaxSlayerPro</span>
+                    <ArrowUpRightIcon />
+                  </Button>
+                </Link>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -83,7 +83,7 @@ export default function RootLayout({
               </div>
             </header>
 
-            <section className='px-8 pt-2'>{children}</section>
+            <section className='px-10 pt-2 pb-10'>{children}</section>
           </main>
         </AllProviders>
       </body>
