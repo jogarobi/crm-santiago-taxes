@@ -3,15 +3,18 @@
 import { use } from 'react';
 import { useAccount } from '@/lib/hooks/use-accounts';
 import {
-  BriefcaseBusinessIcon,
   Building2Icon,
+  ClockIcon,
   Edit2Icon,
   IdCardIcon,
   Loader2,
   MailIcon,
   PhoneIcon,
+  PlusIcon,
   TrashIcon,
 } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -53,7 +56,7 @@ export default function AccountDetailPage({ params }: Props) {
 
   return (
     <div className='flex flex-col gap-8 pt-3'>
-      <div className='flex items-center gap-8 bg-white border rounded-lg p-8'>
+      <div className='flex items-center gap-8 bg-white border rounded-xl p-8'>
         <div className='text-3xl font-semibold h-20 w-20 rounded-full bg-purple text-white flex items-center justify-center'>
           {account.firstName[0] + account.lastName[0]}
         </div>
@@ -80,9 +83,7 @@ export default function AccountDetailPage({ params }: Props) {
             {account.ssnLastFour && (
               <div className='flex gap-2 items-center'>
                 <IdCardIcon size={18} className='inline-block' />
-                <span className='text-[16px]'>
-                  ***-**-{account.ssnLastFour}
-                </span>
+                <span className='text-[16px]'>{account.ssnLastFour}</span>
               </div>
             )}
 
@@ -91,17 +92,19 @@ export default function AccountDetailPage({ params }: Props) {
               <span className='text-[16px]'>No business associated</span>
             </div>
           </div>
+
+          <div className='flex gap-2 items-center pt-1'>
+            <ClockIcon size={16} className='inline-block' />
+            <span className='text-[15px]'>
+              Last interaction on {new Date().toLocaleString()}
+            </span>
+          </div>
         </div>
 
-        <div className='ml-auto flex flex-col gap-3'>
+        <div className='ml-auto flex gap-5'>
           <div className='flex items-center gap-2'>
             <Edit2Icon size={15} strokeWidth={2.4} />
             <span className='text-[15px] font-medium'>Edit</span>
-          </div>
-
-          <div className='flex items-center gap-2'>
-            <BriefcaseBusinessIcon size={15} strokeWidth={2.4} />
-            <span className='text-[15px] font-medium'>Add Business</span>
           </div>
 
           <div className='text-red-700 flex items-center gap-2'>
@@ -111,84 +114,145 @@ export default function AccountDetailPage({ params }: Props) {
         </div>
       </div>
 
-      <div className='bg-white border rounded-lg p-6'>
-        <div className='grid grid-cols-2 gap-6'>
-          {account.address && (
-            <div>
-              <div className='text-sm text-neutral-500 flex items-center gap-1 mb-1'>
-                <span>Address Line</span>
-              </div>
-              <p className='font-medium'>{account.address}</p>
-            </div>
-          )}
+      <Tabs defaultValue='overview' className='w-full'>
+        <TabsList className='mb-5 py-7 px-2 gap-2 w-full'>
+          <TabsTrigger className='py-5' value='activity-overview'>
+            Overview & Activity
+          </TabsTrigger>
+          <TabsTrigger className='py-5' value='appointments'>
+            Appointments
+          </TabsTrigger>
+          <TabsTrigger className='py-5' value='tasks'>
+            Tasks
+          </TabsTrigger>
+          <TabsTrigger className='py-5' value='businesses'>
+            Businesses
+          </TabsTrigger>
+          <TabsTrigger className='py-5' value='relationships'>
+            Relationships
+          </TabsTrigger>
+        </TabsList>
 
-          {account.city && (
-            <div>
-              <label className='text-sm text-neutral-500'>City</label>
-              <p className='font-medium'>{account.city}</p>
+        <TabsContent value='activity-overview' className='flex gap-8'>
+          <div className='bg-white border rounded-lg p-6 flex-2 flex flex-col gap-6'>
+            <div className='flex items-center justify-between'>
+              <h3 className='text-lg font-semibold'>Activity</h3>
+              <Button className='bg-purple'>
+                <span>New</span>
+                <PlusIcon />
+              </Button>
             </div>
-          )}
-
-          {account.state && (
-            <div>
-              <label className='text-sm text-neutral-500'>State</label>
-              <p className='font-medium'>{account.state}</p>
-            </div>
-          )}
-
-          {account.zipCode && (
-            <div>
-              <label className='text-sm text-neutral-500'>Zip Code</label>
-              <p className='font-medium'>{account.zipCode}</p>
-            </div>
-          )}
-
-          {account.squareId && (
-            <div>
-              <label className='text-sm text-neutral-500'>Square ID</label>
-              <p className='font-medium'>{account.squareId}</p>
-            </div>
-          )}
-          {account.ssnLastFour && (
-            <div>
-              <label className='text-sm text-neutral-500'>SSN (Last 4)</label>
-              <p className='font-medium'>{account.ssnLastFour}</p>
-            </div>
-          )}
-          <div>
-            <label className='text-sm text-neutral-500'>Date of Birth</label>
-            <p className='font-medium'>{account.dateOfBirth}</p>
+            <div className='grid grid-cols-2 gap-6'></div>
           </div>
+          <div className='bg-white border rounded-lg flex-1 p-6 w-full flex flex-col gap-6'>
+            <h3 className='text-lg font-semibold'>Details</h3>
+            <div className='grid grid-cols-2 gap-6'>
+              {account.address && (
+                <div>
+                  <div className='text-sm text-neutral-500 flex items-center gap-1 mb-1'>
+                    <span>Address Line</span>
+                  </div>
+                  <p className='font-medium text-[15px]'>{account.address}</p>
+                </div>
+              )}
 
-          <div>
-            <label className='text-sm text-neutral-500'>Created At</label>
-            <p className='font-medium'>
-              {new Date(account.createdAt).toLocaleDateString()}
+              {account.city && (
+                <div>
+                  <label className='text-sm text-neutral-500'>City</label>
+                  <p className='font-medium text-[15px]'>{account.city}</p>
+                </div>
+              )}
+
+              {account.state && (
+                <div>
+                  <label className='text-sm text-neutral-500'>State</label>
+                  <p className='font-medium text-[15px]'>{account.state}</p>
+                </div>
+              )}
+
+              {account.zipCode && (
+                <div>
+                  <label className='text-sm text-neutral-500'>Zip Code</label>
+                  <p className='font-medium text-[15px]'>{account.zipCode}</p>
+                </div>
+              )}
+
+              {account.squareId && (
+                <div>
+                  <label className='text-sm text-neutral-500'>Square ID</label>
+                  <p className='font-medium text-[15px]'>{account.squareId}</p>
+                </div>
+              )}
+              {account.ssnLastFour && (
+                <div>
+                  <label className='text-sm text-neutral-500'>
+                    SSN (Last 4)
+                  </label>
+                  <p className='font-medium text-[15px]'>
+                    {account.ssnLastFour}
+                  </p>
+                </div>
+              )}
+              <div>
+                <label className='text-sm text-neutral-500'>
+                  Date of Birth
+                </label>
+                <p className='font-medium text-[15px]'>{account.dateOfBirth}</p>
+              </div>
+
+              <div>
+                <label className='text-sm text-neutral-500'>Created At</label>
+                <p className='font-medium text-[15px]'>
+                  {new Date(account.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+
+              <div>
+                <label className='text-sm text-neutral-500'>Created By</label>
+                <p className='font-medium text-[15px]'>{account.createdBy}</p>
+              </div>
+
+              {account.updatedAt && (
+                <div>
+                  <label className='text-sm text-neutral-500'>Updated At</label>
+                  <p className='font-medium text-[15px]'>
+                    {new Date(account.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+
+              {account.updatedBy && (
+                <div>
+                  <label className='text-sm text-neutral-500'>Updated By</label>
+                  <p className='font-medium text-[15px]'>{account.updatedBy}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value='documents'>
+          <div className='bg-white border rounded-lg p-6'>
+            <p className='text-neutral-500'>Documents content coming soon...</p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value='appointments'>
+          <div className='bg-white border rounded-lg p-6'>
+            <p className='text-neutral-500'>
+              Appointments content coming soon...
             </p>
           </div>
+        </TabsContent>
 
-          <div>
-            <label className='text-sm text-neutral-500'>Created By</label>
-            <p className='font-medium'>{account.createdBy}</p>
+        <TabsContent value='businesses'>
+          <div className='bg-white border rounded-lg p-6'>
+            <p className='text-neutral-500'>
+              Businesses content coming soon...
+            </p>
           </div>
-
-          {account.updatedAt && (
-            <div>
-              <label className='text-sm text-neutral-500'>Updated At</label>
-              <p className='font-medium'>
-                {new Date(account.updatedAt).toLocaleDateString()}
-              </p>
-            </div>
-          )}
-
-          {account.updatedBy && (
-            <div>
-              <label className='text-sm text-neutral-500'>Updated By</label>
-              <p className='font-medium'>{account.updatedBy}</p>
-            </div>
-          )}
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
