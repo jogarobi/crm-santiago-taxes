@@ -95,3 +95,32 @@ export const log = sqliteTable('Log', {
   createdAt: text().default("sql`(DATETIME('NOW'))`"),
   createdBy: text().notNull(),
 });
+
+export const staff = sqliteTable('Staff', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  squareId: text(),
+  title: text().notNull(),
+  status: text().notNull(),
+  firstName: text().notNull(),
+  lastName: text().notNull(),
+  createdAt: text().default("sql`(DATETIME('NOW'))`"),
+  createdBy: text().notNull(),
+  updatedAt: text(),
+  updatedBy: text(),
+});
+
+export const appointment = sqliteTable('Appointment', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  squareId: text(),
+  status: text().notNull(),
+  startAt: text().notNull(),
+  endAt: text().notNull(),
+  durationMinutes: integer(),
+  accountId: integer().references(() => account.id),
+  creatorType: text().notNull(),
+  createdAt: text().default("DATETIME('NOW')"),
+  createdBy: text(),
+  staffId: integer().references(() => staff.id),
+  updatedAt: text(),
+  updatedBy: text(),
+});
