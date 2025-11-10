@@ -24,17 +24,17 @@ import clsx from 'clsx';
 export function UpcomingAppointments() {
   const dateRange = useMemo(() => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Start of today
+    today.setHours(0, 0, 0, 0);
 
     const nextWeek = new Date(today);
     nextWeek.setDate(today.getDate() + 7);
-    nextWeek.setHours(23, 59, 59, 999); // End of day in 7 days
+    nextWeek.setHours(23, 59, 59, 999);
 
     return {
       startAtMin: today.toISOString(),
       startAtMax: nextWeek.toISOString(),
     };
-  }, []); // Empty dependency array means this only runs once
+  }, []);
 
   const {
     data: appointments,
@@ -45,22 +45,26 @@ export function UpcomingAppointments() {
     ...dateRange,
   });
 
+  const upcomingAppointments = useMemo(() => {
+    if (!appointments) return [];
+    return appointments
+      .filter((appointment) => !appointment.status?.includes('CANCELLED'))
+      .slice(0, 3);
+  }, [appointments]);
+
   const formatDateTime = (
     dateString: string,
     durationMinutes?: number
   ): { date: string; time: string } => {
     const startDate = new Date(dateString);
 
-    // Get relative date (Today, Tomorrow, In 3 days, etc.)
     const relativeDate = getRelativeDate(dateString);
 
-    // Get formatted date
     const formattedDate = startDate.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
     });
 
-    // Combine relative date with formatted date (except for "Today")
     let dateFormatted: string;
     if (relativeDate === 'Today') {
       dateFormatted = 'Today';
@@ -128,7 +132,7 @@ export function UpcomingAppointments() {
     );
   }
 
-  if (!appointments || appointments.length === 0) {
+  if (!upcomingAppointments || upcomingAppointments.length === 0) {
     return (
       <div className='mt-4'>
         <Empty>
@@ -157,7 +161,7 @@ export function UpcomingAppointments() {
 
   return (
     <div className='mt-4 flex flex-col gap-5'>
-      {appointments.map((appointment) => {
+      {upcomingAppointments.map((appointment) => {
         const durationMinutes =
           appointment.appointmentSegments?.[0]?.durationMinutes || undefined;
         const { date, time } = formatDateTime(
@@ -238,7 +242,7 @@ export function UpcomingAppointments() {
         );
       })}
 
-      {/*       {appointments.length > 0 && (
+      {upcomingAppointments.length > 0 && (
         <Link
           href='/appointments'
           className='block text-center text-purple text-[15px] font-normal hover:underline pt-2'
@@ -246,7 +250,7 @@ export function UpcomingAppointments() {
           View all appointments
           <ArrowUpRightIcon className='w-4 inline-block ml-1' />
         </Link>
-      )} */}
+      )}
     </div>
   );
 }
