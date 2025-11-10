@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 // import { WebhooksHelper } from 'square';
+import { square } from '@/app/api/client';
+import { db } from '@/lib/db';
+import { appointment, account, log } from '@/db/migrations/schema';
+import { eq } from 'drizzle-orm';
 
 type SquareWebhookEvent = {
   merchant_id: string;
@@ -14,34 +18,215 @@ type SquareWebhookEvent = {
 };
 
 async function handleBookingEvent(event: SquareWebhookEvent) {
+  // Square webhook object IDs are suffixed with `:number` (e.g., "abc123:0")
+  // We need to extract the base ID by splitting on the colon
+  const bookingId = event.data.id.split(':')[0];
+
   console.log(`Processing booking event: ${event.type}`, {
     eventId: event.event_id,
-    bookingId: event.data.id,
+    bookingId: bookingId,
+    rawId: event.data.id,
   });
 
-  console.log(event);
+  try {
+    switch (event.type) {
+      case 'booking.created': {
+        console.log('New booking created:', bookingId);
 
-  switch (event.type) {
-    case 'booking.created':
-      // Handle new booking creation
-      console.log('New booking created:', event.data.id);
-      // TODO: Sync booking to local database if needed
-      break;
+        // Fetch the full booking details from Square
+        const bookingResponse = await square.bookings.get({
+          bookingId: bookingId,
+        });
+        const booking = bookingResponse.booking;
 
-    case 'booking.updated':
-      // Handle booking updates
-      console.log('Booking updated: ', event.data.id);
-      // TODO: Update local booking record
-      break;
+        if (!booking) {
+          console.error('Booking not found in Square:', bookingId);
+          return;
+        }
 
-    case 'booking.cancelled':
-      // Handle booking cancellation
-      console.log('Booking cancelled:', event.data.id);
-      // TODO: Update local booking status
-      break;
+        console.log('Retrieved booking from Square:', {
+          id: booking.id,
+          customerId: booking.customerId,
+          status: booking.status,
+          startAt: booking.startAt,
+        });
 
-    default:
-      console.log(`Unhandled booking event type: ${event.type}`);
+        // Find the account in our database by Square customer ID
+        let dbAccount = null;
+        if (booking.customerId) {
+          const accounts = await db
+            .select()
+            .from(account)
+            .where(eq(account.squareId, booking.customerId))
+            .limit(1);
+
+          dbAccount = accounts[0];
+
+          if (!dbAccount) {
+            console.warn(
+              `Customer ${booking.customerId} not found in local database. Appointment will be created without account link.`
+            );
+          }
+        }
+
+        // Calculate end time
+        const startAt = booking.startAt || new Date().toISOString();
+        const durationMinutes =
+          booking.appointmentSegments?.[0]?.durationMinutes || 60;
+        const endAt = new Date(
+          new Date(startAt).getTime() + durationMinutes * 60000
+        ).toISOString();
+
+        // Create appointment in database
+        const newAppointment = await db
+          .insert(appointment)
+          .values({
+            squareId: booking.id,
+            status: booking.status || 'PENDING',
+            startAt: startAt,
+            endAt: endAt,
+            durationMinutes: durationMinutes,
+            accountId: dbAccount?.id || null,
+            creatorType: booking.creatorDetails?.creatorType || 'CUSTOMER',
+            createdBy: 'square_webhook',
+            createdAt: new Date().toISOString(),
+          })
+          .returning();
+
+        console.log('✅ Appointment created in database:', {
+          id: newAppointment[0]?.id,
+          squareId: newAppointment[0]?.squareId,
+          accountId: newAppointment[0]?.accountId,
+          status: newAppointment[0]?.status,
+        });
+
+        break;
+      }
+
+      case 'booking.updated': {
+        console.log('Booking updated:', bookingId);
+
+        // Fetch the updated booking from Square
+        const bookingResponse = await square.bookings.get({
+          bookingId: bookingId,
+        });
+        const booking = bookingResponse.booking;
+
+        if (!booking || !booking.id) {
+          console.error(
+            'Booking not found in Square or missing ID:',
+            bookingId
+          );
+          return;
+        }
+
+        // Find existing appointment in database
+        const existingAppointments = await db
+          .select()
+          .from(appointment)
+          .where(eq(appointment.squareId, booking.id))
+          .limit(1);
+
+        if (existingAppointments.length === 0) {
+          console.warn(
+            'Appointment not found in database, creating new one:',
+            booking.id
+          );
+          // If appointment doesn't exist, create it (in case webhook was missed)
+          const startAt = booking.startAt || new Date().toISOString();
+          const durationMinutes =
+            booking.appointmentSegments?.[0]?.durationMinutes || 60;
+          const endAt = new Date(
+            new Date(startAt).getTime() + durationMinutes * 60000
+          ).toISOString();
+
+          await db.insert(appointment).values({
+            squareId: booking.id,
+            status: booking.status || 'PENDING',
+            startAt: startAt,
+            endAt: endAt,
+            durationMinutes: durationMinutes,
+            accountId: null,
+            creatorType: booking.creatorDetails?.creatorType || 'CUSTOMER',
+            createdBy: 'SQUARE_WEBHOOK',
+            createdAt: new Date().toISOString(),
+          });
+
+          console.log('✅ Appointment created in database (from update event)');
+          return;
+        }
+
+        // Calculate end time
+        const startAt = booking.startAt || existingAppointments[0].startAt;
+        const durationMinutes =
+          booking.appointmentSegments?.[0]?.durationMinutes ||
+          existingAppointments[0].durationMinutes ||
+          60;
+        const endAt = new Date(
+          new Date(startAt).getTime() + durationMinutes * 60000
+        ).toISOString();
+
+        // Update appointment in database
+        await db
+          .update(appointment)
+          .set({
+            status: booking.status || 'PENDING',
+            startAt: startAt,
+            endAt: endAt,
+            durationMinutes: durationMinutes,
+            updatedBy: 'square_webhook',
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(appointment.squareId, booking.id));
+
+        console.log('✅ Appointment updated in database:', booking.id);
+        break;
+      }
+
+      case 'booking.cancelled': {
+        console.log('Booking cancelled:', bookingId);
+
+        // Update appointment status in database
+        await db
+          .update(appointment)
+          .set({
+            status: 'CANCELLED',
+            updatedBy: 'square_webhook',
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(appointment.squareId, bookingId));
+
+        console.log(
+          '✅ Appointment marked as cancelled in database:',
+          bookingId
+        );
+        break;
+      }
+
+      default:
+        console.log(`Unhandled booking event type: ${event.type}`);
+    }
+  } catch (error) {
+    console.error(`❌ Error handling booking event ${event.type}:`, error);
+
+    console.log(error);
+
+    // Log error to database
+    try {
+      await db.insert(log).values({
+        statusCode: 500,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        eventType: event.type,
+        eventId: event.event_id,
+        paylaod: JSON.stringify(event.data),
+        createdBy: 'square_webhook',
+        createdAt: new Date().toISOString(),
+      });
+    } catch (logError) {
+      console.error('Failed to log error to database:', logError);
+    }
+
+    throw error;
   }
 }
 
@@ -73,6 +258,9 @@ async function handleCustomerEvent(event: SquareWebhookEvent) {
 }
 
 export async function POST(request: NextRequest) {
+  let body = '';
+  let webhookEvent: SquareWebhookEvent | null = null;
+
   try {
     const signature = request.headers.get('x-square-hmacsha256-signature');
 
@@ -81,7 +269,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
     }
 
-    const body = await request.text();
+    body = await request.text();
 
     const signatureKey = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
 
@@ -146,25 +334,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const event: SquareWebhookEvent = JSON.parse(body);
+    webhookEvent = JSON.parse(body);
+
+    if (!webhookEvent) {
+      console.error('Failed to parse webhook event');
+      return NextResponse.json(
+        { error: 'Invalid webhook data' },
+        { status: 400 }
+      );
+    }
 
     console.log('Received Square webhook:', {
-      type: event.type,
-      eventId: event.event_id,
-      merchantId: event.merchant_id,
+      type: webhookEvent.type,
+      eventId: webhookEvent.event_id,
+      merchantId: webhookEvent.merchant_id,
     });
 
-    if (event.type.startsWith('booking.')) {
-      await handleBookingEvent(event);
-    } else if (event.type.startsWith('customer.')) {
-      await handleCustomerEvent(event);
+    if (webhookEvent.type.startsWith('booking.')) {
+      await handleBookingEvent(webhookEvent);
+    } else if (webhookEvent.type.startsWith('customer.')) {
+      await handleCustomerEvent(webhookEvent);
     } else {
-      console.log(`Unhandled event type: ${event.type}`);
+      console.log(`Unhandled event type: ${webhookEvent.type}`);
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error processing webhook:', error);
+
+    // Log error to database
+    try {
+      await db.insert(log).values({
+        statusCode: 500,
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Unknown error processing webhook',
+        eventType: webhookEvent?.type || 'unknown',
+        eventId: webhookEvent?.event_id || 'unknown',
+        paylaod: body || 'No payload available',
+        createdBy: 'square_webhook',
+        createdAt: new Date().toISOString(),
+      });
+    } catch (logError) {
+      console.error('Failed to log error to database:', logError);
+    }
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -123,4 +123,6 @@ export const appointment = sqliteTable('Appointment', {
   staffId: integer().references(() => staff.id),
   updatedAt: text(),
   updatedBy: text(),
+  staffName: text(),
+  accountName: text(),
 });
