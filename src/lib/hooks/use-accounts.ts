@@ -5,16 +5,43 @@ import type { Account, CreateAccountInput, UpdateAccountInput } from '@/lib/type
 export const accountKeys = {
   all: ['accounts'] as const,
   lists: () => [...accountKeys.all, 'list'] as const,
-  list: (filters?: Record<string, unknown>) => [...accountKeys.lists(), { filters }] as const,
+  list: (filters?: FetchAccountsParams) => [...accountKeys.lists(), { filters }] as const,
   details: () => [...accountKeys.all, 'detail'] as const,
   detail: (id: number) => [...accountKeys.details(), id] as const,
 };
 
+// Types
+export interface PaginatedAccountsResponse {
+  data: Account[];
+  meta: {
+    total: number;
+    pageSize: number;
+    pageIndex: number;
+    totalPages: number;
+  };
+}
+
+export interface FetchAccountsParams {
+  search?: string;
+  pageSize?: number;
+  pageIndex?: number;
+}
+
 // API Functions
-async function fetchAccounts(search?: string): Promise<Account[]> {
-  const url = search
-    ? `/api/accounts?search=${encodeURIComponent(search)}`
-    : '/api/accounts';
+async function fetchAccounts(params?: FetchAccountsParams): Promise<PaginatedAccountsResponse> {
+  const urlParams = new URLSearchParams();
+
+  if (params?.search) {
+    urlParams.append('search', params.search);
+  }
+  if (params?.pageSize !== undefined) {
+    urlParams.append('pageSize', params.pageSize.toString());
+  }
+  if (params?.pageIndex !== undefined) {
+    urlParams.append('pageIndex', params.pageIndex.toString());
+  }
+
+  const url = `/api/accounts${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -70,10 +97,10 @@ async function deleteAccount(id: number): Promise<{ message: string }> {
 }
 
 // Hooks
-export function useAccounts(search?: string) {
+export function useAccounts(params?: FetchAccountsParams) {
   return useQuery({
-    queryKey: accountKeys.list({ search }),
-    queryFn: () => fetchAccounts(search),
+    queryKey: accountKeys.list(params),
+    queryFn: () => fetchAccounts(params),
   });
 }
 

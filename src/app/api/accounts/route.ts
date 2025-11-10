@@ -1,33 +1,53 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { account } from '@/db/schema';
-import { or, like, eq } from 'drizzle-orm';
+import { or, like, eq, count } from 'drizzle-orm';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
+    const pageSize = parseInt(searchParams.get('pageSize') || '10');
+    const pageIndex = parseInt(searchParams.get('pageIndex') || '0');
 
-    if (!search) {
-      const accounts = await db.select().from(account);
-      return NextResponse.json(accounts);
-    }
+    // Calculate offset
+    const offset = pageIndex * pageSize;
 
-    // SQLite's LIKE is case-insensitive by default
-    const searchTerm = `%${search}%`;
+    // Build where clause if search exists
+    const whereClause = search
+      ? or(
+          like(account.firstName, `%${search}%`),
+          like(account.lastName, `%${search}%`),
+          like(account.ssnLastFour, `%${search}%`),
+          eq(account.id, isNaN(parseInt(search)) ? -1 : parseInt(search))
+        )
+      : undefined;
+
+    // Get total count
+    const totalResult = await db
+      .select({ count: count() })
+      .from(account)
+      .where(whereClause);
+
+    const total = totalResult[0]?.count || 0;
+
+    // Get paginated data
     const accounts = await db
       .select()
       .from(account)
-      .where(
-        or(
-          like(account.firstName, searchTerm),
-          like(account.lastName, searchTerm),
-          like(account.ssnLastFour, searchTerm),
-          eq(account.id, isNaN(parseInt(search)) ? -1 : parseInt(search))
-        )
-      );
+      .where(whereClause)
+      .limit(pageSize)
+      .offset(offset);
 
-    return NextResponse.json(accounts);
+    return NextResponse.json({
+      data: accounts,
+      meta: {
+        total,
+        pageSize,
+        pageIndex,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    });
   } catch (error) {
     console.error('Error fetching accounts:', error);
     return NextResponse.json(

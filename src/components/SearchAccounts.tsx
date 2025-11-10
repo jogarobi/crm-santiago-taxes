@@ -24,8 +24,8 @@ export function SearchAccounts() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const { data: accounts, isLoading } = useAccounts(
-    debouncedSearch || undefined
+  const { data: response, isLoading } = useAccounts(
+    debouncedSearch ? { search: debouncedSearch } : undefined
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,7 +51,7 @@ export function SearchAccounts() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredAccounts = debouncedSearch && accounts ? accounts : undefined;
+  const filteredAccounts = debouncedSearch && response?.data ? response.data : undefined;
 
   return (
     <div className='relative search-container'>

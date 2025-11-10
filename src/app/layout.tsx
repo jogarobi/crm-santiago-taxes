@@ -56,7 +56,7 @@ export default function RootLayout({
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button className='bg-purple'>
+                    <Button variant='outline'>
                       <span>New activity</span>
                       <PlusIcon />
                     </Button>
