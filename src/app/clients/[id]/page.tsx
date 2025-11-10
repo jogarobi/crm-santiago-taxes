@@ -6,12 +6,14 @@ import {
   Building2Icon,
   ClockIcon,
   Edit2Icon,
+  FootprintsIcon,
   IdCardIcon,
   Loader2,
   MailIcon,
   PhoneIcon,
   PlusIcon,
   TrashIcon,
+  UserIcon,
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -102,7 +104,7 @@ export default function AccountDetailPage({ params }: Props) {
         </div>
 
         <div className='ml-auto flex flex-col gap-3'>
-          <div className='flex items-center gap-2'>
+          <div className='flex items-center gap-2 text-purple'>
             <Edit2Icon size={15} strokeWidth={2.4} />
             <span className='text-[15px] font-medium'>Edit</span>
           </div>
@@ -116,19 +118,25 @@ export default function AccountDetailPage({ params }: Props) {
 
       <Tabs defaultValue='overview' className='w-full'>
         <TabsList className='mb-5 py-7 px-2 gap-2 w-full'>
-          <TabsTrigger className='py-5' value='activity-overview'>
+          <TabsTrigger
+            className='py-5 cursor-pointer'
+            value='activity-overview'
+          >
             Overview & Activity
           </TabsTrigger>
-          <TabsTrigger className='py-5' value='appointments'>
+          <TabsTrigger className='py-5 cursor-pointer' value='notes'>
+            Notes
+          </TabsTrigger>
+          <TabsTrigger className='py-5 cursor-pointer' value='appointments'>
             Appointments
           </TabsTrigger>
-          <TabsTrigger className='py-5' value='tasks'>
+          <TabsTrigger className='py-5 cursor-pointer' value='tasks'>
             Tasks
           </TabsTrigger>
-          <TabsTrigger className='py-5' value='businesses'>
+          <TabsTrigger className='py-5 cursor-pointer' value='businesses'>
             Businesses
           </TabsTrigger>
-          <TabsTrigger className='py-5' value='relationships'>
+          <TabsTrigger className='py-5 cursor-pointer' value='relationships'>
             Relationships
           </TabsTrigger>
         </TabsList>
@@ -142,7 +150,108 @@ export default function AccountDetailPage({ params }: Props) {
                 <PlusIcon />
               </Button>
             </div>
-            <div className='grid grid-cols-2 gap-6'></div>
+            <div className='flex flex-col gap-0'>
+              {/* Timeline Item 1 */}
+              <div className='flex gap-4'>
+                <div className='flex flex-col items-center'>
+                  <div className='w-2 h-2 rounded-full bg-neutral-300 my-2'></div>
+                  <div className='w-px flex-1 bg-neutral-200 min-h-[60px]'></div>
+                </div>
+                <div className='flex-1 pb-6'>
+                  <div className='flex flex-col gap-3 p-2 rounded-lg'>
+                    <p className='font-medium'>
+                      Client asked about tax filing deadlines.
+                    </p>
+                    <div className='flex items-center gap-4 flex-wrap'>
+                      <div className='flex items-center gap-1.5 text-purple'>
+                        <FootprintsIcon size={16} strokeWidth={2.3} />
+                        <span className='text-[15px] font-semibold'>
+                          Walk-in
+                        </span>
+                      </div>
+                      <div className='flex items-center gap-1 text-neutral-500'>
+                        <UserIcon size={15} strokeWidth={2.3} />
+                        <span className='text-[15px]'>Guelmie Santiago</span>
+                      </div>
+                      <div className='flex items-center gap-1 text-neutral-500'>
+                        <ClockIcon size={15} strokeWidth={2.5} />
+                        <span className='text-[15px]'>
+                          {new Date().toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeline Item 2 */}
+              <div className='flex gap-4'>
+                <div className='flex flex-col items-center'>
+                  <div className='w-2 h-2 rounded-full bg-neutral-300 my-2'></div>
+                  <div className='w-px flex-1 bg-neutral-200 min-h-[60px]'></div>
+                </div>
+                <div className='flex-1 pb-6'>
+                  <div className='flex flex-col gap-3 p-2 rounded-lg'>
+                    <p className='font-medium'>
+                      Submitted quarterly tax documents for review.
+                    </p>
+                    <div className='flex items-center gap-4 flex-wrap'>
+                      <div className='flex items-center gap-1.5 text-purple'>
+                        <MailIcon size={16} strokeWidth={2.3} />
+                        <span className='text-[15px] font-semibold'>Email</span>
+                      </div>
+                      <div className='flex items-center gap-1 text-neutral-500'>
+                        <UserIcon size={15} strokeWidth={2.3} />
+                        <span className='text-[15px]'>Rosanna Bido</span>
+                      </div>
+                      <div className='flex items-center gap-1 text-neutral-500'>
+                        <ClockIcon size={15} strokeWidth={2.5} />
+                        <span className='text-[15px]'>
+                          {new Date(
+                            // eslint-disable-next-line react-hooks/purity
+                            Date.now() - 2 * 24 * 60 * 60 * 1000
+                          ).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeline Item 3 */}
+              <div className='flex gap-4'>
+                <div className='flex flex-col items-center'>
+                  <div className='w-2 h-2 rounded-full bg-neutral-300 my-2'></div>
+                  <div className='w-px flex-1 bg-neutral-200 min-h-[60px]'></div>
+                </div>
+                <div className='flex-1 pb-6'>
+                  <div className='flex flex-col gap-3 p-2 rounded-lg'>
+                    <p className='font-medium'>
+                      Appointment scheduled for tax consultation.
+                    </p>
+                    <div className='flex items-center gap-4 flex-wrap'>
+                      <div className='flex items-center gap-1.5 text-purple'>
+                        <PhoneIcon size={16} strokeWidth={2.3} />
+                        <span className='text-[15px] font-semibold'>Phone</span>
+                      </div>
+                      <div className='flex items-center gap-1 text-neutral-500'>
+                        <UserIcon size={15} strokeWidth={2.3} />
+                        <span className='text-[15px]'>Guelmie Santiago</span>
+                      </div>
+                      <div className='flex items-center gap-1 text-neutral-500'>
+                        <ClockIcon size={15} strokeWidth={2.5} />
+                        <span className='text-[15px]'>
+                          {new Date(
+                            // eslint-disable-next-line react-hooks/purity
+                            Date.now() - 5 * 24 * 60 * 60 * 1000
+                          ).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div className='bg-white border rounded-xl flex-1 p-6 w-full flex flex-col gap-6'>
             <h3 className='text-lg font-semibold'>Details</h3>
