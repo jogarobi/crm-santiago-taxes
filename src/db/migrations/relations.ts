@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { account, accountRelation, accountContact, businessEntity, business } from "./schema";
+import { account, accountRelation, accountContact, businessEntity, business, activityType, activity } from "./schema";
 
 export const accountRelationRelations = relations(accountRelation, ({one}) => ({
 	account_relatedAccountId: one(account, {
@@ -23,6 +23,7 @@ export const accountRelations = relations(account, ({many}) => ({
 	}),
 	accountContacts: many(accountContact),
 	businesses: many(business),
+	activities: many(activity),
 }));
 
 export const accountContactRelations = relations(accountContact, ({one}) => ({
@@ -45,4 +46,19 @@ export const businessRelations = relations(business, ({one}) => ({
 
 export const businessEntityRelations = relations(businessEntity, ({many}) => ({
 	businesses: many(business),
+}));
+
+export const activityRelations = relations(activity, ({one}) => ({
+	activityType: one(activityType, {
+		fields: [activity.typeId],
+		references: [activityType.id]
+	}),
+	account: one(account, {
+		fields: [activity.accountId],
+		references: [account.id]
+	}),
+}));
+
+export const activityTypeRelations = relations(activityType, ({many}) => ({
+	activities: many(activity),
 }));

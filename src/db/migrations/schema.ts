@@ -63,3 +63,35 @@ export const business = sqliteTable('Business', {
   address: text(),
   entityId: integer().references(() => businessEntity.id),
 });
+
+export const activityType = sqliteTable('ActivityType', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  name: text().notNull(),
+  icon: text(),
+  createdAt: text().default("sql`(DATETIME('NOW'))`"),
+  createdBy: text(),
+});
+
+export const activity = sqliteTable('Activity', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  accountId: integer().references(() => account.id),
+  typeId: integer()
+    .notNull()
+    .references(() => activityType.id),
+  title: text().notNull(),
+  createdAt: text().default("DATETIME('NOW')"),
+  createdBy: text().notNull(),
+  entity: text(),
+  entityId: integer(),
+});
+
+export const log = sqliteTable('Log', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  statusCode: integer(),
+  message: text(),
+  eventType: text(),
+  eventId: text(),
+  paylaod: text(),
+  createdAt: text().default("sql`(DATETIME('NOW'))`"),
+  createdBy: text().notNull(),
+});
