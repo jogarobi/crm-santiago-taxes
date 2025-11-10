@@ -116,7 +116,7 @@ export default function AccountDetailPage({ params }: Props) {
         </div>
       </div>
 
-      <Tabs defaultValue='overview' className='w-full'>
+      <Tabs defaultValue='activity-overview' className='w-full'>
         <TabsList className='mb-5 py-7 px-2 gap-2 w-full'>
           <TabsTrigger
             className='py-5 cursor-pointer'
