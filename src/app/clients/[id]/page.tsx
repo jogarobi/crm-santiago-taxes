@@ -2,11 +2,11 @@
 
 import { use } from 'react';
 import { useAccount } from '@/lib/hooks/use-accounts';
+import { useActivities } from '@/lib/hooks/use-activities';
 import {
   Building2Icon,
   ClockIcon,
   Edit2Icon,
-  FootprintsIcon,
   IdCardIcon,
   Loader2,
   MailIcon,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { DynamicIcon, IconName } from '@/components/DynamicIcon';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -26,6 +27,11 @@ export default function AccountDetailPage({ params }: Props) {
   const { id } = use(params);
   const accountId = parseInt(id);
   const { data: account, isLoading, error } = useAccount(accountId);
+  const {
+    data: activities,
+    isLoading: activitiesLoading,
+    error: activitiesError,
+  } = useActivities(accountId, 20);
 
   if (isLoading) {
     return (
@@ -151,106 +157,76 @@ export default function AccountDetailPage({ params }: Props) {
               </Button>
             </div>
             <div className='flex flex-col gap-0'>
-              {/* Timeline Item 1 */}
-              <div className='flex gap-4'>
-                <div className='flex flex-col items-center'>
-                  <div className='w-2 h-2 rounded-full bg-neutral-300 my-2'></div>
-                  <div className='w-px flex-1 bg-neutral-200 min-h-[60px]'></div>
+              {activitiesLoading && (
+                <div className='flex items-center justify-center py-8'>
+                  <Loader2 className='w-5 h-5 animate-spin text-purple' />
+                  <span className='ml-2 text-neutral-600 text-sm'>
+                    Loading activities...
+                  </span>
                 </div>
-                <div className='flex-1 pb-6'>
-                  <div className='flex flex-col gap-3 p-2 rounded-lg'>
-                    <p className='font-medium'>
-                      Client asked about tax filing deadlines.
-                    </p>
-                    <div className='flex items-center gap-4 flex-wrap'>
-                      <div className='flex items-center gap-1.5 text-purple'>
-                        <FootprintsIcon size={16} strokeWidth={2.3} />
-                        <span className='text-[15px] font-semibold'>
-                          Walk-in
-                        </span>
-                      </div>
-                      <div className='flex items-center gap-1 text-neutral-500'>
-                        <UserIcon size={15} strokeWidth={2.3} />
-                        <span className='text-[15px]'>Guelmie Santiago</span>
-                      </div>
-                      <div className='flex items-center gap-1 text-neutral-500'>
-                        <ClockIcon size={15} strokeWidth={2.5} />
-                        <span className='text-[15px]'>
-                          {new Date().toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
 
-              {/* Timeline Item 2 */}
-              <div className='flex gap-4'>
-                <div className='flex flex-col items-center'>
-                  <div className='w-2 h-2 rounded-full bg-neutral-300 my-2'></div>
-                  <div className='w-px flex-1 bg-neutral-200 min-h-[60px]'></div>
+              {activitiesError && (
+                <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
+                  <p className='text-red-800 text-sm'>
+                    Failed to load activities
+                  </p>
                 </div>
-                <div className='flex-1 pb-6'>
-                  <div className='flex flex-col gap-3 p-2 rounded-lg'>
-                    <p className='font-medium'>
-                      Submitted quarterly tax documents for review.
-                    </p>
-                    <div className='flex items-center gap-4 flex-wrap'>
-                      <div className='flex items-center gap-1.5 text-purple'>
-                        <MailIcon size={16} strokeWidth={2.3} />
-                        <span className='text-[15px] font-semibold'>Email</span>
-                      </div>
-                      <div className='flex items-center gap-1 text-neutral-500'>
-                        <UserIcon size={15} strokeWidth={2.3} />
-                        <span className='text-[15px]'>Rosanna Bido</span>
-                      </div>
-                      <div className='flex items-center gap-1 text-neutral-500'>
-                        <ClockIcon size={15} strokeWidth={2.5} />
-                        <span className='text-[15px]'>
-                          {new Date(
-                            // eslint-disable-next-line react-hooks/purity
-                            Date.now() - 2 * 24 * 60 * 60 * 1000
-                          ).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
 
-              {/* Timeline Item 3 */}
-              <div className='flex gap-4'>
-                <div className='flex flex-col items-center'>
-                  <div className='w-2 h-2 rounded-full bg-neutral-300 my-2'></div>
-                  <div className='w-px flex-1 bg-neutral-200 min-h-[60px]'></div>
-                </div>
-                <div className='flex-1 pb-6'>
-                  <div className='flex flex-col gap-3 p-2 rounded-lg'>
-                    <p className='font-medium'>
-                      Appointment scheduled for tax consultation.
-                    </p>
-                    <div className='flex items-center gap-4 flex-wrap'>
-                      <div className='flex items-center gap-1.5 text-purple'>
-                        <PhoneIcon size={16} strokeWidth={2.3} />
-                        <span className='text-[15px] font-semibold'>Phone</span>
-                      </div>
-                      <div className='flex items-center gap-1 text-neutral-500'>
-                        <UserIcon size={15} strokeWidth={2.3} />
-                        <span className='text-[15px]'>Guelmie Santiago</span>
-                      </div>
-                      <div className='flex items-center gap-1 text-neutral-500'>
-                        <ClockIcon size={15} strokeWidth={2.5} />
-                        <span className='text-[15px]'>
-                          {new Date(
-                            // eslint-disable-next-line react-hooks/purity
-                            Date.now() - 5 * 24 * 60 * 60 * 1000
-                          ).toLocaleString()}
-                        </span>
+              {!activitiesLoading &&
+                !activitiesError &&
+                activities &&
+                activities.length === 0 && (
+                  <div className='py-8 text-center text-neutral-500'>
+                    <p>No activities yet</p>
+                  </div>
+                )}
+
+              {!activitiesLoading &&
+                !activitiesError &&
+                activities &&
+                activities.map((activity, index) => (
+                  <div key={activity.id} className='flex gap-4'>
+                    <div className='flex flex-col items-center'>
+                      <div className='w-2 h-2 rounded-full bg-neutral-300 my-2'></div>
+                      {index < activities.length - 1 && (
+                        <div className='w-px flex-1 bg-neutral-200 min-h-[60px]'></div>
+                      )}
+                    </div>
+                    <div className='flex-1 pb-6'>
+                      <div className='flex flex-col gap-3 p-2 rounded-lg'>
+                        <p className='font-medium'>{activity.title}</p>
+                        <div className='flex items-center gap-4 flex-wrap'>
+                          {activity.typeIcon && activity.typeName && (
+                            <div className='flex items-center gap-1.5 text-purple'>
+                              <DynamicIcon
+                                name={activity.typeIcon as IconName}
+                                size={16}
+                                strokeWidth={2.3}
+                              />
+                              <span className='text-[15px] font-semibold'>
+                                {activity.typeName}
+                              </span>
+                            </div>
+                          )}
+                          <div className='flex items-center gap-1 text-neutral-500'>
+                            <UserIcon size={15} strokeWidth={2.3} />
+                            <span className='text-[15px]'>
+                              {activity.createdBy}
+                            </span>
+                          </div>
+                          <div className='flex items-center gap-1 text-neutral-500'>
+                            <ClockIcon size={15} strokeWidth={2.5} />
+                            <span className='text-[15px]'>
+                              {new Date(activity.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                ))}
             </div>
           </div>
           <div className='bg-white border rounded-xl flex-1 p-6 w-full flex flex-col gap-6'>

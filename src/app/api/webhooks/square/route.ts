@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 // import { WebhooksHelper } from 'square';
 import { square } from '@/app/api/client';
 import { db } from '@/lib/db';
-import { appointment, account, log, staff } from '@/db/migrations/schema';
+import {
+  appointment,
+  account,
+  log,
+  staff,
+  activity,
+  activityType,
+} from '@/db/migrations/schema';
 import { eq } from 'drizzle-orm';
 
 type SquareWebhookEvent = {
@@ -16,6 +23,34 @@ type SquareWebhookEvent = {
     object?: Record<string, unknown>;
   };
 };
+
+// Helper function to get or create activity type
+async function getOrCreateActivityType(
+  name: string,
+  icon: string
+): Promise<number> {
+  const existingType = await db
+    .select()
+    .from(activityType)
+    .where(eq(activityType.name, name))
+    .limit(1);
+
+  if (existingType.length > 0) {
+    return existingType[0].id;
+  }
+
+  const result = await db
+    .insert(activityType)
+    .values({
+      name,
+      icon,
+      createdAt: new Date().toISOString(),
+      createdBy: 'SYSTEM',
+    })
+    .returning();
+
+  return result[0].id;
+}
 
 async function handleBookingEvent(event: SquareWebhookEvent) {
   const bookingId = event.data.id.split(':')[0];
@@ -199,6 +234,44 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
           status: newAppointment[0]?.status,
         });
 
+        // Create activity for appointment booking
+        try {
+          const activityTypeId = await getOrCreateActivityType(
+            'Appointment Booked',
+            'Calendar'
+          );
+
+          // Determine who the appointment is with
+          let withPerson = '';
+          if (booking.creatorDetails?.creatorType === 'TEAM_MEMBER') {
+            // Created by team member, show customer name
+            withPerson = accountName || 'a customer';
+          } else {
+            // Created by customer, show staff member
+            withPerson = createdBy || 'staff';
+          }
+
+          const activityTitle = `${
+            createdBy || 'Someone'
+          } booked an appointment with ${withPerson}${
+            serviceName ? ` for ${serviceName}` : ''
+          }`;
+
+          await db.insert(activity).values({
+            accountId: dbAccount?.id || null,
+            typeId: activityTypeId,
+            title: activityTitle,
+            createdAt: new Date().toISOString(),
+            createdBy: createdBy || 'SQUARE_WEBHOOK',
+            entity: 'appointment',
+            entityId: newAppointment[0]?.id || null,
+          });
+
+          console.log('✅ Activity created for appointment booking');
+        } catch (error) {
+          console.error('Failed to create activity:', error);
+        }
+
         break;
       }
 
@@ -362,22 +435,61 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
             new Date(startAt).getTime() + durationMinutes * 60000
           ).toISOString();
 
-          await db.insert(appointment).values({
-            squareId: booking.id,
-            status: booking.status || 'PENDING',
-            startAt: startAt,
-            endAt: endAt,
-            durationMinutes: durationMinutes,
-            accountId: dbAccount?.id || null,
-            accountName,
-            service: serviceName,
-            staffId,
-            creatorType: booking.creatorDetails?.creatorType || 'CUSTOMER',
-            createdBy,
-            createdAt: new Date().toISOString(),
-          });
+          const newAppointmentFromUpdate = await db
+            .insert(appointment)
+            .values({
+              squareId: booking.id,
+              status: booking.status || 'PENDING',
+              startAt: startAt,
+              endAt: endAt,
+              durationMinutes: durationMinutes,
+              accountId: dbAccount?.id || null,
+              accountName,
+              service: serviceName,
+              staffId,
+              creatorType: booking.creatorDetails?.creatorType || 'CUSTOMER',
+              createdBy,
+              createdAt: new Date().toISOString(),
+            })
+            .returning();
 
           console.log('✅ Appointment created in database (from update event)');
+
+          // Create activity for appointment booking
+          try {
+            const activityTypeId = await getOrCreateActivityType(
+              'Appointment Booked',
+              'Calendar'
+            );
+
+            let withPerson = '';
+            if (booking.creatorDetails?.creatorType === 'TEAM_MEMBER') {
+              withPerson = accountName || 'a customer';
+            } else {
+              withPerson = createdBy || 'staff';
+            }
+
+            const activityTitle = `${
+              createdBy || 'Someone'
+            } booked an appointment with ${withPerson}${
+              serviceName ? ` for ${serviceName}` : ''
+            }`;
+
+            await db.insert(activity).values({
+              accountId: dbAccount?.id || null,
+              typeId: activityTypeId,
+              title: activityTitle,
+              createdAt: new Date().toISOString(),
+              createdBy: createdBy || 'SQUARE_WEBHOOK',
+              entity: 'appointment',
+              entityId: newAppointmentFromUpdate[0]?.id || null,
+            });
+
+            console.log('✅ Activity created for appointment booking');
+          } catch (error) {
+            console.error('Failed to create activity:', error);
+          }
+
           return;
         }
 
@@ -406,11 +518,54 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
           .where(eq(appointment.squareId, booking.id));
 
         console.log('✅ Appointment updated in database:', booking.id);
+
+        // Create activity for appointment update
+        try {
+          const activityTypeId = await getOrCreateActivityType(
+            'Appointment Updated',
+            'Edit'
+          );
+
+          let withPerson = '';
+          if (booking.creatorDetails?.creatorType === 'TEAM_MEMBER') {
+            withPerson = accountName || 'a customer';
+          } else {
+            withPerson = createdBy || 'staff';
+          }
+
+          const activityTitle = `${
+            createdBy || 'Someone'
+          } updated an appointment with ${withPerson}${
+            serviceName ? ` for ${serviceName}` : ''
+          }`;
+
+          await db.insert(activity).values({
+            accountId: dbAccount?.id || null,
+            typeId: activityTypeId,
+            title: activityTitle,
+            createdAt: new Date().toISOString(),
+            createdBy: createdBy || 'SQUARE_WEBHOOK',
+            entity: 'appointment',
+            entityId: existingAppointments[0]?.id || null,
+          });
+
+          console.log('✅ Activity created for appointment update');
+        } catch (error) {
+          console.error('Failed to create activity:', error);
+        }
+
         break;
       }
 
       case 'booking.cancelled': {
         console.log('Booking cancelled:', bookingId);
+
+        // Get the appointment details before updating
+        const appointmentToCancel = await db
+          .select()
+          .from(appointment)
+          .where(eq(appointment.squareId, bookingId))
+          .limit(1);
 
         await db
           .update(appointment)
@@ -425,6 +580,36 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
           '✅ Appointment marked as cancelled in database:',
           bookingId
         );
+
+        // Create activity for appointment cancellation
+        if (appointmentToCancel.length > 0) {
+          try {
+            const activityTypeId = await getOrCreateActivityType(
+              'Appointment Cancelled',
+              'X'
+            );
+
+            const cancelledAppt = appointmentToCancel[0];
+            const activityTitle = `Appointment${
+              cancelledAppt.service ? ` for ${cancelledAppt.service}` : ''
+            } with ${cancelledAppt.accountName || 'customer'} was cancelled`;
+
+            await db.insert(activity).values({
+              accountId: cancelledAppt.accountId || null,
+              typeId: activityTypeId,
+              title: activityTitle,
+              createdAt: new Date().toISOString(),
+              createdBy: 'SQUARE_WEBHOOK',
+              entity: 'appointment',
+              entityId: cancelledAppt.id || null,
+            });
+
+            console.log('✅ Activity created for appointment cancellation');
+          } catch (error) {
+            console.error('Failed to create activity:', error);
+          }
+        }
+
         break;
       }
 
