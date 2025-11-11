@@ -2,8 +2,6 @@
 
 import { useMemo } from 'react';
 import { useAppointments } from '@/lib/hooks/use-appointments';
-import { CustomerName } from '@/components/CustomerName';
-import { ServiceName } from '@/components/ServiceName';
 import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
 import {
   Empty,
@@ -53,12 +51,12 @@ export function UpcomingAppointments() {
   }, [appointments]);
 
   const formatDateTime = (
-    dateString: string,
-    durationMinutes?: number
+    startAt: string,
+    endAt?: string
   ): { date: string; time: string } => {
-    const startDate = new Date(dateString);
+    const startDate = new Date(startAt);
 
-    const relativeDate = getRelativeDate(dateString);
+    const relativeDate = getRelativeDate(startAt);
 
     const formattedDate = startDate.toLocaleDateString('en-US', {
       month: 'short',
@@ -78,8 +76,8 @@ export function UpcomingAppointments() {
       hour12: true,
     });
 
-    if (durationMinutes) {
-      const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+    if (endAt) {
+      const endDate = new Date(endAt);
       const endTimeFormatted = endDate.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
@@ -162,11 +160,9 @@ export function UpcomingAppointments() {
   return (
     <div className='mt-4 flex flex-col gap-5'>
       {upcomingAppointments.map((appointment) => {
-        const durationMinutes =
-          appointment.appointmentSegments?.[0]?.durationMinutes || undefined;
         const { date, time } = formatDateTime(
           appointment.startAt || '',
-          durationMinutes
+          appointment.endAt
         );
 
         return (
@@ -179,14 +175,9 @@ export function UpcomingAppointments() {
             <div className='flex items-start justify-between'>
               <div className='flex-1'>
                 <div className='flex items-center gap-3 justify-between mb-2'>
-                  {appointment.appointmentSegments?.[0]?.serviceVariationId && (
-                    <div>
-                      <ServiceName
-                        serviceVariationId={
-                          appointment.appointmentSegments[0].serviceVariationId
-                        }
-                        className='font-semibold'
-                      />
+                  {appointment.service && (
+                    <div className='font-semibold text-neutral-900'>
+                      {appointment.service}
                     </div>
                   )}
 
@@ -204,18 +195,11 @@ export function UpcomingAppointments() {
                 </div>
 
                 <div className='mb-3 flex items-center gap-2 flex-wrap'>
-                  <CustomerName customerId={appointment.customerId} />
-                  {/*                   {appointment.appointmentSegments?.[0]?.teamMemberId && (
-                    <>
-                      <span className='text-[15px] text-neutral-500'>with</span>
-                      <TeamMemberName
-                        teamMemberId={
-                          appointment.appointmentSegments[0].teamMemberId
-                        }
-                        className='text-[15px] text-neutral-700'
-                      />
-                    </>
-                  )} */}
+                  {appointment.accountName && (
+                    <span className='text-[15px] text-neutral-700'>
+                      {appointment.accountName}
+                    </span>
+                  )}
                 </div>
 
                 <div className='flex items-center justify-between'>
@@ -230,12 +214,6 @@ export function UpcomingAppointments() {
                     <span className='text-sm text-neutral-600'>{time}</span>
                   </div>
                 </div>
-
-                {appointment.customerNote && (
-                  <p className='text-sm text-neutral-600 mt-1'>
-                    {appointment.customerNote}
-                  </p>
-                )}
               </div>
             </div>
           </Link>

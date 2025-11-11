@@ -1,7 +1,43 @@
 import { Booking } from 'square';
 
-// Re-export Square's Booking type as Appointment for domain consistency
-export type Appointment = Booking;
+// Database Appointment type
+export type DbAppointment = {
+  id: string;
+  squareId?: string | null;
+  status: string;
+  startAt: string;
+  endAt: string;
+  durationMinutes?: number | null;
+  accountId?: number | null;
+  accountName?: string | null;
+  service?: string | null;
+  staffId?: number | null;
+  creatorType: string;
+  createdBy?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  updatedBy?: string | null;
+  customerId?: string;
+};
+
+// Appointment type - combines Square Booking with database fields
+export type Appointment = Partial<Booking> & {
+  id?: string;
+  status?: string;
+  startAt?: string;
+  endAt?: string;
+  accountName?: string;
+  service?: string;
+  durationMinutes?: number;
+  customerId?: string;
+  customerNote?: string;
+  appointmentSegments?: Booking['appointmentSegments'];
+  creatorType?: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+};
 
 // API Response Types
 export type AppointmentResponse = {

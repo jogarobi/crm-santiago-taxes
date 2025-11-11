@@ -5,35 +5,69 @@ import {
   AppointmentResponse,
   AppointmentErrorResponse,
 } from '@/lib/types/appointment';
+import { db } from '@/lib/db';
+import { appointment, account } from '@/db/migrations/schema';
+import { and, gte, lte, eq, asc } from 'drizzle-orm';
 
 // GET /api/appointments - List all appointments with optional filters
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
-    const cursor = searchParams.get('cursor') || undefined;
-    const customerId = searchParams.get('customer_id') || undefined;
-    const teamMemberId = searchParams.get('team_member_id') || undefined;
-    const locationId = searchParams.get('location_id') || undefined;
     const startAtMin = searchParams.get('start_at_min') || undefined;
     const startAtMax = searchParams.get('start_at_max') || undefined;
 
-    const response = await square.bookings.list({
-      limit,
-      cursor,
-      customerId,
-      teamMemberId,
-      locationId,
-      startAtMin,
-      startAtMax,
-    });
+    // Build the query conditions
+    const conditions = [];
 
-    // Serialize BigInt values to strings for JSON compatibility
-    const serializedAppointments: Appointment[] = JSON.parse(
-      JSON.stringify(response.data || [], (_, value) =>
-        typeof value === 'bigint' ? value.toString() : value
-      )
-    );
+    if (startAtMin) {
+      conditions.push(gte(appointment.startAt, startAtMin));
+    }
+
+    if (startAtMax) {
+      conditions.push(lte(appointment.startAt, startAtMax));
+    }
+
+    // Query the database
+    const dbAppointments = await db
+      .select({
+        id: appointment.id,
+        squareId: appointment.squareId,
+        status: appointment.status,
+        startAt: appointment.startAt,
+        endAt: appointment.endAt,
+        durationMinutes: appointment.durationMinutes,
+        accountId: appointment.accountId,
+        accountName: appointment.accountName,
+        service: appointment.service,
+        staffId: appointment.staffId,
+        creatorType: appointment.creatorType,
+        createdBy: appointment.createdBy,
+        createdAt: appointment.createdAt,
+        updatedAt: appointment.updatedAt,
+        updatedBy: appointment.updatedBy,
+      })
+      .from(appointment)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(asc(appointment.startAt))
+      .limit(limit);
+
+    // Map database appointments to match the Appointment type
+    const serializedAppointments: Appointment[] = dbAppointments.map((apt) => ({
+      id: apt.squareId || apt.id?.toString() || '',
+      status: apt.status,
+      startAt: apt.startAt,
+      endAt: apt.endAt,
+      durationMinutes: apt.durationMinutes || undefined,
+      accountName: apt.accountName || undefined,
+      service: apt.service || undefined,
+      customerId: apt.accountId?.toString() || undefined,
+      creatorType: apt.creatorType,
+      createdBy: apt.createdBy || undefined,
+      createdAt: apt.createdAt || undefined,
+      updatedAt: apt.updatedAt || undefined,
+      updatedBy: apt.updatedBy || undefined,
+    })) as Appointment[];
 
     const appointmentResponse: AppointmentResponse = {
       success: true,
