@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // import { WebhooksHelper } from 'square';
 import { square } from '@/app/api/client';
 import { db } from '@/lib/db';
-import { appointment, account, log } from '@/db/migrations/schema';
+import { appointment, account, log, staff } from '@/db/migrations/schema';
 import { eq } from 'drizzle-orm';
 
 type SquareWebhookEvent = {
@@ -18,8 +18,6 @@ type SquareWebhookEvent = {
 };
 
 async function handleBookingEvent(event: SquareWebhookEvent) {
-  // Square webhook object IDs are suffixed with `:number` (e.g., "abc123:0")
-  // We need to extract the base ID by splitting on the colon
   const bookingId = event.data.id.split(':')[0];
 
   console.log(`Processing booking event: ${event.type}`, {
@@ -31,28 +29,20 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
   try {
     switch (event.type) {
       case 'booking.created': {
-        console.log('New booking created:', bookingId);
-
-        // Fetch the full booking details from Square
-        const bookingResponse = await square.bookings.get({
+        const response = await square.bookings.get({
           bookingId: bookingId,
         });
-        const booking = bookingResponse.booking;
+        const booking = response.booking;
 
         if (!booking) {
           console.error('Booking not found in Square:', bookingId);
           return;
         }
 
-        console.log('Retrieved booking from Square:', {
-          id: booking.id,
-          customerId: booking.customerId,
-          status: booking.status,
-          startAt: booking.startAt,
-        });
-
-        // Find the account in our database by Square customer ID
         let dbAccount = null;
+        let accountName: string | null = null;
+        let serviceName: string | null = null;
+
         if (booking.customerId) {
           const accounts = await db
             .select()
@@ -64,12 +54,116 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
 
           if (!dbAccount) {
             console.warn(
-              `Customer ${booking.customerId} not found in local database. Appointment will be created without account link.`
+              `Customer ${booking.customerId} not found in local database. Fetching from Square...`
             );
+
+            try {
+              const customerResponse = await square.customers.get({
+                customerId: booking.customerId,
+              });
+
+              if (customerResponse.customer) {
+                const customer = customerResponse.customer;
+                accountName = `${customer.givenName || ''} ${
+                  customer.familyName || ''
+                }`.trim();
+                console.log(
+                  `Retrieved customer name from Square: ${accountName}`
+                );
+              }
+            } catch (error) {
+              console.error(
+                `Failed to retrieve customer ${booking.customerId} from Square:`,
+                error
+              );
+            }
+          } else {
+            accountName = `${dbAccount.firstName} ${dbAccount.lastName}`;
           }
         }
 
-        // Calculate end time
+        // Get service name from booking
+        if (
+          booking.appointmentSegments &&
+          booking.appointmentSegments.length > 0
+        ) {
+          const serviceVariationId =
+            booking.appointmentSegments[0].serviceVariationId;
+
+          if (serviceVariationId) {
+            try {
+              const catalogResponse = await square.catalog.object.get({
+                objectId: serviceVariationId,
+                includeRelatedObjects: true,
+              });
+
+              if (catalogResponse.object) {
+                // The service variation's related object contains the service name
+                const relatedObjects = catalogResponse.relatedObjects || [];
+                const serviceObject = relatedObjects.find(
+                  (obj) => obj.type === 'ITEM'
+                );
+
+                if (serviceObject && serviceObject.itemData) {
+                  serviceName = serviceObject.itemData.name || null;
+                  console.log(
+                    `Retrieved service name from Square: ${serviceName}`
+                  );
+                }
+              }
+            } catch (error) {
+              console.error(
+                `Failed to retrieve service ${serviceVariationId} from Square:`,
+                error
+              );
+            }
+          }
+        }
+
+        let createdBy: string | null = null;
+        let staffId: number | null = null;
+
+        if (booking.creatorDetails?.teamMemberId) {
+          const result = await square.teamMembers.get({
+            teamMemberId: booking.creatorDetails.teamMemberId,
+          });
+
+          const staffMember = await db
+            .select()
+            .from(staff)
+            .where(eq(staff.squareId, booking.creatorDetails.teamMemberId))
+            .limit(1);
+
+          if (staffMember.length === 0) {
+            const staffResult = await db.insert(staff).values({
+              squareId: result.teamMember?.id || '',
+              title:
+                result.teamMember?.wageSetting?.jobAssignments?.[0].jobTitle ||
+                'Staff',
+              status: result.teamMember?.status || 'INACTIVE',
+              firstName: result.teamMember?.givenName || 'Unknown',
+              lastName: result.teamMember?.familyName || 'Unknown',
+              createdAt: new Date().toISOString(),
+              createdBy: 'SQUARE_WEBHOOK',
+            });
+
+            if (staffResult) {
+              staffId = staffResult.lastInsertRowid
+                ? Number(staffResult.lastInsertRowid)
+                : null;
+            }
+          }
+
+          createdBy =
+            `${result.teamMember?.givenName} ${result.teamMember?.familyName}` ||
+            null;
+        } else if (booking.creatorDetails?.customerId) {
+          const result = await square.customers.get({
+            customerId: booking.creatorDetails.customerId,
+          });
+          createdBy = `${result.customer?.givenName} ${result.customer?.familyName}`;
+        }
+
         const startAt = booking.startAt || new Date().toISOString();
         const durationMinutes =
           booking.appointmentSegments?.[0]?.durationMinutes || 60;
@@ -77,7 +171,6 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
           new Date(startAt).getTime() + durationMinutes * 60000
         ).toISOString();
 
-        // Create appointment in database
         const newAppointment = await db
           .insert(appointment)
           .values({
@@ -86,9 +179,12 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
             startAt: startAt,
             endAt: endAt,
             durationMinutes: durationMinutes,
+            staffId,
             accountId: dbAccount?.id || null,
+            accountName,
+            service: serviceName,
             creatorType: booking.creatorDetails?.creatorType || 'CUSTOMER',
-            createdBy: 'square_webhook',
+            createdBy,
             createdAt: new Date().toISOString(),
           })
           .returning();
@@ -106,7 +202,6 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
       case 'booking.updated': {
         console.log('Booking updated:', bookingId);
 
-        // Fetch the updated booking from Square
         const bookingResponse = await square.bookings.get({
           bookingId: bookingId,
         });
@@ -120,7 +215,131 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
           return;
         }
 
-        // Find existing appointment in database
+        let dbAccount = null;
+        let accountName: string | null = null;
+        let serviceName: string | null = null;
+
+        if (booking.customerId) {
+          const accounts = await db
+            .select()
+            .from(account)
+            .where(eq(account.squareId, booking.customerId))
+            .limit(1);
+
+          dbAccount = accounts[0];
+
+          if (!dbAccount) {
+            console.warn(
+              `Customer ${booking.customerId} not found in local database. Fetching from Square...`
+            );
+
+            try {
+              const customerResponse = await square.customers.get({
+                customerId: booking.customerId,
+              });
+
+              if (customerResponse.customer) {
+                const customer = customerResponse.customer;
+                accountName = `${customer.givenName || ''} ${
+                  customer.familyName || ''
+                }`.trim();
+                console.log(
+                  `Retrieved customer name from Square: ${accountName}`
+                );
+              }
+            } catch (error) {
+              console.error(
+                `Failed to retrieve customer ${booking.customerId} from Square:`,
+                error
+              );
+            }
+          } else {
+            accountName = `${dbAccount.firstName} ${dbAccount.lastName}`;
+          }
+        }
+
+        // Get service name from booking
+        if (
+          booking.appointmentSegments &&
+          booking.appointmentSegments.length > 0
+        ) {
+          const serviceVariationId =
+            booking.appointmentSegments[0].serviceVariationId;
+
+          if (serviceVariationId) {
+            try {
+              const catalogResponse = await square.catalog.object.get({
+                objectId: serviceVariationId,
+                includeRelatedObjects: true,
+              });
+
+              if (catalogResponse.object) {
+                // The service variation's related object contains the service name
+                const relatedObjects = catalogResponse.relatedObjects || [];
+                const serviceObject = relatedObjects.find(
+                  (obj) => obj.type === 'ITEM'
+                );
+
+                if (serviceObject && serviceObject.itemData) {
+                  serviceName = serviceObject.itemData.name || null;
+                  console.log(
+                    `Retrieved service name from Square: ${serviceName}`
+                  );
+                }
+              }
+            } catch (error) {
+              console.error(
+                `Failed to retrieve service ${serviceVariationId} from Square:`,
+                error
+              );
+            }
+          }
+        }
+
+        let createdBy: string | null = null;
+        let staffId: number | null = null;
+
+        if (booking.creatorDetails?.teamMemberId) {
+          const result = await square.teamMembers.get({
+            teamMemberId: booking.creatorDetails.teamMemberId,
+          });
+
+          const staffMember = await db
+            .select()
+            .from(staff)
+            .where(eq(staff.squareId, booking.creatorDetails.teamMemberId))
+            .limit(1);
+
+          if (staffMember.length === 0) {
+            const staffResult = await db.insert(staff).values({
+              squareId: result.teamMember?.id || '',
+              title:
+                result.teamMember?.wageSetting?.jobAssignments?.[0].jobTitle ||
+                'Staff',
+              status: result.teamMember?.status || 'INACTIVE',
+              firstName: result.teamMember?.givenName || 'Unknown',
+              lastName: result.teamMember?.familyName || 'Unknown',
+              createdAt: new Date().toISOString(),
+              createdBy: 'SQUARE_WEBHOOK',
+            });
+
+            if (staffResult) {
+              staffId = staffResult.lastInsertRowid
+                ? Number(staffResult.lastInsertRowid)
+                : null;
+            }
+          }
+
+          createdBy =
+            `${result.teamMember?.givenName} ${result.teamMember?.familyName}` ||
+            null;
+        } else if (booking.creatorDetails?.customerId) {
+          const result = await square.customers.get({
+            customerId: booking.creatorDetails.customerId,
+          });
+          createdBy = `${result.customer?.givenName} ${result.customer?.familyName}`;
+        }
+
         const existingAppointments = await db
           .select()
           .from(appointment)
@@ -132,7 +351,6 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
             'Appointment not found in database, creating new one:',
             booking.id
           );
-          // If appointment doesn't exist, create it (in case webhook was missed)
           const startAt = booking.startAt || new Date().toISOString();
           const durationMinutes =
             booking.appointmentSegments?.[0]?.durationMinutes || 60;
@@ -146,9 +364,12 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
             startAt: startAt,
             endAt: endAt,
             durationMinutes: durationMinutes,
-            accountId: null,
+            accountId: dbAccount?.id || null,
+            accountName,
+            service: serviceName,
+            staffId,
             creatorType: booking.creatorDetails?.creatorType || 'CUSTOMER',
-            createdBy: 'SQUARE_WEBHOOK',
+            createdBy,
             createdAt: new Date().toISOString(),
           });
 
@@ -156,7 +377,6 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
           return;
         }
 
-        // Calculate end time
         const startAt = booking.startAt || existingAppointments[0].startAt;
         const durationMinutes =
           booking.appointmentSegments?.[0]?.durationMinutes ||
@@ -166,7 +386,6 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
           new Date(startAt).getTime() + durationMinutes * 60000
         ).toISOString();
 
-        // Update appointment in database
         await db
           .update(appointment)
           .set({
@@ -174,7 +393,10 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
             startAt: startAt,
             endAt: endAt,
             durationMinutes: durationMinutes,
-            updatedBy: 'square_webhook',
+            accountId: dbAccount?.id || null,
+            accountName,
+            service: serviceName,
+            updatedBy: createdBy,
             updatedAt: new Date().toISOString(),
           })
           .where(eq(appointment.squareId, booking.id));
@@ -186,12 +408,11 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
       case 'booking.cancelled': {
         console.log('Booking cancelled:', bookingId);
 
-        // Update appointment status in database
         await db
           .update(appointment)
           .set({
             status: 'CANCELLED',
-            updatedBy: 'square_webhook',
+            updatedBy: 'SQUARE_WEBHOOK',
             updatedAt: new Date().toISOString(),
           })
           .where(eq(appointment.squareId, bookingId));
@@ -209,9 +430,6 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
   } catch (error) {
     console.error(`❌ Error handling booking event ${event.type}:`, error);
 
-    console.log(error);
-
-    // Log error to database
     try {
       await db.insert(log).values({
         statusCode: 500,
@@ -219,7 +437,7 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
         eventType: event.type,
         eventId: event.event_id,
         paylaod: JSON.stringify(event.data),
-        createdBy: 'square_webhook',
+        createdBy: 'SQUARE_WEBHOOK',
         createdAt: new Date().toISOString(),
       });
     } catch (logError) {
@@ -281,10 +499,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the full notification URL for signature verification
     const notificationUrl = request.url;
 
-    // Debug logging to help troubleshoot signature issues
     console.log('Webhook validation attempt:', {
       notificationUrl,
       hasSignatureKey: !!signatureKey,
@@ -294,8 +510,6 @@ export async function POST(request: NextRequest) {
       method: request.method,
     });
 
-    // Verify the webhook signature using Square's WebhooksHelper
-    // This uses constant-time comparison to prevent timing attacks
     try {
       /*       const isValidSignature = await WebhooksHelper.verifySignature({
         requestBody: body,
@@ -362,7 +576,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error processing webhook:', error);
 
-    // Log error to database
     try {
       await db.insert(log).values({
         statusCode: 500,
@@ -373,7 +586,7 @@ export async function POST(request: NextRequest) {
         eventType: webhookEvent?.type || 'unknown',
         eventId: webhookEvent?.event_id || 'unknown',
         paylaod: body || 'No payload available',
-        createdBy: 'square_webhook',
+        createdBy: 'SQUARE_WEBHOOK',
         createdAt: new Date().toISOString(),
       });
     } catch (logError) {
