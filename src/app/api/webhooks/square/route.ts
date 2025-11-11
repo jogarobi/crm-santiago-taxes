@@ -152,6 +152,9 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
                 ? Number(staffResult.lastInsertRowid)
                 : null;
             }
+          } else {
+            // Staff member already exists, use their ID
+            staffId = staffMember[0].id;
           }
 
           createdBy =
@@ -274,7 +277,6 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
               });
 
               if (catalogResponse.object) {
-                // The service variation's related object contains the service name
                 const relatedObjects = catalogResponse.relatedObjects || [];
                 const serviceObject = relatedObjects.find(
                   (obj) => obj.type === 'ITEM'
@@ -328,6 +330,8 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
                 ? Number(staffResult.lastInsertRowid)
                 : null;
             }
+          } else {
+            staffId = staffMember[0].id;
           }
 
           createdBy =
