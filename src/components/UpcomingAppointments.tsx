@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppointments } from '@/lib/hooks/use-appointments';
 import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
 import {
@@ -14,12 +14,19 @@ import {
   CalendarIcon,
   ClockIcon,
   Loader2,
+  UserIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from './ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Appointment } from '@/lib/types/appointment';
 import clsx from 'clsx';
 
 export function UpcomingAppointments() {
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<Appointment | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   const dateRange = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -157,78 +164,171 @@ export function UpcomingAppointments() {
     );
   }
 
+  const handleAppointmentClick = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setIsDialogOpen(true);
+  };
+
   return (
-    <div className='mt-4 flex flex-col gap-5'>
-      {upcomingAppointments.map((appointment) => {
-        const { date, time } = formatDateTime(
-          appointment.startAt || '',
-          appointment.endAt
-        );
+    <>
+      <div className='mt-4 flex flex-col gap-5'>
+        {upcomingAppointments.map((appointment) => {
+          const { date, time } = formatDateTime(
+            appointment.startAt || '',
+            appointment.endAt
+          );
 
-        return (
-          <Link
-            key={appointment.id}
-            href='#'
-            /* href={`/appointments/${appointment.id}`} */
-            className='block bg-white border rounded-lg p-4 hover:shadow-xs transition-shadow'
-          >
-            <div className='flex items-start justify-between'>
-              <div className='flex-1'>
-                <div className='flex items-center gap-3 justify-between mb-2'>
-                  {appointment.service && (
-                    <div className='font-semibold text-neutral-900'>
-                      {appointment.service}
-                    </div>
-                  )}
+          return (
+            <div
+              key={appointment.id}
+              onClick={() => handleAppointmentClick(appointment)}
+              className='block bg-white border rounded-lg p-4 hover:shadow-xs transition-shadow cursor-pointer'
+            >
+              <div className='flex items-start justify-between'>
+                <div className='flex-1'>
+                  <div className='flex items-center gap-3 justify-between mb-2'>
+                    {appointment.service && (
+                      <div className='font-semibold text-neutral-900'>
+                        {appointment.service}
+                      </div>
+                    )}
 
-                  {appointment.status && (
-                    <Badge
-                      variant='secondary'
-                      className={clsx(
-                        getStatusColor(appointment.status),
-                        'text-[13px] font-medium'
-                      )}
-                    >
-                      {capitalizeFirst(appointment.status)}
-                    </Badge>
-                  )}
-                </div>
-
-                <div className='mb-3 flex items-center gap-2 flex-wrap'>
-                  {appointment.accountName && (
-                    <span className='text-[15px] text-neutral-700'>
-                      {appointment.accountName}
-                    </span>
-                  )}
-                </div>
-
-                <div className='flex items-center justify-between'>
-                  <div className='flex items-center gap-2'>
-                    <CalendarIcon className='w-4 h-4 text-neutral-500' />
-                    <span className='text-sm font-medium text-neutral-500'>
-                      {date}
-                    </span>
+                    {appointment.status && (
+                      <Badge
+                        variant='secondary'
+                        className={clsx(
+                          getStatusColor(appointment.status),
+                          'text-[13px] font-medium mb-2'
+                        )}
+                      >
+                        {capitalizeFirst(appointment.status)}
+                      </Badge>
+                    )}
                   </div>
-                  <div className='flex items-center gap-2'>
-                    <ClockIcon className='w-4 h-4 text-neutral-500' />
-                    <span className='text-sm text-neutral-600'>{time}</span>
+
+                  <div className='mb-3 flex items-center gap-2 flex-wrap'>
+                    {appointment.accountName && (
+                      <span className='text-[15px] text-neutral-700'>
+                        {appointment.accountName}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className='flex items-center justify-between'>
+                    <div className='flex items-center gap-2'>
+                      <CalendarIcon className='w-4 h-4 text-neutral-500' />
+                      <span className='text-sm font-medium text-neutral-500'>
+                        {date}
+                      </span>
+                    </div>
+                    <div className='flex items-center gap-2'>
+                      <ClockIcon className='w-4 h-4 text-neutral-500' />
+                      <span className='text-sm text-neutral-600'>{time}</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </Link>
-        );
-      })}
+          );
+        })}
 
-      {upcomingAppointments.length > 0 && (
-        <Link
-          href='/appointments'
-          className='block text-center text-purple text-[15px] font-normal hover:underline pt-2'
-        >
-          View all appointments
-          <ArrowUpRightIcon className='w-4 inline-block ml-1' />
-        </Link>
-      )}
-    </div>
+        {upcomingAppointments.length > 0 && (
+          <Link
+            href='/appointments'
+            className='block text-center text-purple text-[15px] font-normal hover:underline pt-2'
+          >
+            View all appointments
+            <ArrowUpRightIcon className='w-4 inline-block ml-1' />
+          </Link>
+        )}
+      </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className='max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle className='text-xl'>
+              {selectedAppointment?.service || 'Appointment Details'}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedAppointment && (
+            <div className='flex flex-col gap-4 mt-2'>
+              {selectedAppointment.status && (
+                <Badge
+                  variant='secondary'
+                  className={clsx(
+                    getStatusColor(selectedAppointment.status),
+                    'text-[13px] font-medium'
+                  )}
+                >
+                  {capitalizeFirst(selectedAppointment.status)}
+                </Badge>
+              )}
+
+              <div className='flex items-center gap-3'>
+                <CalendarIcon className='w-5 h-5 text-neutral-500' />
+                <div className='flex flex-col'>
+                  <span className='text-sm font-medium text-neutral-600'>
+                    Date
+                  </span>
+                  <span className='text-[15px] text-neutral-900'>
+                    {
+                      formatDateTime(
+                        selectedAppointment.startAt || '',
+                        selectedAppointment.endAt
+                      ).date
+                    }
+                  </span>
+                </div>
+              </div>
+
+              <div className='flex items-center gap-3'>
+                <ClockIcon className='w-5 h-5 text-neutral-500' />
+                <div className='flex flex-col'>
+                  <span className='text-sm font-medium text-neutral-600'>
+                    Time
+                  </span>
+                  <span className='text-[15px] text-neutral-900'>
+                    {
+                      formatDateTime(
+                        selectedAppointment.startAt || '',
+                        selectedAppointment.endAt
+                      ).time
+                    }{' '}
+                    ({selectedAppointment.durationMinutes} minutes)
+                  </span>
+                </div>
+              </div>
+
+              {selectedAppointment.accountName && (
+                <div className='flex items-center gap-3'>
+                  <UserIcon className='w-5 h-5 text-neutral-500' />
+                  <div className='flex flex-col'>
+                    <span className='text-sm font-medium text-neutral-600'>
+                      Client
+                    </span>
+                    <span className='text-[15px] text-neutral-900'>
+                      {selectedAppointment.accountName}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className='border-t pt-6 mt-3 text-sm text-neutral-500 flex flex-col gap-2'>
+                {selectedAppointment.createdBy && (
+                  <p>Booked by: {selectedAppointment.createdBy}</p>
+                )}
+                {selectedAppointment.createdAt && (
+                  <p>
+                    Created on:{' '}
+                    {new Date(selectedAppointment.createdAt).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
