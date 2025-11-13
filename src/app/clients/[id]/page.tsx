@@ -12,6 +12,7 @@ import {
   MailIcon,
   PhoneIcon,
   PlusIcon,
+  SearchIcon,
   TrashIcon,
   UserIcon,
 } from 'lucide-react';
@@ -97,7 +98,9 @@ export default function AccountDetailPage({ params }: Props) {
 
             <div className='flex gap-2 items-center'>
               <Building2Icon size={18} className='inline-block' />
-              <span className='text-[16px]'>No business associated</span>
+              <span className='text-[16px] text-neutral-500'>
+                No business associated
+              </span>
             </div>
           </div>
 
@@ -151,10 +154,16 @@ export default function AccountDetailPage({ params }: Props) {
           <div className='bg-white border rounded-xl p-6 flex-2 flex flex-col gap-6'>
             <div className='flex items-center justify-between'>
               <h3 className='text-lg font-semibold'>Activity</h3>
-              <Button className='bg-purple'>
-                <span>New</span>
-                <PlusIcon />
-              </Button>
+              <div className='flex items-center gap-4'>
+                <Button variant='outline'>
+                  <span>Search</span>
+                  <SearchIcon />
+                </Button>
+                <Button className='bg-purple'>
+                  <span>New</span>
+                  <PlusIcon />
+                </Button>
+              </div>
             </div>
             <div className='flex flex-col gap-0'>
               {activitiesLoading && (
