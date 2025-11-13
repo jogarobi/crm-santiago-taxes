@@ -15,12 +15,15 @@ import {
   ClockIcon,
   Loader2,
   UserIcon,
+  AlertTriangleIcon,
+  TriangleAlertIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Appointment } from '@/lib/types/appointment';
 import clsx from 'clsx';
+import { Button } from './ui/button';
 
 export function UpcomingAppointments() {
   const [selectedAppointment, setSelectedAppointment] =
@@ -187,11 +190,18 @@ export function UpcomingAppointments() {
               <div className='flex items-start justify-between'>
                 <div className='flex-1'>
                   <div className='flex items-center gap-3 justify-between mb-2'>
-                    {appointment.service && (
-                      <div className='font-semibold text-neutral-900'>
-                        {appointment.service}
-                      </div>
-                    )}
+                    <div className='flex items-center gap-2'>
+                      {appointment.service && (
+                        <div className='font-semibold text-neutral-900'>
+                          {appointment.service}
+                        </div>
+                      )}
+                      {!appointment.accountId && (
+                        <div className='flex items-center gap-1 text-amber-600'>
+                          <AlertTriangleIcon className='w-4 h-4' />
+                        </div>
+                      )}
+                    </div>
 
                     {appointment.status && (
                       <Badge
@@ -263,6 +273,26 @@ export function UpcomingAppointments() {
                 >
                   {capitalizeFirst(selectedAppointment.status)}
                 </Badge>
+              )}
+
+              {!selectedAppointment.accountId && (
+                <div className='flex gap-3 border p-4 rounded-lg my-2'>
+                  <TriangleAlertIcon
+                    className='w-6 text-destructive'
+                    strokeWidth={2.4}
+                  />
+
+                  <div>
+                    <h4 className='text-[15px] font-semibold text-destructive mb-1'>
+                      Client Not Synced
+                    </h4>
+                    <p className='text-sm text-destructive mb-4'>
+                      This appointment has a customer which is not linked to a
+                      CRM client.
+                    </p>
+                    <Button>Sync client</Button>
+                  </div>
+                </div>
               )}
 
               <div className='flex items-center gap-3'>

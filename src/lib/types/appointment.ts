@@ -26,6 +26,7 @@ export type Appointment = Partial<Booking> & {
   status?: string;
   startAt?: string;
   endAt?: string;
+  accountId?: number | null;
   accountName?: string;
   service?: string;
   durationMinutes?: number;
