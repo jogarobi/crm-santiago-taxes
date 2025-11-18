@@ -1,7 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useAppointments } from '@/lib/hooks/use-appointments';
+import {
+  useAppointments,
+  useSyncAppointment,
+} from '@/lib/hooks/use-appointments';
 import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
 import {
   Empty,
@@ -31,11 +34,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import { CreateClientDialog } from './CreateClientDialog';
 
 export function UpcomingAppointments() {
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreateClientDialogOpen, setIsCreateClientDialogOpen] =
+    useState(false);
+  const syncAppointment = useSyncAppointment();
 
   const dateRange = useMemo(() => {
     const today = new Date();
@@ -179,6 +186,26 @@ export function UpcomingAppointments() {
     setIsDialogOpen(true);
   };
 
+  const handleCreateClient = () => {
+    setIsCreateClientDialogOpen(true);
+  };
+
+  const handleClientCreated = async (accountId: number) => {
+    if (!selectedAppointment?.id) return;
+
+    try {
+      await syncAppointment.mutateAsync({
+        id: selectedAppointment.id,
+        accountId,
+      });
+
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error syncing appointment:', error);
+      alert('Client created but failed to sync with appointment');
+    }
+  };
+
   return (
     <>
       <div className='mt-4 flex flex-col gap-5'>
@@ -305,7 +332,9 @@ export function UpcomingAppointments() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align='start'>
-                        <DropdownMenuItem>Create new</DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleCreateClient}>
+                          Create new
+                        </DropdownMenuItem>
                         <DropdownMenuItem>
                           Link to existing one
                         </DropdownMenuItem>
@@ -379,6 +408,14 @@ export function UpcomingAppointments() {
           )}
         </DialogContent>
       </Dialog>
+
+      <CreateClientDialog
+        open={isCreateClientDialogOpen}
+        onOpenChange={setIsCreateClientDialogOpen}
+        customerId={selectedAppointment?.customerId}
+        customerName={selectedAppointment?.accountName}
+        onSuccess={handleClientCreated}
+      />
     </>
   );
 }

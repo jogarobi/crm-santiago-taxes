@@ -134,6 +134,26 @@ async function searchAvailability(input: SearchAvailabilityInput) {
   return response.json();
 }
 
+async function syncAppointment(
+  id: string,
+  accountId: number
+): Promise<Appointment> {
+  const response = await fetch(`/api/appointments/${id}/sync`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ accountId }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to sync appointment with client');
+  }
+
+  const data = await response.json();
+  return data.appointment;
+}
+
 // Hooks
 export function useAppointments(params?: ListAppointmentsParams) {
   // Normalize and memoize params to avoid unnecessary refetches
@@ -208,5 +228,20 @@ export function useCancelAppointment() {
 export function useSearchAvailability() {
   return useMutation({
     mutationFn: searchAvailability,
+  });
+}
+
+export function useSyncAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, accountId }: { id: string; accountId: number }) =>
+      syncAppointment(id, accountId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: appointmentKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: appointmentKeys.detail(variables.id),
+      });
+    },
   });
 }
