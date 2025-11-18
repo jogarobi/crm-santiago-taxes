@@ -17,6 +17,7 @@ import {
   UserIcon,
   AlertTriangleIcon,
   TriangleAlertIcon,
+  ChevronDownIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from './ui/badge';
@@ -24,6 +25,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Appointment } from '@/lib/types/appointment';
 import clsx from 'clsx';
 import { Button } from './ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 
 export function UpcomingAppointments() {
   const [selectedAppointment, setSelectedAppointment] =
@@ -35,7 +42,7 @@ export function UpcomingAppointments() {
     today.setHours(0, 0, 0, 0);
 
     const nextWeek = new Date(today);
-    nextWeek.setDate(today.getDate() + 7);
+    nextWeek.setDate(today.getDate() + 14);
     nextWeek.setHours(23, 59, 59, 999);
 
     return {
@@ -290,7 +297,20 @@ export function UpcomingAppointments() {
                       This appointment has a customer which is not linked to a
                       CRM client.
                     </p>
-                    <Button>Sync client</Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button className='cursor-pointer'>
+                          <span>Sync client</span>
+                          <ChevronDownIcon />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align='start'>
+                        <DropdownMenuItem>Create new</DropdownMenuItem>
+                        <DropdownMenuItem>
+                          Link to existing one
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               )}
