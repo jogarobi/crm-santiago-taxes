@@ -6,10 +6,9 @@ import {
   AppointmentErrorResponse,
 } from '@/lib/types/appointment';
 import { db } from '@/lib/db';
-import { appointment, account } from '@/db/migrations/schema';
-import { and, gte, lte, eq, asc } from 'drizzle-orm';
+import { appointment } from '@/db/migrations/schema';
+import { and, gte, lte, asc } from 'drizzle-orm';
 
-// GET /api/appointments - List all appointments with optional filters
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -17,7 +16,6 @@ export async function GET(request: Request) {
     const startAtMin = searchParams.get('start_at_min') || undefined;
     const startAtMax = searchParams.get('start_at_max') || undefined;
 
-    // Build the query conditions
     const conditions = [];
 
     if (startAtMin) {
@@ -28,7 +26,6 @@ export async function GET(request: Request) {
       conditions.push(lte(appointment.startAt, startAtMax));
     }
 
-    // Query the database
     const dbAppointments = await db
       .select({
         id: appointment.id,
@@ -52,7 +49,6 @@ export async function GET(request: Request) {
       .orderBy(asc(appointment.startAt))
       .limit(limit);
 
-    // Map database appointments to match the Appointment type
     const serializedAppointments: Appointment[] = dbAppointments.map((apt) => ({
       id: apt.squareId || apt.id?.toString() || '',
       status: apt.status,
@@ -91,12 +87,10 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/appointments - Create a new appointment
 export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // Validate required fields
     if (!body.startAt || !body.locationId || !body.appointmentSegments) {
       return NextResponse.json(
         {
@@ -119,7 +113,6 @@ export async function POST(request: Request) {
       },
     });
 
-    // Serialize BigInt values
     const serializedAppointment: Appointment = JSON.parse(
       JSON.stringify(response, (_, value) =>
         typeof value === 'bigint' ? value.toString() : value
