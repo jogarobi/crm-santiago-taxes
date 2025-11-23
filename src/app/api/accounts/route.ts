@@ -88,6 +88,7 @@ export async function POST(request: Request) {
         state: body.state,
         zipCode: body.zipCode,
         createdBy: body.createdBy,
+        createdAt: new Date().toISOString(),
         squareId: body.squareId,
       })
       .returning();

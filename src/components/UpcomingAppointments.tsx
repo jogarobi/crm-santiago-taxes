@@ -208,7 +208,6 @@ export function UpcomingAppointments() {
       setIsDialogOpen(false);
     } catch (error) {
       console.error('Error syncing appointment:', error);
-      alert('Client created but failed to sync with appointment');
     }
   };
 
@@ -226,7 +225,6 @@ export function UpcomingAppointments() {
       setIsDialogOpen(false);
     } catch (error) {
       console.error('Error linking appointment:', error);
-      alert('Failed to link appointment to client');
     }
   };
 
