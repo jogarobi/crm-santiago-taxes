@@ -380,15 +380,26 @@ export function UpcomingAppointments() {
               </div>
 
               {selectedAppointment.accountName && (
-                <div className='flex items-center gap-3'>
+                <div className='flex items-center gap-3 w-full'>
                   <UserIcon className='w-5 h-5 text-neutral-500' />
-                  <div className='flex flex-col'>
+                  <div className='flex flex-col w-full'>
                     <span className='text-sm font-medium text-neutral-600'>
                       Client
                     </span>
-                    <span className='text-[15px] text-neutral-900'>
+                    <Link
+                      href={
+                        selectedAppointment.accountId
+                          ? `/clients/${selectedAppointment.accountId}`
+                          : '#'
+                      }
+                      className={clsx('text-[15px] hover:underline', {
+                        'text-purple cursor-pointer':
+                          selectedAppointment.accountId,
+                        'cursor-not-allowed': !selectedAppointment.accountId,
+                      })}
+                    >
                       {selectedAppointment.accountName}
-                    </span>
+                    </Link>
                   </div>
                 </div>
               )}

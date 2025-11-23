@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { appointment } from '@/db/migrations/schema';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 
-// PATCH /api/appointments/[id]/sync - Link an appointment to a client account
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -19,15 +18,20 @@ export async function PATCH(
       );
     }
 
-    // Update the appointment to link it to the account
+    const numericId = parseInt(id);
     const updatedAppointment = await db
       .update(appointment)
       .set({
         accountId: body.accountId,
         updatedAt: new Date().toISOString(),
-        updatedBy: 'system', // TODO: Replace with actual user
+        updatedBy: 'system',
       })
-      .where(eq(appointment.id, parseInt(id)))
+      .where(
+        or(
+          eq(appointment.squareId, id),
+          isNaN(numericId) ? undefined : eq(appointment.id, numericId)
+        )
+      )
       .returning();
 
     if (!updatedAppointment || updatedAppointment.length === 0) {

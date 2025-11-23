@@ -35,6 +35,7 @@ export async function GET(request: Request) {
 
     const serializedAppointments: Appointment[] = dbAppointments.map((apt) => ({
       id: apt.squareId || apt.id?.toString() || '',
+      accountId: apt.accountId,
       status: apt.status,
       startAt: apt.startAt,
       endAt: apt.endAt,

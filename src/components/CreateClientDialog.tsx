@@ -7,7 +7,68 @@ import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Loader2, ChevronDownIcon } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
+import { Loader2, ChevronDownIcon, InfoIcon } from 'lucide-react';
+
+const US_STATES = [
+  { value: 'AL', label: 'Alabama' },
+  { value: 'AK', label: 'Alaska' },
+  { value: 'AZ', label: 'Arizona' },
+  { value: 'AR', label: 'Arkansas' },
+  { value: 'CA', label: 'California' },
+  { value: 'CO', label: 'Colorado' },
+  { value: 'CT', label: 'Connecticut' },
+  { value: 'DE', label: 'Delaware' },
+  { value: 'FL', label: 'Florida' },
+  { value: 'GA', label: 'Georgia' },
+  { value: 'HI', label: 'Hawaii' },
+  { value: 'ID', label: 'Idaho' },
+  { value: 'IL', label: 'Illinois' },
+  { value: 'IN', label: 'Indiana' },
+  { value: 'IA', label: 'Iowa' },
+  { value: 'KS', label: 'Kansas' },
+  { value: 'KY', label: 'Kentucky' },
+  { value: 'LA', label: 'Louisiana' },
+  { value: 'ME', label: 'Maine' },
+  { value: 'MD', label: 'Maryland' },
+  { value: 'MA', label: 'Massachusetts' },
+  { value: 'MI', label: 'Michigan' },
+  { value: 'MN', label: 'Minnesota' },
+  { value: 'MS', label: 'Mississippi' },
+  { value: 'MO', label: 'Missouri' },
+  { value: 'MT', label: 'Montana' },
+  { value: 'NE', label: 'Nebraska' },
+  { value: 'NV', label: 'Nevada' },
+  { value: 'NH', label: 'New Hampshire' },
+  { value: 'NJ', label: 'New Jersey' },
+  { value: 'NM', label: 'New Mexico' },
+  { value: 'NY', label: 'New York' },
+  { value: 'NC', label: 'North Carolina' },
+  { value: 'ND', label: 'North Dakota' },
+  { value: 'OH', label: 'Ohio' },
+  { value: 'OK', label: 'Oklahoma' },
+  { value: 'OR', label: 'Oregon' },
+  { value: 'PA', label: 'Pennsylvania' },
+  { value: 'RI', label: 'Rhode Island' },
+  { value: 'SC', label: 'South Carolina' },
+  { value: 'SD', label: 'South Dakota' },
+  { value: 'TN', label: 'Tennessee' },
+  { value: 'TX', label: 'Texas' },
+  { value: 'UT', label: 'Utah' },
+  { value: 'VT', label: 'Vermont' },
+  { value: 'VA', label: 'Virginia' },
+  { value: 'WA', label: 'Washington' },
+  { value: 'WV', label: 'West Virginia' },
+  { value: 'WI', label: 'Wisconsin' },
+  { value: 'WY', label: 'Wyoming' },
+  { value: 'DC', label: 'Washington DC' },
+];
 import { useCreateAccount } from '@/lib/hooks/use-accounts';
 import { useCustomer } from '@/lib/hooks/use-customer';
 
@@ -84,7 +145,7 @@ export function CreateClientDialog({
         ...formData,
         dateOfBirth: dateOfBirth.toISOString().split('T')[0],
         squareId: customerId,
-        createdBy: 'system', // TODO: Replace with actual user
+        createdBy: 'system',
       });
 
       if (onSuccess && newAccount.id) {
@@ -93,7 +154,6 @@ export function CreateClientDialog({
 
       onOpenChange(false);
 
-      // Reset form
       setFormData({
         firstName: '',
         lastName: '',
@@ -116,7 +176,6 @@ export function CreateClientDialog({
 
   const handleDialogOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      // Reset form when dialog closes
       setIsFormInitialized(false);
       setError(null);
     }
@@ -129,6 +188,17 @@ export function CreateClientDialog({
         <DialogHeader>
           <DialogTitle className='text-xl'>Create New Client</DialogTitle>
         </DialogHeader>
+
+        <div className='flex gap-3 border p-4 rounded-lg'>
+          <InfoIcon className='w-8 text-yellow-600' strokeWidth={2.4} />
+
+          <div>
+            <p className='text-sm font-medium text-yellow-600'>
+              By creating a new client, you are creating a new account in the
+              CRM linked to this specific customer from Square.
+            </p>
+          </div>
+        </div>
 
         {isLoadingCustomer ? (
           <div className='flex items-center justify-center py-8'>
@@ -210,7 +280,7 @@ export function CreateClientDialog({
                     selected={dateOfBirth}
                     captionLayout='dropdown'
                     startMonth={new Date(1900, 0)}
-                    endMonth={new Date()}
+                    disabled={{ after: new Date() }}
                     onSelect={(date) => {
                       setDateOfBirth(date);
                       setDatePickerOpen(false);
@@ -232,7 +302,6 @@ export function CreateClientDialog({
                 value={formData.ssnLastFour}
                 className='p-2'
                 onChange={(e) => handleChange('ssnLastFour', e.target.value)}
-                placeholder='1234'
                 maxLength={4}
                 pattern='[0-9]{4}'
               />
@@ -250,7 +319,6 @@ export function CreateClientDialog({
                 className='p-2'
                 value={formData.address}
                 onChange={(e) => handleChange('address', e.target.value)}
-                placeholder='123 Main St'
               />
             </div>
 
@@ -267,7 +335,6 @@ export function CreateClientDialog({
                   className='p-2'
                   value={formData.city}
                   onChange={(e) => handleChange('city', e.target.value)}
-                  placeholder='New York'
                 />
               </div>
 
@@ -278,14 +345,21 @@ export function CreateClientDialog({
                 >
                   State
                 </Label>
-                <Input
-                  id='state'
-                  className='p-2'
+                <Select
                   value={formData.state}
-                  onChange={(e) => handleChange('state', e.target.value)}
-                  placeholder='NY'
-                  maxLength={2}
-                />
+                  onValueChange={(value) => handleChange('state', value)}
+                >
+                  <SelectTrigger id='state' className='w-full'>
+                    <SelectValue placeholder='Select state' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {US_STATES.map((state) => (
+                      <SelectItem key={state.value} value={state.value}>
+                        {state.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className='flex flex-col gap-2'>
@@ -300,7 +374,6 @@ export function CreateClientDialog({
                   className='p-2'
                   value={formData.zipCode}
                   onChange={(e) => handleChange('zipCode', e.target.value)}
-                  placeholder='10001'
                   maxLength={10}
                 />
               </div>
@@ -315,7 +388,11 @@ export function CreateClientDialog({
               >
                 Cancel
               </Button>
-              <Button type='submit' disabled={createAccount.isPending}>
+              <Button
+                type='submit'
+                className='cursor-pointer'
+                disabled={createAccount.isPending}
+              >
                 {createAccount.isPending ? (
                   <>
                     <Loader2 className='w-4 h-4 animate-spin mr-2' />

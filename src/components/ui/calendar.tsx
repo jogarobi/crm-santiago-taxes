@@ -100,7 +100,7 @@ function Calendar({
           defaultClassNames.week_number
         ),
         day: cn(
-          "relative w-full h-full p-0 text-center [&:last-child[data-selected=true]_button]:rounded-r-md group/day aspect-square select-none",
+          "relative flex-1 h-full p-0 text-center [&:last-child[data-selected=true]_button]:rounded-r-md group/day aspect-square select-none",
           props.showWeekNumber
             ? "[&:nth-child(2)[data-selected=true]_button]:rounded-l-md"
             : "[&:first-child[data-selected=true]_button]:rounded-l-md",
@@ -124,7 +124,7 @@ function Calendar({
           "text-muted-foreground opacity-50",
           defaultClassNames.disabled
         ),
-        hidden: cn("invisible", defaultClassNames.hidden),
+        hidden: cn("invisible flex-1", defaultClassNames.hidden),
         ...classNames,
       }}
       components={{

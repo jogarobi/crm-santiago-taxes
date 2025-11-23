@@ -271,12 +271,6 @@ export default function AccountDetailPage({ params }: Props) {
                 </div>
               )}
 
-              {account.squareId && (
-                <div>
-                  <label className='text-sm text-neutral-500'>Square ID</label>
-                  <p className='font-medium text-[15px]'>{account.squareId}</p>
-                </div>
-              )}
               {account.ssnLastFour && (
                 <div>
                   <label className='text-sm text-neutral-500'>
