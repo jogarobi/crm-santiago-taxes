@@ -84,6 +84,7 @@ export function CreateClientDialog({
   open,
   onOpenChange,
   customerId,
+  customerName,
   onSuccess,
 }: CreateClientDialogProps) {
   const createAccount = useCreateAccount();
@@ -194,8 +195,8 @@ export function CreateClientDialog({
 
           <div>
             <p className='text-sm font-medium text-yellow-600'>
-              By creating a new client, you are creating a new account in the
-              CRM linked to this specific customer from Square.
+              By doing this, you are creating a new client in the CRM linked to
+              customer {customerName} from Square.
             </p>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { appointment } from '@/db/migrations/schema';
+import { appointment, account } from '@/db/migrations/schema';
 import { eq, or } from 'drizzle-orm';
 
 export async function PATCH(
@@ -39,6 +39,18 @@ export async function PATCH(
         { error: 'Appointment not found' },
         { status: 404 }
       );
+    }
+
+    // If customerId is provided, update the account's squareId
+    if (body.customerId) {
+      await db
+        .update(account)
+        .set({
+          squareId: body.customerId,
+          updatedAt: new Date().toISOString(),
+          updatedBy: 'system',
+        })
+        .where(eq(account.id, body.accountId));
     }
 
     return NextResponse.json({

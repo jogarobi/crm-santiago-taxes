@@ -136,14 +136,15 @@ async function searchAvailability(input: SearchAvailabilityInput) {
 
 async function syncAppointment(
   id: string,
-  accountId: number
+  accountId: number,
+  customerId?: string
 ): Promise<Appointment> {
   const response = await fetch(`/api/appointments/${id}/sync`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ accountId }),
+    body: JSON.stringify({ accountId, customerId }),
   });
 
   if (!response.ok) {
@@ -233,8 +234,15 @@ export function useSyncAppointment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, accountId }: { id: string; accountId: number }) =>
-      syncAppointment(id, accountId),
+    mutationFn: ({
+      id,
+      accountId,
+      customerId,
+    }: {
+      id: string;
+      accountId: number;
+      customerId?: string;
+    }) => syncAppointment(id, accountId, customerId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: appointmentKeys.lists() });
       queryClient.invalidateQueries({

@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { CreateClientDialog } from './CreateClientDialog';
+import { LinkClientDialog } from './LinkClientDialog';
 
 export function UpcomingAppointments() {
   const [selectedAppointment, setSelectedAppointment] =
@@ -42,6 +43,7 @@ export function UpcomingAppointments() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreateClientDialogOpen, setIsCreateClientDialogOpen] =
     useState(false);
+  const [isLinkClientDialogOpen, setIsLinkClientDialogOpen] = useState(false);
   const syncAppointment = useSyncAppointment();
 
   const dateRange = useMemo(() => {
@@ -190,6 +192,10 @@ export function UpcomingAppointments() {
     setIsCreateClientDialogOpen(true);
   };
 
+  const handleLinkClient = () => {
+    setIsLinkClientDialogOpen(true);
+  };
+
   const handleClientCreated = async (accountId: number) => {
     if (!selectedAppointment?.id) return;
 
@@ -203,6 +209,24 @@ export function UpcomingAppointments() {
     } catch (error) {
       console.error('Error syncing appointment:', error);
       alert('Client created but failed to sync with appointment');
+    }
+  };
+
+  const handleClientLinked = async (accountId: number) => {
+    if (!selectedAppointment?.id) return;
+
+    try {
+      await syncAppointment.mutateAsync({
+        id: selectedAppointment.id,
+        accountId,
+        customerId: selectedAppointment.customerId,
+      });
+
+      setIsLinkClientDialogOpen(false);
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error linking appointment:', error);
+      alert('Failed to link appointment to client');
     }
   };
 
@@ -335,7 +359,7 @@ export function UpcomingAppointments() {
                         <DropdownMenuItem onClick={handleCreateClient}>
                           Create new
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleLinkClient}>
                           Link to existing one
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -426,6 +450,14 @@ export function UpcomingAppointments() {
         customerId={selectedAppointment?.customerId}
         customerName={selectedAppointment?.accountName}
         onSuccess={handleClientCreated}
+      />
+
+      <LinkClientDialog
+        open={isLinkClientDialogOpen}
+        onOpenChange={setIsLinkClientDialogOpen}
+        onSelect={handleClientLinked}
+        isLinking={syncAppointment.isPending}
+        customerName={selectedAppointment?.accountName}
       />
     </>
   );
