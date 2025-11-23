@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { square } from '@/app/api/client';
 import { Appointment, AppointmentErrorResponse } from '@/lib/types/appointment';
+import { db } from '@/lib/db';
+import { appointment } from '@/db/migrations/schema';
+import { eq, or } from 'drizzle-orm';
 
 export async function GET(
   _request: Request,
@@ -9,13 +12,57 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const response = await square.bookings.get({ bookingId: id });
+    const dbAppointment = await db
+      .select({
+        id: appointment.id,
+        squareId: appointment.squareId,
+        accountSquareId: appointment.accountSquareId,
+        status: appointment.status,
+        startAt: appointment.startAt,
+        endAt: appointment.endAt,
+        durationMinutes: appointment.durationMinutes,
+        accountId: appointment.accountId,
+        accountName: appointment.accountName,
+        service: appointment.service,
+        staffId: appointment.staffId,
+        creatorType: appointment.creatorType,
+        createdBy: appointment.createdBy,
+        createdAt: appointment.createdAt,
+        updatedAt: appointment.updatedAt,
+        updatedBy: appointment.updatedBy,
+      })
+      .from(appointment)
+      .where(or(eq(appointment.squareId, id), eq(appointment.id, parseInt(id) || 0)))
+      .limit(1);
 
-    const serializedAppointment: Appointment = JSON.parse(
-      JSON.stringify(response, (_, value) =>
-        typeof value === 'bigint' ? value.toString() : value
-      )
-    );
+    if (dbAppointment.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Appointment not found',
+          message: `No appointment found with id: ${id}`,
+        } as AppointmentErrorResponse,
+        { status: 404 }
+      );
+    }
+
+    const apt = dbAppointment[0];
+    const serializedAppointment = {
+      id: apt.squareId || apt.id?.toString() || '',
+      status: apt.status,
+      startAt: apt.startAt,
+      endAt: apt.endAt,
+      durationMinutes: apt.durationMinutes || undefined,
+      accountSquareId: apt.accountSquareId || undefined,
+      accountName: apt.accountName || undefined,
+      service: apt.service || undefined,
+      customerId: apt.accountSquareId || undefined,
+      creatorType: apt.creatorType,
+      createdBy: apt.createdBy || undefined,
+      createdAt: apt.createdAt || undefined,
+      updatedAt: apt.updatedAt || undefined,
+      updatedBy: apt.updatedBy || undefined,
+    } as Appointment;
 
     return NextResponse.json({
       success: true,

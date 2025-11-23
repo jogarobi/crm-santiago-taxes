@@ -154,9 +154,7 @@ async function syncAppointment(
   return data.appointment;
 }
 
-// Hooks
 export function useAppointments(params?: ListAppointmentsParams) {
-  // Normalize and memoize params to avoid unnecessary refetches
   const normalizedParams = useMemo(() => {
     if (!params) return undefined;
 

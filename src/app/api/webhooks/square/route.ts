@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-// import { WebhooksHelper } from 'square';
 import { square } from '@/app/api/client';
 import { db } from '@/lib/db';
 import {
@@ -24,7 +23,6 @@ type SquareWebhookEvent = {
   };
 };
 
-// Helper function to get or create activity type
 async function getOrCreateActivityType(
   name: string,
   icon: string
@@ -213,6 +211,7 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
           .insert(appointment)
           .values({
             squareId: booking.id,
+            accountSquareId: booking.customerId || 'N/A',
             status: booking.status || 'PENDING',
             startAt: startAt,
             endAt: endAt,
@@ -439,6 +438,7 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
             .insert(appointment)
             .values({
               squareId: booking.id,
+              accountSquareId: booking.customerId || 'N/A',
               status: booking.status || 'PENDING',
               startAt: startAt,
               endAt: endAt,

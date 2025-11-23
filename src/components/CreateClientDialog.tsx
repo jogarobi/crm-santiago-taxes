@@ -58,9 +58,9 @@ export function CreateClientDialog({
         zipCode: customer.address?.postalCode || '',
       });
 
-      // Parse birthday if available (format: YYYY-MM-DD)
       if (customer.birthday) {
-        const birthDate = new Date(customer.birthday);
+        const [year, month, day] = customer.birthday.split('-').map(Number);
+        const birthDate = new Date(year, month - 1, day);
         if (!isNaN(birthDate.getTime())) {
           setDateOfBirth(birthDate);
         }

@@ -1,6 +1,5 @@
 import { Booking } from 'square';
 
-// Database Appointment type
 export type DbAppointment = {
   id: string;
   squareId?: string | null;
@@ -20,7 +19,6 @@ export type DbAppointment = {
   customerId?: string;
 };
 
-// Appointment type - combines Square Booking with database fields
 export type Appointment = Partial<Booking> & {
   id?: string;
   status?: string;
@@ -40,7 +38,6 @@ export type Appointment = Partial<Booking> & {
   updatedBy?: string;
 };
 
-// API Response Types
 export type AppointmentResponse = {
   success: true;
   appointments: Appointment[];
@@ -58,7 +55,6 @@ export type AppointmentErrorResponse = {
   message: string;
 };
 
-// Request Types
 export type ListAppointmentsParams = {
   limit?: number;
   cursor?: string;

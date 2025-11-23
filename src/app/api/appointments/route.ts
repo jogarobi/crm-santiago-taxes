@@ -27,23 +27,7 @@ export async function GET(request: Request) {
     }
 
     const dbAppointments = await db
-      .select({
-        id: appointment.id,
-        squareId: appointment.squareId,
-        status: appointment.status,
-        startAt: appointment.startAt,
-        endAt: appointment.endAt,
-        durationMinutes: appointment.durationMinutes,
-        accountId: appointment.accountId,
-        accountName: appointment.accountName,
-        service: appointment.service,
-        staffId: appointment.staffId,
-        creatorType: appointment.creatorType,
-        createdBy: appointment.createdBy,
-        createdAt: appointment.createdAt,
-        updatedAt: appointment.updatedAt,
-        updatedBy: appointment.updatedBy,
-      })
+      .select()
       .from(appointment)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(asc(appointment.startAt))
@@ -55,9 +39,10 @@ export async function GET(request: Request) {
       startAt: apt.startAt,
       endAt: apt.endAt,
       durationMinutes: apt.durationMinutes || undefined,
+      accountSquareId: apt.accountSquareId || undefined,
       accountName: apt.accountName || undefined,
       service: apt.service || undefined,
-      customerId: apt.accountId?.toString() || undefined,
+      customerId: apt.accountSquareId || undefined,
       creatorType: apt.creatorType,
       createdBy: apt.createdBy || undefined,
       createdAt: apt.createdAt || undefined,
