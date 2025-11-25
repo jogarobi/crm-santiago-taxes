@@ -8,6 +8,7 @@ export const accountKeys = {
   list: (filters?: FetchAccountsParams) => [...accountKeys.lists(), { filters }] as const,
   details: () => [...accountKeys.all, 'detail'] as const,
   detail: (id: number) => [...accountKeys.details(), id] as const,
+  count: () => [...accountKeys.all, 'count'] as const,
 };
 
 // Types
@@ -25,6 +26,11 @@ export interface FetchAccountsParams {
   search?: string;
   pageSize?: number;
   pageIndex?: number;
+}
+
+export interface AccountCountResponse {
+  success: boolean;
+  count: number;
 }
 
 // API Functions
@@ -96,6 +102,14 @@ async function deleteAccount(id: number): Promise<{ message: string }> {
   return response.json();
 }
 
+async function fetchAccountCount(): Promise<AccountCountResponse> {
+  const response = await fetch('/api/accounts/count');
+  if (!response.ok) {
+    throw new Error('Failed to fetch account count');
+  }
+  return response.json();
+}
+
 // Hooks
 export function useAccounts(params?: FetchAccountsParams) {
   return useQuery({
@@ -144,5 +158,12 @@ export function useDeleteAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accountKeys.lists() });
     },
+  });
+}
+
+export function useAccountCount() {
+  return useQuery({
+    queryKey: accountKeys.count(),
+    queryFn: fetchAccountCount,
   });
 }

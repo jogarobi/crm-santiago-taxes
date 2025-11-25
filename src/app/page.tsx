@@ -1,21 +1,20 @@
-import type { Metadata } from 'next';
+'use client';
+
 import {
   Empty,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { ArrowUpRightIcon, CheckCheckIcon } from 'lucide-react';
+import { ArrowUpRightIcon, CheckCheckIcon, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { UpcomingAppointments } from '@/components/UpcomingAppointments';
 import { SearchAccounts } from '@/components/SearchAccounts';
-
-export const metadata: Metadata = {
-  title: 'Home | Santiago Taxes CRM',
-  description: 'View your business overview and upcoming appointments',
-};
+import { useAccountCount } from '@/lib/hooks/use-accounts';
 
 export default function Home() {
+  const { data: accountCount, isLoading } = useAccountCount();
+
   return (
     <div className='flex flex-col gap-10'>
       <SearchAccounts />
@@ -24,7 +23,13 @@ export default function Home() {
           <div className='flex items-center justify-between'>
             <p className='text-[15px] text-neutral-600'>Total clients</p>
           </div>
-          <p className='font-bold text-[22px] text-purple'>3,205</p>
+          <p className='font-bold text-[22px] text-purple'>
+            {isLoading ? (
+              <Loader2 className='animate-spin text-purple' />
+            ) : (
+              accountCount?.count?.toLocaleString() || '0'
+            )}
+          </p>
         </div>
         <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
           <div className='flex items-center justify-between'>
