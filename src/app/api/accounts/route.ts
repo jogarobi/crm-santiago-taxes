@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { account } from '@/db/migrations/schema';
-import { or, like, eq, count } from 'drizzle-orm';
+import { or, like, eq, count, sql } from 'drizzle-orm';
 
 export async function GET(request: Request) {
   try {
@@ -10,20 +10,21 @@ export async function GET(request: Request) {
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const pageIndex = parseInt(searchParams.get('pageIndex') || '0');
 
-    // Calculate offset
     const offset = pageIndex * pageSize;
 
-    // Build where clause if search exists
     const whereClause = search
       ? or(
           like(account.firstName, `%${search}%`),
           like(account.lastName, `%${search}%`),
+          like(
+            sql`${account.firstName} || ' ' || ${account.lastName}`,
+            `%${search}%`
+          ),
           like(account.ssnLastFour, `%${search}%`),
           eq(account.id, isNaN(parseInt(search)) ? -1 : parseInt(search))
         )
       : undefined;
 
-    // Get total count
     const totalResult = await db
       .select({ count: count() })
       .from(account)
@@ -31,7 +32,6 @@ export async function GET(request: Request) {
 
     const total = totalResult[0]?.count || 0;
 
-    // Get paginated data
     const accounts = await db
       .select()
       .from(account)

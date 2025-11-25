@@ -20,6 +20,7 @@ function formatPhoneNumber(phoneNumber: string): string {
 import { useAccount } from '@/lib/hooks/use-accounts';
 import { useActivities } from '@/lib/hooks/use-activities';
 import { useAccountContacts } from '@/lib/hooks/use-account-contact';
+import { useAccountRelationships } from '@/lib/hooks/use-account-relationships';
 import {
   Building2Icon,
   ClockIcon,
@@ -52,8 +53,8 @@ export default function AccountDetailPage({ params }: Props) {
     error: activitiesError,
   } = useActivities(accountId, 20);
   const { data: contacts } = useAccountContacts(accountId);
+  const { data: relationships } = useAccountRelationships(accountId);
 
-  // Helper variables for contact data
   const primaryContact = contacts?.[0];
   const hasPhone = primaryContact?.phoneNumber;
   const hasEmail = primaryContact?.email;
@@ -389,6 +390,67 @@ export default function AccountDetailPage({ params }: Props) {
             <p className='text-neutral-500'>
               Businesses content coming soon...
             </p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value='relationships'>
+          <div className='bg-white border rounded-xl p-6'>
+            <div className='flex items-center justify-between mb-6'>
+              <h3 className='text-lg font-semibold'>Relationships</h3>
+              <Button className='bg-purple'>
+                <span>Add Relationship</span>
+                <PlusIcon />
+              </Button>
+            </div>
+
+            {relationships && relationships.length > 0 ? (
+              <div className='space-y-4'>
+                {relationships.map((relationship) => (
+                  <div
+                    key={relationship.id}
+                    className='border rounded-lg p-4 flex items-center justify-between'
+                  >
+                    <div className='flex flex-col gap-2'>
+                      <div className='flex items-center gap-3'>
+                        <div className='text-lg font-medium h-10 w-10 rounded-full bg-purple text-white flex items-center justify-center'>
+                          {relationship.relatedAccount?.firstName[0]}
+                          {relationship.relatedAccount?.lastName[0]}
+                        </div>
+                        <div>
+                          <p className='font-semibold'>
+                            {relationship.relatedAccount?.firstName}{' '}
+                            {relationship.relatedAccount?.lastName}
+                          </p>
+                          <p className='text-sm text-neutral-500 capitalize'>
+                            {relationship.relationship}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className='flex items-center gap-2'>
+                      <Button variant='outline' size='sm'>
+                        <Edit2Icon size={14} />
+                      </Button>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        className='text-red-600 hover:text-red-700'
+                      >
+                        <TrashIcon size={14} />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className='text-center py-8 text-neutral-500'>
+                <p className='text-lg mb-2'>No relationships found</p>
+                <p className='text-sm'>
+                  Add family members, business partners, or other related
+                  accounts
+                </p>
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>

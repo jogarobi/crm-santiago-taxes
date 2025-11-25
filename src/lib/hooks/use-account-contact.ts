@@ -24,8 +24,8 @@ async function fetchAccountContacts(
   return response.json();
 }
 
-async function fetchAccountContact(id: number): Promise<AccountContact> {
-  const response = await fetch(`/api/account-contacts/${id}`);
+async function fetchAccountContact(accountId: number, contactId: number): Promise<AccountContact> {
+  const response = await fetch(`/api/accounts/${accountId}/contacts/${contactId}`);
   if (!response.ok) {
     throw new Error('Failed to fetch account contact');
   }
@@ -49,10 +49,11 @@ async function createAccountContact(
 }
 
 async function updateAccountContact(
-  id: number,
+  accountId: number,
+  contactId: number,
   data: UpdateAccountContactInput
 ): Promise<AccountContact> {
-  const response = await fetch(`/api/account-contacts/${id}`, {
+  const response = await fetch(`/api/accounts/${accountId}/contacts/${contactId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -65,8 +66,8 @@ async function updateAccountContact(
   return response.json();
 }
 
-async function deleteAccountContact(id: number): Promise<{ message: string }> {
-  const response = await fetch(`/api/account-contacts/${id}`, {
+async function deleteAccountContact(accountId: number, contactId: number): Promise<{ message: string }> {
+  const response = await fetch(`/api/accounts/${accountId}/contacts/${contactId}`, {
     method: 'DELETE',
   });
   if (!response.ok) {
@@ -83,11 +84,11 @@ export function useAccountContacts(accountId: number) {
   });
 }
 
-export function useAccountContact(id: number) {
+export function useAccountContact(accountId: number, contactId: number) {
   return useQuery({
-    queryKey: accountContactKeys.detail(id),
-    queryFn: () => fetchAccountContact(id),
-    enabled: !!id,
+    queryKey: accountContactKeys.detail(contactId),
+    queryFn: () => fetchAccountContact(accountId, contactId),
+    enabled: !!accountId && !!contactId,
   });
 }
 
@@ -109,18 +110,20 @@ export function useUpdateAccountContact() {
 
   return useMutation({
     mutationFn: ({
-      id,
+      accountId,
+      contactId,
       data,
     }: {
-      id: number;
+      accountId: number;
+      contactId: number;
       data: UpdateAccountContactInput;
-    }) => updateAccountContact(id, data),
+    }) => updateAccountContact(accountId, contactId, data),
     onSuccess: (updatedContact, variables) => {
       queryClient.invalidateQueries({
         queryKey: accountContactKeys.list(updatedContact.accountId),
       });
       queryClient.invalidateQueries({
-        queryKey: accountContactKeys.detail(variables.id),
+        queryKey: accountContactKeys.detail(variables.contactId),
       });
     },
   });
@@ -130,11 +133,14 @@ export function useDeleteAccountContact() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: deleteAccountContact,
-    onSuccess: (_, accountContactId) => {
-      queryClient.invalidateQueries({ queryKey: accountContactKeys.lists() });
+    mutationFn: ({ accountId, contactId }: { accountId: number; contactId: number }) =>
+      deleteAccountContact(accountId, contactId),
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: accountContactKeys.detail(accountContactId),
+        queryKey: accountContactKeys.list(variables.accountId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: accountContactKeys.detail(variables.contactId),
       });
     },
   });
