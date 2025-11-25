@@ -39,7 +39,7 @@ import clsx from 'clsx';
 
 export default function Appointments() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [currentView, setCurrentView] = useState<CalendarView>('month');
+  const [currentView, setCurrentView] = useState<CalendarView>('week');
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -451,8 +451,8 @@ export default function Appointments() {
                 <div className='flex flex-col gap-3 mt-2'>
                   {getAppointmentsForDate(selectedDate).length === 0 ? (
                     <div className='text-center py-8'>
-                      <CalendarIcon className='w-12 h-12 text-gray-400 mx-auto mb-4' />
-                      <p className='text-gray-500'>
+                      <CalendarIcon className='w-6 h-6 text-gray-400 mx-auto mb-4' />
+                      <p className='text-gray-500 text-[15px]'>
                         No appointments scheduled for this day
                       </p>
                     </div>
