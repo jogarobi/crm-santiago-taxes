@@ -70,6 +70,13 @@ const Calendar: React.FC<CalendarProps> = ({
     }
   };
 
+  const currentDayHasEvents = () => {
+    return events.some(event => {
+      const eventDate = new Date(event.startDate);
+      return eventDate.toDateString() === currentDate.toDateString();
+    });
+  };
+
   const renderDayView = () => {
     const dayEvents = events.filter((event) => {
       const eventDate = new Date(event.startDate);
@@ -123,8 +130,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 <div
                   className={cn(
                     'border-gray-100 min-h-[15px] p-1 relative',
-                    !isLastSlot && 'border-b',
-                    isHourStart && 'border-t'
+                    !isLastSlot && 'border-b'
                   )}
                 >
                   {slotEvents.map((event) => {
@@ -181,28 +187,39 @@ const Calendar: React.FC<CalendarProps> = ({
         <div className='bg-white border-b sticky top-0 z-20'>
           <div className='grid grid-cols-8 gap-0'>
             <div className='border-r border-b p-2'></div>
-            {weekDays.map((day, dayIndex) => (
-              <div
-                key={day.toDateString()}
-                className={cn(
-                  'border-b p-2 text-center flex flex-col items-center',
-                  dayIndex < 6 && 'border-r'
-                )}
-              >
-                <div className='text-sm font-medium'>
-                  {day.toLocaleDateString('en-US', { weekday: 'short' })}
-                </div>
+            {weekDays.map((day, dayIndex) => {
+              const dayHasEvents = events.some((event) => {
+                const eventDate = new Date(event.startDate);
+                return eventDate.toDateString() === day.toDateString();
+              });
+
+              return (
                 <div
+                  key={day.toDateString()}
                   className={cn(
-                    'text-[15px]',
-                    day.toDateString() === today.toDateString() &&
-                      'text-white grid place-items-center bg-purple font-bold rounded-full w-8 h-8'
+                    'p-2 text-center flex flex-col items-center relative',
+                    dayIndex < 6 && 'border-r'
                   )}
                 >
-                  {day.getDate()}
+                  <div className='text-sm font-medium'>
+                    {day.toLocaleDateString('en-US', { weekday: 'short' })}
+                  </div>
+                  <div
+                    className={cn(
+                      'text-[15px]',
+                      day.toDateString() === today.toDateString() &&
+                        'text-white grid place-items-center bg-purple font-bold rounded-full w-8 h-8'
+                    )}
+                  >
+                    {day.getDate()}
+                  </div>
+                  {dayHasEvents &&
+                    day.toDateString() !== today.toDateString() && (
+                      <div className='w-1.5 h-1.5 bg-purple rounded-full mt-1'></div>
+                    )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -227,8 +244,7 @@ const Calendar: React.FC<CalendarProps> = ({
                     <div
                       className={cn(
                         'border-r py-1 pr-2 text-xs text-gray-500 text-right min-h-[15px]',
-                        !isLastSlot && 'border-b',
-                        isHourStart && 'border-t'
+                        !isLastSlot && 'border-b'
                       )}
                     >
                       {isHourStart && (
@@ -263,8 +279,7 @@ const Calendar: React.FC<CalendarProps> = ({
                           className={cn(
                             'min-h-[15px] p-1 relative',
                             !isLastSlot && 'border-b',
-                            !isRightEdge && 'border-r',
-                            isHourStart && 'border-t'
+                            !isRightEdge && 'border-r'
                           )}
                         >
                           {dayEvents.map((event) => {
@@ -443,7 +458,12 @@ const Calendar: React.FC<CalendarProps> = ({
               Today
             </Button>
           </div>
-          <h2 className='text-[17px] font-semibold'>{getDateTitle()}</h2>
+          <div className='flex items-center space-x-2'>
+            <h2 className='text-[17px] font-semibold'>{getDateTitle()}</h2>
+            {view === 'day' && currentDayHasEvents() && (
+              <div className='w-2 h-2 bg-purple rounded-full'></div>
+            )}
+          </div>
         </div>
 
         <div className='flex items-center space-x-2'>
