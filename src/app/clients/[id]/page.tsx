@@ -1,8 +1,25 @@
 'use client';
 
 import { use } from 'react';
+
+function formatPhoneNumber(phoneNumber: string): string {
+  const cleaned = phoneNumber.replace(/\D/g, '');
+
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
+      6
+    )}`;
+  } else if (cleaned.length === 11 && cleaned[0] === '1') {
+    return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(
+      7
+    )}`;
+  }
+
+  return phoneNumber;
+}
 import { useAccount } from '@/lib/hooks/use-accounts';
 import { useActivities } from '@/lib/hooks/use-activities';
+import { useAccountContacts } from '@/lib/hooks/use-account-contact';
 import {
   Building2Icon,
   ClockIcon,
@@ -19,6 +36,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { DynamicIcon, IconName } from '@/components/DynamicIcon';
+import clsx from 'clsx';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -33,6 +51,12 @@ export default function AccountDetailPage({ params }: Props) {
     isLoading: activitiesLoading,
     error: activitiesError,
   } = useActivities(accountId, 20);
+  const { data: contacts } = useAccountContacts(accountId);
+
+  // Helper variables for contact data
+  const primaryContact = contacts?.[0];
+  const hasPhone = primaryContact?.phoneNumber;
+  const hasEmail = primaryContact?.email;
 
   if (isLoading) {
     return (
@@ -78,14 +102,22 @@ export default function AccountDetailPage({ params }: Props) {
           <div className='flex items-center gap-8'>
             <div className='flex gap-2 items-center'>
               <PhoneIcon size={16} className='inline-block' />
-              <span className='text-[16px] text-neutral-500'>
-                Not available
+              <span
+                className={clsx('text-[16px]', {
+                  'text-neutral-500': !hasPhone,
+                })}
+              >
+                {hasPhone ? formatPhoneNumber(hasPhone) : 'Not available'}
               </span>
             </div>
             <div className='flex gap-2 items-center'>
               <MailIcon size={16} className='inline-block' />
-              <span className='text-[16px] text-neutral-500'>
-                Not available
+              <span
+                className={clsx('text-[16px]', {
+                  'text-neutral-500': !hasEmail,
+                })}
+              >
+                {hasEmail || 'Not available'}
               </span>
             </div>
 
@@ -281,6 +313,25 @@ export default function AccountDetailPage({ params }: Props) {
                   </p>
                 </div>
               )}
+
+              {hasEmail && (
+                <div>
+                  <label className='text-sm text-neutral-500'>Email</label>
+                  <p className='font-medium text-[15px]'>{hasEmail}</p>
+                </div>
+              )}
+
+              {hasPhone && (
+                <div>
+                  <label className='text-sm text-neutral-500'>
+                    Phone Number
+                  </label>
+                  <p className='font-medium text-[15px]'>
+                    {formatPhoneNumber(hasPhone)}
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className='text-sm text-neutral-500'>
                   Date of Birth
