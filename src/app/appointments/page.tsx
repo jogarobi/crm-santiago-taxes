@@ -5,11 +5,27 @@ import Calendar from '@/components/Calendar';
 import { CalendarEvent, CalendarView } from '@/components/Calendar/types';
 import { useAppointments } from '@/lib/hooks/use-appointments';
 import { transformAppointmentsToCalendarEvents } from '@/lib/utils/appointmentUtils';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CalendarIcon, ClockIcon, UserIcon } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Appointment } from '@/lib/types/appointment';
+import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
+import Link from 'next/link';
+import clsx from 'clsx';
 
 export default function Appointments() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState<CalendarView>('month');
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<Appointment | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
 
   const dateRange = useMemo(() => {
     const start = new Date(currentDate);
@@ -56,32 +72,87 @@ export default function Appointments() {
     return transformAppointmentsToCalendarEvents(appointments || []);
   }, [appointments]);
 
-  const handleEventClick = (event: CalendarEvent) => {
-    const appointmentDetails = [
-      `Appointment: ${event.title}`,
-      `Time: ${event.startDate.toLocaleString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      })} - ${event.endDate.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      })}`,
-      event.location ? `Location: ${event.location}` : '',
-      event.description ? `Details: ${event.description}` : '',
-    ]
-      .filter(Boolean)
-      .join('\n');
+  const formatDateTime = (
+    startAt: string,
+    endAt?: string
+  ): { date: string; time: string } => {
+    const startDate = new Date(startAt);
 
-    alert(appointmentDetails);
+    const relativeDate = getRelativeDate(startAt);
+
+    const formattedDate = startDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+
+    let dateFormatted: string;
+    if (relativeDate === 'Today') {
+      dateFormatted = 'Today';
+    } else {
+      dateFormatted = `${relativeDate}, ${formattedDate}`;
+    }
+
+    const startTimeFormatted = startDate.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    if (endAt) {
+      const endDate = new Date(endAt);
+      const endTimeFormatted = endDate.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+      return {
+        date: dateFormatted,
+        time: `${startTimeFormatted} - ${endTimeFormatted}`,
+      };
+    }
+
+    return { date: dateFormatted, time: startTimeFormatted };
+  };
+
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'ACCEPTED':
+        return 'bg-green-100 text-green-700';
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-700';
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-700';
+      case 'DECLINED':
+        return 'bg-red-100 text-red-700';
+      case 'NO_SHOW':
+        return 'bg-gray-100 text-gray-700';
+      default:
+        return 'bg-blue-100 text-blue-700';
+    }
+  };
+
+  const handleEventClick = (event: CalendarEvent) => {
+    // Find the appointment that matches the event
+    const appointment = appointments?.find((apt) => apt.id === event.id);
+    if (appointment) {
+      setSelectedAppointment(appointment);
+      setIsDialogOpen(true);
+    }
   };
 
   const handleDateClick = (date: Date) => {
-    console.log('Date clicked:', date);
+    setSelectedDate(date);
+    setIsDateDialogOpen(true);
+  };
+
+  const getAppointmentsForDate = (date: Date) => {
+    if (!appointments) return [];
+    return appointments.filter((appointment) => {
+      const appointmentDate = new Date(appointment.startAt || '');
+      return appointmentDate.toDateString() === date.toDateString();
+    });
   };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -135,19 +206,199 @@ export default function Appointments() {
   }
 
   return (
-    <div className='h-screen'>
-      <div className='h-[calc(100vh-120px)] pt-2'>
-        <Calendar
-          events={events}
-          view={currentView}
-          currentDate={currentDate}
-          onEventClick={handleEventClick}
-          onDateClick={handleDateClick}
-          onEventCreate={handleEventCreate}
-          onDateChange={handleDateChange}
-          onViewChange={handleViewChange}
-        />
+    <>
+      <div className='h-screen'>
+        <div className='h-[calc(100vh-120px)] pt-2'>
+          <Calendar
+            events={events}
+            view={currentView}
+            currentDate={currentDate}
+            onEventClick={handleEventClick}
+            onDateClick={handleDateClick}
+            onEventCreate={handleEventCreate}
+            onDateChange={handleDateChange}
+            onViewChange={handleViewChange}
+          />
+        </div>
       </div>
-    </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className='max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle className='text-xl'>
+              {selectedAppointment?.service || 'Appointment Details'}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedAppointment && (
+            <div className='flex flex-col gap-4 mt-2'>
+              {selectedAppointment.status && (
+                <Badge
+                  variant='secondary'
+                  className={clsx(
+                    getStatusColor(selectedAppointment.status),
+                    'text-[13px] font-medium w-fit'
+                  )}
+                >
+                  {capitalizeFirst(selectedAppointment.status)}
+                </Badge>
+              )}
+
+              <div className='flex items-center gap-3'>
+                <CalendarIcon className='w-5 h-5 text-neutral-500' />
+                <div className='flex flex-col'>
+                  <span className='text-sm font-medium text-neutral-600'>
+                    Date
+                  </span>
+                  <span className='text-[15px] text-neutral-900'>
+                    {
+                      formatDateTime(
+                        selectedAppointment.startAt || '',
+                        selectedAppointment.endAt
+                      ).date
+                    }
+                  </span>
+                </div>
+              </div>
+
+              <div className='flex items-center gap-3'>
+                <ClockIcon className='w-5 h-5 text-neutral-500' />
+                <div className='flex flex-col'>
+                  <span className='text-sm font-medium text-neutral-600'>
+                    Time
+                  </span>
+                  <span className='text-[15px] text-neutral-900'>
+                    {
+                      formatDateTime(
+                        selectedAppointment.startAt || '',
+                        selectedAppointment.endAt
+                      ).time
+                    }{' '}
+                    {selectedAppointment.durationMinutes && (
+                      <>({selectedAppointment.durationMinutes} minutes)</>
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {selectedAppointment.accountName && (
+                <div className='flex items-center gap-3 w-full'>
+                  <UserIcon className='w-5 h-5 text-neutral-500' />
+                  <div className='flex flex-col w-full'>
+                    <span className='text-sm font-medium text-neutral-600'>
+                      Client
+                    </span>
+                    <Link
+                      href={
+                        selectedAppointment.accountId
+                          ? `/clients/${selectedAppointment.accountId}`
+                          : '#'
+                      }
+                      className={clsx('text-[15px] hover:underline', {
+                        'text-purple cursor-pointer':
+                          selectedAppointment.accountId,
+                        'cursor-not-allowed': !selectedAppointment.accountId,
+                      })}
+                    >
+                      {selectedAppointment.accountName}
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              <div className='border-t pt-6 mt-3 text-sm text-neutral-500 flex flex-col gap-2'>
+                {selectedAppointment.createdBy && (
+                  <p>Booked by: {selectedAppointment.createdBy}</p>
+                )}
+                {selectedAppointment.createdAt && (
+                  <p>
+                    Created on:{' '}
+                    {new Date(selectedAppointment.createdAt).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
+        <DialogContent className='max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle className='text-[19px]'>
+              Appointments for{' '}
+              {selectedDate?.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedDate && (
+            <div className='flex flex-col gap-3 mt-2'>
+              {getAppointmentsForDate(selectedDate).length === 0 ? (
+                <div className='text-center py-8'>
+                  <CalendarIcon className='w-12 h-12 text-gray-400 mx-auto mb-4' />
+                  <p className='text-gray-500'>
+                    No appointments scheduled for this day
+                  </p>
+                </div>
+              ) : (
+                getAppointmentsForDate(selectedDate).map((appointment) => (
+                  <div
+                    key={appointment.id}
+                    className='border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors'
+                    onClick={() => {
+                      setSelectedAppointment(appointment);
+                      setIsDateDialogOpen(false);
+                      setIsDialogOpen(true);
+                    }}
+                  >
+                    <div className='flex items-start justify-between mb-2'>
+                      <div className='font-medium text-gray-900'>
+                        {appointment.service || 'Appointment'}
+                      </div>
+                      {appointment.status && (
+                        <Badge
+                          variant='secondary'
+                          className={clsx(
+                            getStatusColor(appointment.status),
+                            'text-xs'
+                          )}
+                        >
+                          {capitalizeFirst(appointment.status)}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className='flex items-center gap-4 text-sm text-gray-600'>
+                      <div className='flex items-center gap-1'>
+                        <ClockIcon className='w-4 h-4' />
+                        <span>
+                          {
+                            formatDateTime(
+                              appointment.startAt || '',
+                              appointment.endAt
+                            ).time
+                          }
+                        </span>
+                      </div>
+                      {appointment.accountName && (
+                        <div className='flex items-center gap-1'>
+                          <UserIcon className='w-4 h-4' />
+                          <span>{appointment.accountName}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
