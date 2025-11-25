@@ -71,7 +71,7 @@ const Calendar: React.FC<CalendarProps> = ({
   };
 
   const currentDayHasEvents = () => {
-    return events.some(event => {
+    return events.some((event) => {
       const eventDate = new Date(event.startDate);
       return eventDate.toDateString() === currentDate.toDateString();
     });
