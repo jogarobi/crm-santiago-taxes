@@ -19,6 +19,7 @@ export const appointmentKeys = {
   detail: (id: string) => [...appointmentKeys.details(), id] as const,
   availability: (input?: SearchAvailabilityInput) =>
     [...appointmentKeys.all, 'availability', { input }] as const,
+  count: () => [...appointmentKeys.all, 'count'] as const,
 };
 
 async function fetchAppointments(
@@ -249,5 +250,23 @@ export function useSyncAppointment() {
         queryKey: appointmentKeys.detail(variables.id),
       });
     },
+  });
+}
+
+async function fetchAppointmentCount(): Promise<{
+  success: boolean;
+  count: number;
+}> {
+  const response = await fetch('/api/appointments/count');
+  if (!response.ok) {
+    throw new Error('Failed to fetch appointment count');
+  }
+  return response.json();
+}
+
+export function useAppointmentCount() {
+  return useQuery({
+    queryKey: appointmentKeys.count(),
+    queryFn: fetchAppointmentCount,
   });
 }

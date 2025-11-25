@@ -11,9 +11,12 @@ import Link from 'next/link';
 import { UpcomingAppointments } from '@/components/UpcomingAppointments';
 import { SearchAccounts } from '@/components/SearchAccounts';
 import { useAccountCount } from '@/lib/hooks/use-accounts';
+import { useAppointmentCount } from '@/lib/hooks/use-appointments';
 
 export default function Home() {
   const { data: accountCount, isLoading } = useAccountCount();
+  const { data: appointmentCount, isLoading: isLoadingAppointmentCount } =
+    useAppointmentCount();
 
   return (
     <div className='flex flex-col gap-10'>
@@ -41,7 +44,13 @@ export default function Home() {
           <div className='flex items-center justify-between'>
             <p className='text-[15px] text-neutral-600'>Appointments</p>
           </div>
-          <p className='font-bold text-[22px] text-purple'>27</p>
+          <p className='font-bold text-[22px] text-purple'>
+            {isLoadingAppointmentCount ? (
+              <Loader2 className='animate-spin text-purple' />
+            ) : (
+              appointmentCount?.count?.toLocaleString() || '0'
+            )}
+          </p>
         </div>
 
         <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
