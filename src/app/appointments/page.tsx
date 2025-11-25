@@ -5,7 +5,15 @@ import Calendar from '@/components/Calendar';
 import { CalendarEvent, CalendarView } from '@/components/Calendar/types';
 import { useAppointments } from '@/lib/hooks/use-appointments';
 import { transformAppointmentsToCalendarEvents } from '@/lib/utils/appointmentUtils';
-import { Loader2, CalendarIcon, ClockIcon, UserIcon } from 'lucide-react';
+import {
+  Loader2,
+  CalendarIcon,
+  ClockIcon,
+  UserIcon,
+  AlertTriangleIcon,
+  TriangleAlertIcon,
+  ChevronDownIcon,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,8 +21,18 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Appointment } from '@/lib/types/appointment';
 import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
+import { useSyncAppointment } from '@/lib/hooks/use-appointments';
+import { CreateClientDialog } from '@/components/CreateClientDialog';
+import { LinkClientDialog } from '@/components/LinkClientDialog';
 import Link from 'next/link';
 import clsx from 'clsx';
 
@@ -26,6 +44,10 @@ export default function Appointments() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
+  const [isCreateClientDialogOpen, setIsCreateClientDialogOpen] =
+    useState(false);
+  const [isLinkClientDialogOpen, setIsLinkClientDialogOpen] = useState(false);
+  const syncAppointment = useSyncAppointment();
 
   const dateRange = useMemo(() => {
     const start = new Date(currentDate);
@@ -172,6 +194,46 @@ export default function Appointments() {
     setCurrentView(view);
   }, []);
 
+  const handleCreateClient = () => {
+    setIsCreateClientDialogOpen(true);
+  };
+
+  const handleLinkClient = () => {
+    setIsLinkClientDialogOpen(true);
+  };
+
+  const handleClientCreated = async (accountId: number) => {
+    if (!selectedAppointment?.id) return;
+
+    try {
+      await syncAppointment.mutateAsync({
+        id: selectedAppointment.id,
+        accountId,
+      });
+
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error syncing appointment:', error);
+    }
+  };
+
+  const handleClientLinked = async (accountId: number) => {
+    if (!selectedAppointment?.id) return;
+
+    try {
+      await syncAppointment.mutateAsync({
+        id: selectedAppointment.id,
+        accountId,
+        customerId: selectedAppointment.customerId,
+      });
+
+      setIsLinkClientDialogOpen(false);
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error linking appointment:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className='p-6 h-screen'>
@@ -242,6 +304,41 @@ export default function Appointments() {
                 >
                   {capitalizeFirst(selectedAppointment.status)}
                 </Badge>
+              )}
+
+              {!selectedAppointment.accountId && (
+                <div className='flex gap-3 border p-4 rounded-lg my-2'>
+                  <TriangleAlertIcon
+                    className='w-6 text-destructive'
+                    strokeWidth={2.4}
+                  />
+
+                  <div>
+                    <h4 className='text-[15px] font-semibold text-destructive mb-1'>
+                      Client Not Synced
+                    </h4>
+                    <p className='text-sm text-destructive mb-4'>
+                      This appointment has a customer which is not linked to a
+                      CRM client.
+                    </p>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button className='cursor-pointer'>
+                          <span>Sync client</span>
+                          <ChevronDownIcon />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align='start'>
+                        <DropdownMenuItem onClick={handleCreateClient}>
+                          Create new
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleLinkClient}>
+                          Link to existing one
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
               )}
 
               <div className='flex items-center gap-3'>
@@ -357,8 +454,13 @@ export default function Appointments() {
                     }}
                   >
                     <div className='flex items-start justify-between mb-2'>
-                      <div className='font-medium text-gray-900'>
-                        {appointment.service || 'Appointment'}
+                      <div className='flex items-center gap-2'>
+                        <span className='font-medium text-gray-900'>
+                          {appointment.service || 'Appointment'}
+                        </span>
+                        {!appointment.accountId && (
+                          <AlertTriangleIcon className='w-4 h-4 text-amber-600' />
+                        )}
                       </div>
                       {appointment.status && (
                         <Badge
@@ -399,6 +501,22 @@ export default function Appointments() {
           )}
         </DialogContent>
       </Dialog>
+
+      <CreateClientDialog
+        open={isCreateClientDialogOpen}
+        onOpenChange={setIsCreateClientDialogOpen}
+        customerId={selectedAppointment?.customerId}
+        customerName={selectedAppointment?.accountName}
+        onSuccess={handleClientCreated}
+      />
+
+      <LinkClientDialog
+        open={isLinkClientDialogOpen}
+        onOpenChange={setIsLinkClientDialogOpen}
+        onSelect={handleClientLinked}
+        isLinking={syncAppointment.isPending}
+        customerName={selectedAppointment?.accountName}
+      />
     </>
   );
 }

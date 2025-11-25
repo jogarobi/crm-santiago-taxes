@@ -177,129 +177,135 @@ const Calendar: React.FC<CalendarProps> = ({
     });
 
     return (
-      <div className='flex-1 overflow-y-auto'>
-        <div className='grid grid-cols-8 gap-0'>
-          <div className='border-r border-b p-2'></div>
-          {weekDays.map((day, dayIndex) => (
-            <div
-              key={day.toDateString()}
-              className={cn(
-                'border-b p-2 text-center flex flex-col items-center',
-                dayIndex < 6 && 'border-r'
-              )}
-            >
-              <div className='text-sm font-medium'>
-                {day.toLocaleDateString('en-US', { weekday: 'short' })}
-              </div>
+      <div className='flex-1 flex flex-col'>
+        <div className='bg-white border-b sticky top-0 z-20'>
+          <div className='grid grid-cols-8 gap-0'>
+            <div className='border-r border-b p-2'></div>
+            {weekDays.map((day, dayIndex) => (
               <div
+                key={day.toDateString()}
                 className={cn(
-                  'text-[15px]',
-                  day.toDateString() === today.toDateString() &&
-                    'text-white grid place-items-center bg-purple font-bold rounded-full w-8 h-8'
+                  'border-b p-2 text-center flex flex-col items-center',
+                  dayIndex < 6 && 'border-r'
                 )}
               >
-                {day.getDate()}
+                <div className='text-sm font-medium'>
+                  {day.toLocaleDateString('en-US', { weekday: 'short' })}
+                </div>
+                <div
+                  className={cn(
+                    'text-[15px]',
+                    day.toDateString() === today.toDateString() &&
+                      'text-white grid place-items-center bg-purple font-bold rounded-full w-8 h-8'
+                  )}
+                >
+                  {day.getDate()}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+        </div>
 
-          {(() => {
-            const hours = Array.from({ length: 15 }, (_, i) => i + 6);
-            const timeSlots = [];
+        <div>
+          <div className='grid grid-cols-8 gap-0'>
+            {(() => {
+              const hours = Array.from({ length: 15 }, (_, i) => i + 6);
+              const timeSlots = [];
 
-            for (const hour of hours) {
-              for (let minute = 0; minute < 60; minute += 15) {
-                timeSlots.push({ hour, minute });
+              for (const hour of hours) {
+                for (let minute = 0; minute < 60; minute += 15) {
+                  timeSlots.push({ hour, minute });
+                }
               }
-            }
 
-            return timeSlots.map(({ hour, minute }, index) => {
-              const isLastSlot = index === timeSlots.length - 1;
-              const isHourStart = minute === 0;
+              return timeSlots.map(({ hour, minute }, index) => {
+                const isLastSlot = index === timeSlots.length - 1;
+                const isHourStart = minute === 0;
 
-              return (
-                <Fragment key={`${hour}-${minute}`}>
-                  <div
-                    className={cn(
-                      'border-r py-1 pr-2 text-xs text-gray-500 text-right min-h-[15px]',
-                      !isLastSlot && 'border-b',
-                      isHourStart && 'border-t'
-                    )}
-                  >
-                    {isHourStart && (
-                      <>
-                        {hour === 0
-                          ? '12 AM'
-                          : hour <= 12
-                          ? `${hour} ${hour === 12 ? 'PM' : 'AM'}`
-                          : `${hour - 12} PM`}
-                      </>
-                    )}
-                  </div>
-                  {weekDays.map((day, dayIndex) => {
-                    const dayEvents = events.filter((event) => {
-                      const eventDate = new Date(event.startDate);
-                      const eventHour = eventDate.getHours();
-                      const eventMinute = eventDate.getMinutes();
+                return (
+                  <Fragment key={`${hour}-${minute}`}>
+                    <div
+                      className={cn(
+                        'border-r py-1 pr-2 text-xs text-gray-500 text-right min-h-[15px]',
+                        !isLastSlot && 'border-b',
+                        isHourStart && 'border-t'
+                      )}
+                    >
+                      {isHourStart && (
+                        <>
+                          {hour === 0
+                            ? '12 AM'
+                            : hour <= 12
+                            ? `${hour} ${hour === 12 ? 'PM' : 'AM'}`
+                            : `${hour - 12} PM`}
+                        </>
+                      )}
+                    </div>
+                    {weekDays.map((day, dayIndex) => {
+                      const dayEvents = events.filter((event) => {
+                        const eventDate = new Date(event.startDate);
+                        const eventHour = eventDate.getHours();
+                        const eventMinute = eventDate.getMinutes();
+
+                        return (
+                          eventDate.toDateString() === day.toDateString() &&
+                          eventHour === hour &&
+                          eventMinute >= minute &&
+                          eventMinute < minute + 15
+                        );
+                      });
+
+                      const isRightEdge = dayIndex === 6;
 
                       return (
-                        eventDate.toDateString() === day.toDateString() &&
-                        eventHour === hour &&
-                        eventMinute >= minute &&
-                        eventMinute < minute + 15
+                        <div
+                          key={`${day.toDateString()}-${hour}-${minute}`}
+                          className={cn(
+                            'min-h-[15px] p-1 relative',
+                            !isLastSlot && 'border-b',
+                            !isRightEdge && 'border-r',
+                            isHourStart && 'border-t'
+                          )}
+                        >
+                          {dayEvents.map((event) => {
+                            const durationMinutes = Math.round(
+                              (event.endDate.getTime() -
+                                event.startDate.getTime()) /
+                                (1000 * 60)
+                            );
+                            const height = Math.max(
+                              Math.round(durationMinutes / 15) * 15,
+                              45
+                            );
+
+                            return (
+                              <div
+                                key={event.id}
+                                className='bg-purple-100 text-purple-800 p-1.5 rounded text-xs cursor-pointer hover:bg-purple-200 absolute left-1 right-1 z-10 overflow-hidden flex flex-col justify-start'
+                                style={{ height: `${height}px` }}
+                                onClick={() => onEventClick?.(event)}
+                              >
+                                <div className='font-medium truncate leading-tight'>
+                                  {event.title}
+                                </div>
+                                <div className='text-xs opacity-75 truncate leading-tight'>
+                                  {event.startDate.toLocaleTimeString('en-US', {
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                    hour12: true,
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       );
-                    });
-
-                    const isRightEdge = dayIndex === 6;
-
-                    return (
-                      <div
-                        key={`${day.toDateString()}-${hour}-${minute}`}
-                        className={cn(
-                          'min-h-[15px] p-1 relative',
-                          !isLastSlot && 'border-b',
-                          !isRightEdge && 'border-r',
-                          isHourStart && 'border-t'
-                        )}
-                      >
-                        {dayEvents.map((event) => {
-                          const durationMinutes = Math.round(
-                            (event.endDate.getTime() -
-                              event.startDate.getTime()) /
-                              (1000 * 60)
-                          );
-                          const height = Math.max(
-                            Math.round(durationMinutes / 15) * 15,
-                            45
-                          );
-
-                          return (
-                            <div
-                              key={event.id}
-                              className='bg-purple-100 text-purple-800 p-1.5 rounded text-xs cursor-pointer hover:bg-purple-200 absolute left-1 right-1 z-10 overflow-hidden flex flex-col justify-start'
-                              style={{ height: `${height}px` }}
-                              onClick={() => onEventClick?.(event)}
-                            >
-                              <div className='font-medium truncate leading-tight'>
-                                {event.title}
-                              </div>
-                              <div className='text-xs opacity-75 truncate leading-tight'>
-                                {event.startDate.toLocaleTimeString('en-US', {
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                  hour12: true,
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </Fragment>
-              );
-            });
-          })()}
+                    })}
+                  </Fragment>
+                );
+              });
+            })()}
+          </div>
         </div>
       </div>
     );
@@ -349,7 +355,7 @@ const Calendar: React.FC<CalendarProps> = ({
             const isCurrentMonth = day.getMonth() === currentDate.getMonth();
             const isToday = day.toDateString() === today.toDateString();
             const isBottomRow = index >= 35;
-            const isRightEdge = (index + 1) % 7 === 0; // Every 7th item (indexes 6, 13, 20, 27, 34, 41)
+            const isRightEdge = (index + 1) % 7 === 0;
 
             return (
               <div
@@ -408,7 +414,7 @@ const Calendar: React.FC<CalendarProps> = ({
   return (
     <div
       className={cn(
-        'flex flex-col h-full bg-white border rounded-lg',
+        'flex flex-col h-full bg-white overflow-y-scroll border rounded-lg',
         className
       )}
     >
