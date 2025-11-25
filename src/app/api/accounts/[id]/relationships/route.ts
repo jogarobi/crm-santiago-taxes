@@ -49,8 +49,6 @@ export async function GET(
       .leftJoin(account, eq(accountRelation.relatedAccountId, account.id))
       .where(eq(accountRelation.accountId, accountId));
 
-    console.log(relationships);
-
     return NextResponse.json(relationships);
   } catch (error) {
     console.error('Error fetching account relationships:', error);

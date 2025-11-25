@@ -1,309 +1,153 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo, useState, useCallback } from 'react';
+import Calendar from '@/components/Calendar';
+import { CalendarEvent, CalendarView } from '@/components/Calendar/types';
 import { useAppointments } from '@/lib/hooks/use-appointments';
-import { CustomerName } from '@/components/CustomerName';
-import { ServiceName } from '@/components/ServiceName';
-import { TeamMemberName } from '@/components/TeamMemberName';
-import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  CalendarIcon,
-  ClockIcon,
-  Loader2,
-  PlusIcon,
-} from 'lucide-react';
-import Link from 'next/link';
+import { transformAppointmentsToCalendarEvents } from '@/lib/utils/appointmentUtils';
+import { Loader2 } from 'lucide-react';
 
-export default function AppointmentsPage() {
-  const [timeFilter, setTimeFilter] = useState<'upcoming' | 'past' | 'all'>(
-    'upcoming'
-  );
+export default function Appointments() {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentView, setCurrentView] = useState<CalendarView>('month');
 
-  // Set document title
-  useEffect(() => {
-    document.title = 'Appointments | Santiago Taxes CRM';
-  }, []);
+  const dateRange = useMemo(() => {
+    const start = new Date(currentDate);
+    const end = new Date(currentDate);
 
-  const filterDates = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    switch (timeFilter) {
-      case 'upcoming':
-        return {
-          startAtMin: today.toISOString(),
-          startAtMax: undefined,
-        };
-      case 'past':
-        return {
-          startAtMin: undefined,
-          startAtMax: today.toISOString(),
-        };
-      default:
-        return {
-          startAtMin: undefined,
-          startAtMax: undefined,
-        };
+    switch (currentView) {
+      case 'day':
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case 'week':
+        const dayOfWeek = start.getDay();
+        start.setDate(start.getDate() - dayOfWeek);
+        start.setHours(0, 0, 0, 0);
+        end.setDate(start.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case 'month':
+        start.setDate(1);
+        start.setHours(0, 0, 0, 0);
+        end.setMonth(end.getMonth() + 1, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
     }
-  }, [timeFilter]);
+
+    return {
+      startAtMin: start.toISOString(),
+      startAtMax: end.toISOString(),
+    };
+  }, [currentDate, currentView]);
 
   const {
     data: appointments,
     isLoading,
     error,
+    refetch,
   } = useAppointments({
-    limit: 50,
-    ...filterDates,
+    limit: 100,
+    startAtMin: dateRange.startAtMin,
+    startAtMax: dateRange.startAtMax,
   });
 
-  const formatDateTime = (
-    dateString: string,
-    durationMinutes?: number
-  ): { date: string; time: string } => {
-    const startDate = new Date(dateString);
+  const events = useMemo(() => {
+    return transformAppointmentsToCalendarEvents(appointments || []);
+  }, [appointments]);
 
-    // Get relative date (Today, Tomorrow, In 3 days, etc.)
-    const relativeDate = getRelativeDate(dateString);
-
-    // Get formatted date
-    const formattedDate = startDate.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-
-    // Combine relative date with formatted date (except for "Today")
-    let dateFormatted: string;
-    if (relativeDate === 'Today') {
-      dateFormatted = 'Today';
-    } else {
-      dateFormatted = `${relativeDate}, ${formattedDate}`;
-    }
-
-    const startTimeFormatted = startDate.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-
-    // Calculate end time if duration is provided
-    if (durationMinutes) {
-      const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
-      const endTimeFormatted = endDate.toLocaleTimeString('en-US', {
+  const handleEventClick = (event: CalendarEvent) => {
+    const appointmentDetails = [
+      `Appointment: ${event.title}`,
+      `Time: ${event.startDate.toLocaleString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
-      });
-      return {
-        date: dateFormatted,
-        time: `${startTimeFormatted} - ${endTimeFormatted}`,
-      };
-    }
+      })} - ${event.endDate.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      })}`,
+      event.location ? `Location: ${event.location}` : '',
+      event.description ? `Details: ${event.description}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
 
-    return { date: dateFormatted, time: startTimeFormatted };
+    alert(appointmentDetails);
   };
 
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case 'ACCEPTED':
-        return 'bg-green-100 text-green-700';
-      case 'PENDING':
-        return 'bg-yellow-100 text-yellow-700';
-      case 'CANCELLED':
-        return 'bg-red-100 text-red-700';
-      case 'DECLINED':
-        return 'bg-red-100 text-red-700';
-      case 'NO_SHOW':
-        return 'bg-gray-100 text-gray-700';
-      default:
-        return 'bg-blue-100 text-blue-700';
-    }
+  const handleDateClick = (date: Date) => {
+    console.log('Date clicked:', date);
   };
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleEventCreate = (_eventData: Partial<CalendarEvent>) => {
+    console.log('Create event functionality not implemented for appointments');
+  };
+
+  const handleRefresh = () => {
+    refetch();
+  };
+
+  const handleDateChange = useCallback((date: Date) => {
+    setCurrentDate(date);
+  }, []);
+
+  const handleViewChange = useCallback((view: CalendarView) => {
+    setCurrentView(view);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className='p-6 h-screen'>
+        <div className='flex items-center justify-center h-[calc(100vh-120px)]'>
+          <div className='flex items-center justify-center py-8'>
+            <Loader2 className='w-6 h-6 animate-spin text-purple' />
+            <span className='ml-2 text-neutral-600 text-sm'>
+              Loading appointments...
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className='p-6 h-screen'>
+        <div className='flex flex-col items-center justify-center h-[calc(100vh-120px)]'>
+          <div className='text-lg text-red-600 mb-4'>
+            Error: {error.message}
+          </div>
+          <button
+            onClick={handleRefresh}
+            className='px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className='flex flex-col gap-6'>
-      {/* Header */}
-      <div className='flex items-center justify-between'>
-        <div>
-          <h1 className='text-2xl font-semibold'>Appointments</h1>
-          <p className='text-neutral-600 text-sm mt-1'>
-            Manage your appointments and bookings
-          </p>
-        </div>
-        <Button className='bg-purple'>
-          <PlusIcon className='w-4 h-4' />
-          <span>New Appointment</span>
-        </Button>
+    <div className='h-screen'>
+      <div className='h-[calc(100vh-120px)] pt-2'>
+        <Calendar
+          events={events}
+          view={currentView}
+          currentDate={currentDate}
+          onEventClick={handleEventClick}
+          onDateClick={handleDateClick}
+          onEventCreate={handleEventCreate}
+          onDateChange={handleDateChange}
+          onViewChange={handleViewChange}
+        />
       </div>
-
-      {/* Filters */}
-      <div className='flex gap-2'>
-        <Button
-          variant={timeFilter === 'upcoming' ? 'default' : 'outline'}
-          onClick={() => setTimeFilter('upcoming')}
-          className={timeFilter === 'upcoming' ? 'bg-purple' : ''}
-        >
-          Upcoming
-        </Button>
-        <Button
-          variant={timeFilter === 'past' ? 'default' : 'outline'}
-          onClick={() => setTimeFilter('past')}
-          className={timeFilter === 'past' ? 'bg-purple' : ''}
-        >
-          Past
-        </Button>
-        <Button
-          variant={timeFilter === 'all' ? 'default' : 'outline'}
-          onClick={() => setTimeFilter('all')}
-          className={timeFilter === 'all' ? 'bg-purple' : ''}
-        >
-          All
-        </Button>
-      </div>
-
-      {/* Content */}
-      {isLoading && (
-        <div className='flex items-center justify-center py-12'>
-          <Loader2 className='w-8 h-8 animate-spin text-purple' />
-          <span className='ml-3 text-neutral-600'>Loading appointments...</span>
-        </div>
-      )}
-
-      {error && (
-        <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
-          <p className='text-red-800'>
-            Failed to load appointments. Please try again later.
-          </p>
-        </div>
-      )}
-
-      {!isLoading && !error && (!appointments || appointments.length === 0) && (
-        <div className='bg-white border rounded-lg p-12 text-center'>
-          <CalendarIcon className='w-12 h-12 text-neutral-400 mx-auto mb-4' />
-          <h3 className='text-lg font-medium text-neutral-900 mb-2'>
-            No appointments found
-          </h3>
-          <p className='text-neutral-600 mb-4'>
-            {timeFilter === 'upcoming'
-              ? 'You have no upcoming appointments scheduled.'
-              : timeFilter === 'past'
-              ? 'You have no past appointments.'
-              : 'No appointments available.'}
-          </p>
-          <Button className='bg-purple'>
-            <PlusIcon className='w-4 h-4' />
-            <span>Schedule Appointment</span>
-          </Button>
-        </div>
-      )}
-
-      {!isLoading && !error && appointments && appointments.length > 0 && (
-        <div className='space-y-3'>
-          <p className='text-sm text-neutral-600'>
-            Showing {appointments.length} appointment
-            {appointments.length !== 1 ? 's' : ''}
-          </p>
-
-          {appointments.map((appointment) => {
-            const durationMinutes =
-              appointment.appointmentSegments?.[0]?.durationMinutes || undefined;
-            const { date, time } = formatDateTime(
-              appointment.startAt || '',
-              durationMinutes
-            );
-
-            return (
-              <Link
-                key={appointment.id}
-                href={`/appointments/${appointment.id}`}
-                className='block bg-white border rounded-lg p-5 hover:shadow-md transition-shadow'
-              >
-                <div className='flex items-start justify-between'>
-                  <div className='flex-1'>
-                    <div className='flex items-center gap-4 mb-3'>
-                      <div className='flex items-center gap-2'>
-                        <CalendarIcon className='w-4 h-4 text-neutral-500' />
-                        <span className='text-sm font-medium text-neutral-700'>
-                          {date}
-                        </span>
-                      </div>
-                      <div className='flex items-center gap-2'>
-                        <ClockIcon className='w-4 h-4 text-neutral-500' />
-                        <span className='text-sm text-neutral-600'>{time}</span>
-                      </div>
-                    </div>
-
-                    <div className='space-y-2'>
-                      <div className='flex items-center gap-2 flex-wrap'>
-                        <CustomerName customerId={appointment.customerId} />
-                        {appointment.appointmentSegments?.[0]?.teamMemberId && (
-                          <>
-                            <span className='text-[15px] text-neutral-500'>with</span>
-                            <TeamMemberName
-                              teamMemberId={
-                                appointment.appointmentSegments[0].teamMemberId
-                              }
-                              className='text-[15px] text-neutral-700'
-                            />
-                          </>
-                        )}
-                      </div>
-
-                      {appointment.appointmentSegments?.[0]
-                        ?.serviceVariationId && (
-                        <div>
-                          <ServiceName
-                            serviceVariationId={
-                              appointment.appointmentSegments[0]
-                                .serviceVariationId
-                            }
-                            className='text-sm text-neutral-700 font-medium'
-                          />
-                        </div>
-                      )}
-
-                      {appointment.locationId && (
-                        <div className='flex items-center gap-2'>
-                          <span className='text-xs text-neutral-500'>
-                            Location ID: {appointment.locationId}
-                          </span>
-                        </div>
-                      )}
-
-                      {appointment.customerNote && (
-                        <p className='text-sm text-neutral-600 mt-2 pl-6'>
-                          {appointment.customerNote}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className='flex flex-col items-end gap-2'>
-                    {appointment.status && (
-                      <Badge
-                        variant='secondary'
-                        className={getStatusColor(appointment.status)}
-                      >
-                        {capitalizeFirst(appointment.status)}
-                      </Badge>
-                    )}
-                    {appointment.appointmentSegments &&
-                      appointment.appointmentSegments.length > 0 && (
-                        <span className='text-xs text-neutral-500'>
-                          {appointment.appointmentSegments[0].durationMinutes}{' '}
-                          min
-                        </span>
-                      )}
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
