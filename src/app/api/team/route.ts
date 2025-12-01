@@ -1,38 +1,31 @@
 import { NextResponse } from 'next/server';
-import { square } from '@/app/api/client';
-import type { TeamMember } from '@/lib/types/team';
+import { db } from '@/lib/db';
+import { staff } from '@/db/migrations/schema';
+import { eq } from 'drizzle-orm';
 
-// GET /api/team - Search/list all team members
 export async function GET() {
   try {
-    const response = await square.teamMembers.search({
-      query: {
-        filter: {
-          status: 'ACTIVE',
-        },
-      },
-    });
+    const activeStaff = await db
+      .select()
+      .from(staff)
+      .where(eq(staff.status, 'ACTIVE'));
 
-    // Serialize BigInt values to strings for JSON compatibility
-    const serializedTeamMembers: TeamMember[] = JSON.parse(
-      JSON.stringify(response.teamMembers || [], (_, value) =>
-        typeof value === 'bigint' ? value.toString() : value
-      )
-    );
-
-    // Extract just the TeamMember objects (not the wrapper)
-    const teamMembers = serializedTeamMembers.map((tm: any) => tm.teamMember || tm);
+    const teamMembers = activeStaff.map((member) => ({
+      id: member.squareId || member.id?.toString(),
+      givenName: member.firstName,
+      familyName: member.lastName,
+      status: member.status,
+    }));
 
     return NextResponse.json({
       success: true,
       teamMembers,
     });
   } catch (error) {
-    console.error('Error searching team members:', error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to search team members',
+        error: 'Failed to fetch staff members',
         message:
           error instanceof Error
             ? error.message

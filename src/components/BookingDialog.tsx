@@ -44,7 +44,6 @@ export function BookingDialog({
 
   const locationId = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID || '';
 
-  // Initialize time from selectedDateTime when dialog opens
   useEffect(() => {
     if (open && selectedDateTime) {
       const hours = selectedDateTime.getHours().toString().padStart(2, '0');
