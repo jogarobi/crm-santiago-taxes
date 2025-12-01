@@ -21,6 +21,7 @@ import { CalendarIcon, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAccounts } from '@/lib/hooks/use-accounts';
 import { useCreateAppointment } from '@/lib/hooks/use-appointments';
 import { useCatalogList } from '@/lib/hooks/use-catalog';
+import { useTeamMembers } from '@/lib/hooks/use-team';
 
 interface BookingDialogProps {
   open: boolean;
@@ -58,6 +59,7 @@ export function BookingDialog({
 
   const { data: accountsData } = useAccounts({ pageSize: 100 });
   const { data: catalogItems, isLoading: isCatalogLoading } = useCatalogList();
+  const { data: teamMembers, isLoading: isTeamLoading } = useTeamMembers();
   const createAppointment = useCreateAppointment();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -225,18 +227,30 @@ export function BookingDialog({
 
           <div className='space-y-2'>
             <Label htmlFor='team-member-id'>
-              Team Member ID <span className='text-red-500'>*</span>
+              Team Member <span className='text-red-500'>*</span>
             </Label>
-            <Input
-              id='team-member-id'
+            <Select
               value={teamMemberId}
-              onChange={(e) => setTeamMemberId(e.target.value)}
-              placeholder='Enter Team Member ID'
-              required
-            />
-            <p className='text-xs text-muted-foreground'>
-              The ID of the team member performing the service
-            </p>
+              onValueChange={setTeamMemberId}
+              disabled={isTeamLoading}
+            >
+              <SelectTrigger id='team-member-id' className='w-full'>
+                <SelectValue
+                  placeholder={
+                    isTeamLoading
+                      ? 'Loading team members...'
+                      : 'Select a team member'
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent className='w-full'>
+                {teamMembers?.map((member) => (
+                  <SelectItem key={member.id} value={member.id || ''}>
+                    {member.givenName} {member.familyName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className='space-y-2'>
