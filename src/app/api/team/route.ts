@@ -11,7 +11,7 @@ export async function GET() {
       .where(eq(staff.status, 'ACTIVE'));
 
     const teamMembers = activeStaff.map((member) => ({
-      id: member.squareId || member.id?.toString(),
+      id: member.squareId,
       givenName: member.firstName,
       familyName: member.lastName,
       status: member.status,

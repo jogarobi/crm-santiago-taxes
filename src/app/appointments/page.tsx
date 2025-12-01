@@ -34,7 +34,7 @@ import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
 import { useSyncAppointment } from '@/lib/hooks/use-appointments';
 import { CreateClientDialog } from '@/components/CreateClientDialog';
 import { LinkClientDialog } from '@/components/LinkClientDialog';
-import { BookingDialog } from '@/components/BookingDialog';
+import { AppointmentDialog } from '@/components/AppointmentDialog';
 import Link from 'next/link';
 import clsx from 'clsx';
 
@@ -687,7 +687,7 @@ export default function Appointments() {
         customerName={selectedAppointment?.accountName}
       />
 
-      <BookingDialog
+      <AppointmentDialog
         open={isBookingDialogOpen}
         onOpenChange={setIsBookingDialogOpen}
         selectedDateTime={selectedTimeSlot || undefined}
