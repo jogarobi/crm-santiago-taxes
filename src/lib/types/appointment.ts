@@ -70,6 +70,7 @@ export type CreateAppointmentInput = {
   customerId?: string;
   customerNote?: string;
   sellerNote?: string;
+  serviceName?: string;
   appointmentSegments: Array<{
     durationMinutes: number;
     serviceVariationId: string;

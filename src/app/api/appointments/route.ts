@@ -1,12 +1,12 @@
 import { square } from '@/app/api/client';
-import { appointment } from '@/db/migrations/schema';
+import { account, appointment } from '@/db/migrations/schema';
 import { db } from '@/lib/db';
 import {
   Appointment,
   AppointmentErrorResponse,
   AppointmentResponse,
 } from '@/lib/types/appointment';
-import { and, asc, gte, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { AppointmentSegment } from 'square';
 
@@ -114,6 +114,57 @@ export async function POST(request: Request) {
         typeof value === 'bigint' ? value.toString() : value
       )
     );
+
+    // Save appointment to Turso database
+    // @ts-expect-error - Square SDK types may vary
+    const booking = response.result?.booking || response.booking;
+    if (booking?.id) {
+      try {
+        // Calculate endAt time
+        const startAt = new Date(booking.startAt || body.startAt);
+        const durationMinutes =
+          booking.appointmentSegments?.[0]?.durationMinutes || 30;
+        const endAt = new Date(startAt.getTime() + durationMinutes * 60000);
+
+        // Get account info if customerId is provided
+        let accountId: number | undefined;
+        let accountName: string | undefined;
+        if (body.customerId) {
+          const accountResult = await db
+            .select()
+            .from(account)
+            .where(eq(account.squareId, body.customerId))
+            .limit(1);
+
+          if (accountResult.length > 0) {
+            accountId = accountResult[0].id || undefined;
+            const firstName = accountResult[0].firstName;
+            const lastName = accountResult[0].lastName;
+            if (firstName && lastName) {
+              accountName = `${firstName} ${lastName}`;
+            }
+          }
+        }
+
+        await db.insert(appointment).values({
+          squareId: booking.id,
+          status: booking.status || 'PENDING',
+          startAt: startAt.toISOString(),
+          endAt: endAt.toISOString(),
+          durationMinutes,
+          accountId,
+          accountName,
+          service: body.serviceName,
+          accountSquareId: body.customerId || '',
+          creatorType: 'SYSTEM',
+          createdBy: 'CRM',
+          createdAt: new Date().toISOString(),
+        });
+      } catch (dbError) {
+        console.error('Error saving appointment to database:', dbError);
+        // Don't fail the request if database save fails
+      }
+    }
 
     return NextResponse.json(
       {

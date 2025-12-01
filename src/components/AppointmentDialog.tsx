@@ -131,19 +131,35 @@ export function AppointmentDialog({
       return;
     }
 
+    const [year, month, day] = selectedDate.split('-').map(Number);
     const [hours, minutes] = selectedTime.split(':').map(Number);
-    const bookingDateTime = new Date(selectedDate);
-    bookingDateTime.setHours(hours, minutes, 0, 0);
+    const bookingDateTime = new Date(
+      year,
+      month - 1,
+      day,
+      hours,
+      minutes,
+      0,
+      0
+    );
 
     try {
       const variations = catalogItems
         ?.filter((item) => item.type === 'ITEM')
         .flatMap((item) => item.itemData?.variations);
 
+      const selectedItem = catalogItems
+        ?.filter((item) => item.type === 'ITEM')
+        .find((item) =>
+          item.itemData?.variations?.some((v) => v.id === serviceVariationId)
+        );
+      const serviceName = selectedItem?.itemData?.name || undefined;
+
       await createAppointment.mutateAsync({
         startAt: bookingDateTime.toISOString(),
         customerId: accountId,
         customerNote: undefined,
+        serviceName,
         appointmentSegments: [
           {
             durationMinutes: 30,
