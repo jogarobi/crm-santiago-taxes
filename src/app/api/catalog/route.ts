@@ -1,24 +1,19 @@
 import { NextResponse } from 'next/server';
 import { square } from '@/app/api/client';
-import {
-  CatalogObject,
-  CatalogErrorResponse,
-} from '@/lib/types/catalog';
+import { CatalogErrorResponse } from '@/lib/types/catalog';
+import { CatalogObject } from 'square';
 
-// GET /api/catalog - List all catalog items
 export async function GET() {
   try {
     const page = await square.catalog.list({
       types: 'ITEM',
     });
 
-    // Collect all items from the page
     const allObjects: CatalogObject[] = [];
     for (const item of page.data) {
       allObjects.push(item as CatalogObject);
     }
 
-    // Serialize BigInt values to strings for JSON compatibility
     const serializedObjects: CatalogObject[] = JSON.parse(
       JSON.stringify(allObjects, (_, value) =>
         typeof value === 'bigint' ? value.toString() : value

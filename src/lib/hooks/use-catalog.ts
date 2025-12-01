@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import type {
-  CatalogObject,
   CatalogObjectResponse,
   BatchRetrieveCatalogObjectsResponse,
 } from '@/lib/types/catalog';
+import { CatalogObject } from 'square';
 
 export const catalogKeys = {
   all: ['catalog'] as const,

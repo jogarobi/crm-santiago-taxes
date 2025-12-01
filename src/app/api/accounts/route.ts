@@ -7,13 +7,17 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
+    const onlyWithSquareId = searchParams.get('onlyWithSquareId') === 'true';
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const pageIndex = parseInt(searchParams.get('pageIndex') || '0');
 
     const offset = pageIndex * pageSize;
 
-    const whereClause = search
-      ? or(
+    const conditions = [];
+
+    if (search) {
+      conditions.push(
+        or(
           like(account.firstName, `%${search}%`),
           like(account.lastName, `%${search}%`),
           like(
@@ -23,7 +27,14 @@ export async function GET(request: Request) {
           like(account.ssnLastFour, `%${search}%`),
           eq(account.id, isNaN(parseInt(search)) ? -1 : parseInt(search))
         )
-      : undefined;
+      );
+    }
+
+    if (onlyWithSquareId) {
+      conditions.push(sql`${account.squareId} IS NOT NULL`);
+    }
+
+    const whereClause = conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined;
 
     const totalResult = await db
       .select({ count: count() })

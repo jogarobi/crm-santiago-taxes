@@ -134,7 +134,7 @@ const Calendar: React.FC<CalendarProps> = ({
                     !isLastSlot && 'border-b'
                   )}
                   onClick={() => {
-                    if (onTimeSlotClick) {
+                    if (onTimeSlotClick && slotEvents.length === 0) {
                       const slotDateTime = new Date(currentDate);
                       slotDateTime.setHours(hour, minute, 0, 0);
                       onTimeSlotClick(slotDateTime);
@@ -156,7 +156,10 @@ const Calendar: React.FC<CalendarProps> = ({
                         key={event.id}
                         className='bg-purple-100 text-purple-800 p-1.5 rounded text-xs cursor-pointer hover:bg-purple-200 absolute left-1 right-1 z-10 overflow-hidden flex flex-col justify-start'
                         style={{ height: `${height}px` }}
-                        onClick={() => onEventClick?.(event)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEventClick?.(event);
+                        }}
                       >
                         <div className='font-medium truncate leading-tight'>
                           {event.title}
@@ -290,7 +293,7 @@ const Calendar: React.FC<CalendarProps> = ({
                             !isRightEdge && 'border-r'
                           )}
                           onClick={() => {
-                            if (onTimeSlotClick) {
+                            if (onTimeSlotClick && dayEvents.length === 0) {
                               const slotDateTime = new Date(day);
                               slotDateTime.setHours(hour, minute, 0, 0);
                               onTimeSlotClick(slotDateTime);
@@ -313,7 +316,10 @@ const Calendar: React.FC<CalendarProps> = ({
                                 key={event.id}
                                 className='bg-purple-100 text-purple-800 p-1.5 rounded text-xs cursor-pointer hover:bg-purple-200 absolute left-1 right-1 z-10 overflow-hidden flex flex-col justify-start'
                                 style={{ height: `${height}px` }}
-                                onClick={() => onEventClick?.(event)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onEventClick?.(event);
+                                }}
                               >
                                 <div className='font-medium truncate leading-tight'>
                                   {event.title}

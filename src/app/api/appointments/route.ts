@@ -1,13 +1,14 @@
-import { NextResponse } from 'next/server';
 import { square } from '@/app/api/client';
+import { appointment } from '@/db/migrations/schema';
+import { db } from '@/lib/db';
 import {
   Appointment,
-  AppointmentResponse,
   AppointmentErrorResponse,
+  AppointmentResponse,
 } from '@/lib/types/appointment';
-import { db } from '@/lib/db';
-import { appointment } from '@/db/migrations/schema';
-import { and, gte, lte, asc } from 'drizzle-orm';
+import { and, asc, gte, lte } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { AppointmentSegment } from 'square';
 
 export async function GET(request: Request) {
   try {
@@ -75,9 +76,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const locationId = process.env.SQUARE_LOCATION_ID!;
     const body = await request.json();
 
-    if (!body.startAt || !body.locationId || !body.appointmentSegments) {
+    if (!body.startAt || !body.appointmentSegments) {
       return NextResponse.json(
         {
           success: false,
@@ -91,15 +93,23 @@ export async function POST(request: Request) {
     const response = await square.bookings.create({
       booking: {
         startAt: body.startAt,
-        locationId: body.locationId,
+        locationId,
         customerId: body.customerId,
         customerNote: body.customerNote,
         sellerNote: body.sellerNote,
-        appointmentSegments: body.appointmentSegments,
+        appointmentSegments: body.appointmentSegments.map(
+          (segment: AppointmentSegment) => ({
+            ...segment,
+            serviceVariationVersion:
+              typeof segment.serviceVariationVersion === 'string'
+                ? BigInt(segment.serviceVariationVersion)
+                : segment.serviceVariationVersion,
+          })
+        ),
       },
     });
 
-    const serializedAppointment: Appointment = JSON.parse(
+    const serializedResponse = JSON.parse(
       JSON.stringify(response, (_, value) =>
         typeof value === 'bigint' ? value.toString() : value
       )
@@ -108,7 +118,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: true,
-        appointment: serializedAppointment,
+        appointment: serializedResponse,
       },
       { status: 201 }
     );

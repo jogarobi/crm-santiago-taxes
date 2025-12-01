@@ -67,7 +67,6 @@ export type ListAppointmentsParams = {
 
 export type CreateAppointmentInput = {
   startAt: string;
-  locationId: string;
   customerId?: string;
   customerNote?: string;
   sellerNote?: string;
