@@ -4,6 +4,7 @@ import { AppointmentErrorResponse } from '@/lib/types/appointment';
 
 export async function POST(request: Request) {
   try {
+    const locationId = process.env.SQUARE_LOCATION_ID!;
     const body = await request.json();
 
     if (!body.query) {
@@ -17,7 +18,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const response = await square.bookings.searchAvailability(body);
+    const queryWithLocation = {
+      ...body,
+      query: {
+        ...body.query,
+        filter: {
+          ...body.query.filter,
+          locationId,
+        },
+      },
+    };
+
+    const response = await square.bookings.searchAvailability(
+      queryWithLocation
+    );
 
     const serializedAvailabilities = JSON.parse(
       JSON.stringify(response || [], (_, value) =>
@@ -27,8 +41,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      availabilities: serializedAvailabilities,
-      count: serializedAvailabilities.length,
+      availabilities: serializedAvailabilities.availabilities,
+      count: serializedAvailabilities.availabilities.length,
     });
   } catch (error) {
     console.error('Error searching availability:', error);

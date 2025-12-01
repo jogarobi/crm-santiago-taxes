@@ -23,9 +23,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAccounts } from '@/lib/hooks/use-accounts';
-import { useCreateAppointment } from '@/lib/hooks/use-appointments';
+import {
+  useCreateAppointment,
+  useAvailability,
+} from '@/lib/hooks/use-appointments';
 import { useCatalogList } from '@/lib/hooks/use-catalog';
-import { useTeamMembers } from '@/lib/hooks/use-team';
 import type { Account } from '@/lib/types/account';
 import { AlertCircle, CheckCircle2, Loader2, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -47,7 +49,6 @@ export function AppointmentDialog({
   const [debouncedAccountSearch, setDebouncedAccountSearch] = useState('');
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
   const [serviceVariationId, setServiceVariationId] = useState<string>('');
-  const [teamMemberId, setTeamMemberId] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [error, setError] = useState<string>('');
@@ -94,13 +95,23 @@ export function AppointmentDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, selectedDateTime]);
 
+  useEffect(() => {
+    setSelectedTime('');
+  }, [selectedDate, serviceVariationId]);
+
   const { data: accountsData, isLoading: isAccountsLoading } = useAccounts(
     debouncedAccountSearch
       ? { search: debouncedAccountSearch, onlyWithSquareId: true }
       : undefined
   );
   const { data: catalogItems, isLoading: isCatalogLoading } = useCatalogList();
-  const { data: teamMembers, isLoading: isTeamLoading } = useTeamMembers();
+  const { data: availableTimeSlots = [], isLoading: isLoadingAvailability } =
+    useAvailability(
+      selectedDate && serviceVariationId
+        ? { selectedDate, serviceVariationId, teamMemberId: 'YG3C3GKYDQ23T' }
+        : null
+    );
+  console.log(availableTimeSlots);
   const createAppointment = useCreateAppointment();
 
   const handleAccountSelect = (account: Account) => {
@@ -121,12 +132,7 @@ export function AppointmentDialog({
     setError('');
     setSuccess(false);
 
-    if (
-      !selectedDate ||
-      !selectedTime ||
-      !serviceVariationId ||
-      !teamMemberId
-    ) {
+    if (!selectedDate || !selectedTime || !serviceVariationId) {
       setError('Please fill in all required fields');
       return;
     }
@@ -164,7 +170,7 @@ export function AppointmentDialog({
           {
             durationMinutes: 30,
             serviceVariationId,
-            teamMemberId,
+            teamMemberId: 'YG3C3GKYDQ23T',
             serviceVariationVersion: variations?.find(
               (variation) => variation?.id === serviceVariationId
             )?.version,
@@ -192,7 +198,6 @@ export function AppointmentDialog({
     setSelectedAccount(null);
     setAccountSearch('');
     setServiceVariationId('');
-    setTeamMemberId('');
     setSelectedDate('');
     setSelectedTime('');
     setError('');
@@ -206,7 +211,7 @@ export function AppointmentDialog({
           <DialogTitle className='text-xl'>Schedule appointment</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
+        <form onSubmit={handleSubmit} className='flex flex-col gap-7'>
           {error && (
             <div className='flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md'>
               <AlertCircle className='w-4 h-4 text-red-600' />
@@ -223,38 +228,8 @@ export function AppointmentDialog({
             </div>
           )}
 
-          <div className='flex items-center gap-4 w-full'>
-            <div className='w-full space-y-3'>
-              <Label htmlFor='date'>
-                Date <span className='text-red-500'>*</span>
-              </Label>
-              <Input
-                id='date'
-                type='date'
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                required
-                className='p-3 w-full'
-              />
-            </div>
-
-            <div className='w-full space-y-3'>
-              <Label htmlFor='time'>
-                Time <span className='text-red-500'>*</span>
-              </Label>
-              <Input
-                id='time'
-                type='time'
-                value={selectedTime}
-                onChange={(e) => setSelectedTime(e.target.value)}
-                required
-                className='p-3'
-              />
-            </div>
-          </div>
-
-          <div className='w-full space-y-3 mt-3'>
-            <Label htmlFor='service-variation-id'>
+          <div className='w-full mt-3'>
+            <Label htmlFor='service-variation-id' className='mb-2'>
               Service <span className='text-red-500'>*</span>
             </Label>
             <Select
@@ -291,36 +266,10 @@ export function AppointmentDialog({
             </Select>
           </div>
 
-          <div className='space-y-3'>
-            <Label htmlFor='team-member-id'>
-              Team Member <span className='text-red-500'>*</span>
+          <div className='relative account-search-container'>
+            <Label htmlFor='client' className='mb-2'>
+              Client
             </Label>
-            <Select
-              value={teamMemberId}
-              onValueChange={setTeamMemberId}
-              disabled={isTeamLoading}
-            >
-              <SelectTrigger id='team-member-id' className='w-full'>
-                <SelectValue
-                  placeholder={
-                    isTeamLoading
-                      ? 'Loading team members...'
-                      : 'Select a team member'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent className='w-full'>
-                {teamMembers?.map((member) => (
-                  <SelectItem key={member.id} value={member.id || ''}>
-                    {member.givenName} {member.familyName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className='space-y-3 relative account-search-container'>
-            <Label htmlFor='client'>Client (optional)</Label>
             {selectedAccount ? (
               <div className='flex items-center gap-2 p-3 border rounded-md bg-neutral-50'>
                 <div className='flex-1'>
@@ -415,6 +364,56 @@ export function AppointmentDialog({
                 )}
               </>
             )}
+          </div>
+
+          <div className='flex items-center gap-4 w-full'>
+            <div className='w-full '>
+              <Label htmlFor='date' className='mb-2'>
+                Date <span className='text-red-500'>*</span>
+              </Label>
+              <Input
+                id='date'
+                type='date'
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                required
+                className='p-3 w-full'
+              />
+            </div>
+
+            <div className='w-full '>
+              <Label htmlFor='time' className='mb-2'>
+                Time <span className='text-red-500'>*</span>
+              </Label>
+              <Select
+                value={selectedTime}
+                onValueChange={setSelectedTime}
+                disabled={
+                  isLoadingAvailability || !selectedDate || !serviceVariationId
+                }
+              >
+                <SelectTrigger className='w-full' id='time'>
+                  <SelectValue
+                    placeholder={
+                      isLoadingAvailability
+                        ? 'Loading available times...'
+                        : !selectedDate || !serviceVariationId
+                        ? 'Select first'
+                        : availableTimeSlots.length === 0
+                        ? 'No available times'
+                        : 'Select a time'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent className='w-full'>
+                  {availableTimeSlots.map((timeSlot) => (
+                    <SelectItem key={timeSlot} value={timeSlot}>
+                      {timeSlot}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className='flex justify-end gap-3 pt-4'>

@@ -10,6 +10,12 @@ import type {
   SearchAvailabilityInput,
 } from '@/lib/types/appointment';
 
+type AvailabilityParams = {
+  selectedDate: string;
+  serviceVariationId: string;
+  teamMemberId: string;
+};
+
 export const appointmentKeys = {
   all: ['appointments'] as const,
   lists: () => [...appointmentKeys.all, 'list'] as const,
@@ -17,7 +23,7 @@ export const appointmentKeys = {
     [...appointmentKeys.lists(), { filters }] as const,
   details: () => [...appointmentKeys.all, 'detail'] as const,
   detail: (id: string) => [...appointmentKeys.details(), id] as const,
-  availability: (input?: SearchAvailabilityInput) =>
+  availability: (input?: SearchAvailabilityInput | AvailabilityParams) =>
     [...appointmentKeys.all, 'availability', { input }] as const,
   count: () => [...appointmentKeys.all, 'count'] as const,
 };
@@ -228,6 +234,72 @@ export function useCancelAppointment() {
 export function useSearchAvailability() {
   return useMutation({
     mutationFn: searchAvailability,
+  });
+}
+
+async function fetchAvailability(
+  params: AvailabilityParams
+): Promise<string[]> {
+  const { selectedDate, serviceVariationId, teamMemberId } = params;
+
+  const startOfDay = new Date(selectedDate);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(selectedDate);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const response = await fetch('/api/appointments/search-availability', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: {
+        filter: {
+          startAtRange: {
+            startAt: startOfDay.toISOString(),
+            endAt: endOfDay.toISOString(),
+          },
+          segmentFilters: [
+            {
+              serviceVariationId,
+              teamMemberIdFilter: {
+                any: [teamMemberId],
+              },
+            },
+          ],
+        },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch availability');
+  }
+
+  const data = await response.json();
+  const availabilities = data.availabilities || [];
+
+  const timeSlots: string[] = [];
+  availabilities.forEach(
+    (availability: { startAt?: string; endAt?: string }) => {
+      if (availability.startAt) {
+        const startTime = new Date(availability.startAt);
+        const hours = startTime.getHours().toString().padStart(2, '0');
+        const minutes = startTime.getMinutes().toString().padStart(2, '0');
+        timeSlots.push(`${hours}:${minutes}`);
+      }
+    }
+  );
+
+  return timeSlots;
+}
+
+export function useAvailability(params: AvailabilityParams | null) {
+  return useQuery({
+    queryKey: appointmentKeys.availability(params || undefined),
+    queryFn: () => fetchAvailability(params!),
+    enabled:
+      !!params?.selectedDate &&
+      !!params?.serviceVariationId &&
+      !!params?.teamMemberId,
   });
 }
 
