@@ -3,7 +3,11 @@
 import { useMemo, useState, useCallback } from 'react';
 import Calendar from '@/components/Calendar';
 import { CalendarEvent, CalendarView } from '@/components/Calendar/types';
-import { useAppointments } from '@/lib/hooks/use-appointments';
+import {
+  useAppointments,
+  useDateRangeAvailability,
+} from '@/lib/hooks/use-appointments';
+import { useCatalogList } from '@/lib/hooks/use-catalog';
 import { transformAppointmentsToCalendarEvents } from '@/lib/utils/appointmentUtils';
 import {
   Loader2,
@@ -38,6 +42,8 @@ import { AppointmentDialog } from '@/components/AppointmentDialog';
 import Link from 'next/link';
 import clsx from 'clsx';
 
+const TEAM_MEMBER_ID = 'YG3C3GKYDQ23T'; // Hardcoded until authentication is implemented
+
 export default function Appointments() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState<CalendarView>('week');
@@ -61,21 +67,21 @@ export default function Appointments() {
 
     switch (currentView) {
       case 'day':
-        start.setHours(0, 0, 0, 0);
-        end.setHours(23, 59, 59, 999);
+        start.setUTCHours(0, 0, 0, 0);
+        end.setUTCHours(23, 59, 59, 999);
         break;
       case 'week':
-        const dayOfWeek = start.getDay();
-        start.setDate(start.getDate() - dayOfWeek);
-        start.setHours(0, 0, 0, 0);
-        end.setDate(start.getDate() + 6);
-        end.setHours(23, 59, 59, 999);
+        const dayOfWeek = start.getUTCDay();
+        start.setUTCDate(start.getUTCDate() - dayOfWeek);
+        start.setUTCHours(0, 0, 0, 0);
+        end.setUTCDate(start.getUTCDate() + 6);
+        end.setUTCHours(23, 59, 59, 999);
         break;
       case 'month':
-        start.setDate(1);
-        start.setHours(0, 0, 0, 0);
-        end.setMonth(end.getMonth() + 1, 0);
-        end.setHours(23, 59, 59, 999);
+        start.setUTCDate(1);
+        start.setUTCHours(0, 0, 0, 0);
+        end.setUTCMonth(end.getUTCMonth() + 1, 0);
+        end.setUTCHours(23, 59, 59, 999);
         break;
     }
 
@@ -99,6 +105,64 @@ export default function Appointments() {
   const events = useMemo(() => {
     return transformAppointmentsToCalendarEvents(appointments || []);
   }, [appointments]);
+
+  const { data: catalogItems } = useCatalogList();
+
+  const serviceVariationIds = useMemo(() => {
+    if (!catalogItems) return [];
+    return catalogItems
+      .filter((item) => item.type === 'ITEM')
+      .flatMap((item) => {
+        return item.itemData?.variations || [];
+      })
+      .filter(
+        (item) =>
+          item.type === 'ITEM_VARIATION' &&
+          item.itemVariationData?.availableForBooking
+      )
+      .map((variation) => variation.id)
+      .filter((id): id is string => !!id);
+  }, [catalogItems]);
+
+  const { data: availableSlots = [] } = useDateRangeAvailability(
+    serviceVariationIds.length > 0
+      ? {
+          startDate: dateRange.startAtMin,
+          endDate: dateRange.startAtMax,
+          teamMemberId: TEAM_MEMBER_ID,
+          serviceVariationIds,
+        }
+      : null
+  );
+
+  const unavailableSlots = useMemo(() => {
+    const availableSet = new Set(availableSlots);
+    const unavailable = new Set<string>();
+
+    const start = new Date(dateRange.startAtMin);
+    const end = new Date(dateRange.startAtMax);
+    const daysToCheck: Date[] = [];
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      daysToCheck.push(new Date(d));
+    }
+
+    daysToCheck.forEach((day) => {
+      for (let hour = 6; hour < 21; hour++) {
+        for (let minute = 0; minute < 60; minute += 15) {
+          const slot = new Date(day);
+          slot.setHours(hour, minute, 0, 0);
+          const slotISO = slot.toISOString();
+
+          if (!availableSet.has(slotISO)) {
+            unavailable.add(slotISO);
+          }
+        }
+      }
+    });
+
+    return unavailable;
+  }, [availableSlots, dateRange.startAtMin, dateRange.startAtMax]);
 
   const formatDateTime = (
     startAt: string,
@@ -286,6 +350,7 @@ export default function Appointments() {
             events={events}
             view={currentView}
             currentDate={currentDate}
+            unavailableSlots={unavailableSlots}
             onEventClick={handleEventClick}
             onDateClick={handleDateClick}
             onEventCreate={handleEventCreate}

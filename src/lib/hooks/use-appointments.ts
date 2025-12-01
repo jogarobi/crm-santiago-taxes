@@ -303,6 +303,94 @@ export function useAvailability(params: AvailabilityParams | null) {
   });
 }
 
+type DateRangeAvailabilityParams = {
+  startDate: string;
+  endDate: string;
+  teamMemberId: string;
+  serviceVariationIds?: string[];
+};
+
+async function fetchDateRangeAvailability(
+  params: DateRangeAvailabilityParams
+): Promise<string[]> {
+  const { startDate, endDate, teamMemberId, serviceVariationIds } = params;
+
+  const daysToFetch: Date[] = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    daysToFetch.push(new Date(d));
+  }
+
+  const availabilityPromises = daysToFetch.map(async (day) => {
+    const dayStart = new Date(day);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(day);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    // Build segment filters - one for each service variation or just team member
+    const segmentFilters =
+      serviceVariationIds && serviceVariationIds.length > 0
+        ? serviceVariationIds.map((serviceVariationId) => ({
+            serviceVariationId,
+            teamMemberIdFilter: {
+              any: [teamMemberId],
+            },
+          }))
+        : [
+            {
+              teamMemberIdFilter: {
+                any: [teamMemberId],
+              },
+            },
+          ];
+
+    const response = await fetch('/api/appointments/search-availability', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: {
+          filter: {
+            startAtRange: {
+              startAt: dayStart.toISOString(),
+              endAt: dayEnd.toISOString(),
+            },
+            segmentFilters,
+          },
+        },
+      }),
+    });
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    const availabilities = data.availabilities || [];
+
+    return availabilities
+      .map((avail: { startAt?: string }) => avail.startAt)
+      .filter(Boolean);
+  });
+
+  const allAvailabilities = await Promise.all(availabilityPromises);
+  return allAvailabilities.flat();
+}
+
+export function useDateRangeAvailability(
+  params: DateRangeAvailabilityParams | null
+) {
+  return useQuery({
+    queryKey: [
+      ...appointmentKeys.all,
+      'dateRangeAvailability',
+      params,
+    ] as const,
+    queryFn: () => fetchDateRangeAvailability(params!),
+    enabled: !!params?.startDate && !!params?.endDate && !!params?.teamMemberId,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
 export function useSyncAppointment() {
   const queryClient = useQueryClient();
 

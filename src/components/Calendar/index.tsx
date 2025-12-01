@@ -10,6 +10,7 @@ const Calendar: React.FC<CalendarProps> = ({
   events = [],
   view,
   currentDate,
+  unavailableSlots = new Set(),
   onEventClick,
   onDateClick,
   onTimeSlotClick,
@@ -115,6 +116,10 @@ const Calendar: React.FC<CalendarProps> = ({
             const isLastSlot = index === timeSlots.length - 1;
             const isHourStart = minute === 0;
 
+            const slotDateTime = new Date(currentDate);
+            slotDateTime.setHours(hour, minute, 0, 0);
+            const isUnavailable = unavailableSlots.has(slotDateTime.toISOString());
+
             return (
               <Fragment key={`${hour}-${minute}`}>
                 <div className='py-1 pr-2 text-xs text-gray-500 text-right border-r min-h-[15px]'>
@@ -130,13 +135,14 @@ const Calendar: React.FC<CalendarProps> = ({
                 </div>
                 <div
                   className={cn(
-                    'border-gray-100 min-h-[15px] p-1 relative cursor-pointer hover:bg-purple/5 transition-colors',
-                    !isLastSlot && 'border-b'
+                    'border-gray-100 min-h-[15px] p-1 relative transition-colors',
+                    !isLastSlot && 'border-b',
+                    isUnavailable && slotEvents.length === 0
+                      ? 'bg-gray-100 cursor-not-allowed'
+                      : 'cursor-pointer hover:bg-purple/5'
                   )}
                   onClick={() => {
-                    if (onTimeSlotClick && slotEvents.length === 0) {
-                      const slotDateTime = new Date(currentDate);
-                      slotDateTime.setHours(hour, minute, 0, 0);
+                    if (onTimeSlotClick && slotEvents.length === 0 && !isUnavailable) {
                       onTimeSlotClick(slotDateTime);
                     }
                   }}
@@ -283,19 +289,23 @@ const Calendar: React.FC<CalendarProps> = ({
                       });
 
                       const isRightEdge = dayIndex === 6;
+                      const slotDateTime = new Date(day);
+                      slotDateTime.setHours(hour, minute, 0, 0);
+                      const isUnavailable = unavailableSlots.has(slotDateTime.toISOString());
 
                       return (
                         <div
                           key={`${day.toDateString()}-${hour}-${minute}`}
                           className={cn(
-                            'min-h-[15px] p-1 relative cursor-pointer hover:bg-purple/5 transition-colors',
+                            'min-h-[15px] p-1 relative transition-colors',
                             !isLastSlot && 'border-b',
-                            !isRightEdge && 'border-r'
+                            !isRightEdge && 'border-r',
+                            isUnavailable && dayEvents.length === 0
+                              ? 'bg-gray-100 cursor-not-allowed'
+                              : 'cursor-pointer hover:bg-purple/5'
                           )}
                           onClick={() => {
-                            if (onTimeSlotClick && dayEvents.length === 0) {
-                              const slotDateTime = new Date(day);
-                              slotDateTime.setHours(hour, minute, 0, 0);
+                            if (onTimeSlotClick && dayEvents.length === 0 && !isUnavailable) {
                               onTimeSlotClick(slotDateTime);
                             }
                           }}
