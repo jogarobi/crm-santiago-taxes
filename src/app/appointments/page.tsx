@@ -34,6 +34,7 @@ import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
 import { useSyncAppointment } from '@/lib/hooks/use-appointments';
 import { CreateClientDialog } from '@/components/CreateClientDialog';
 import { LinkClientDialog } from '@/components/LinkClientDialog';
+import { BookingDialog } from '@/components/BookingDialog';
 import Link from 'next/link';
 import clsx from 'clsx';
 
@@ -50,6 +51,8 @@ export default function Appointments() {
   const [isCreateClientDialogOpen, setIsCreateClientDialogOpen] =
     useState(false);
   const [isLinkClientDialogOpen, setIsLinkClientDialogOpen] = useState(false);
+  const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<Date | null>(null);
   const syncAppointment = useSyncAppointment();
 
   const dateRange = useMemo(() => {
@@ -197,6 +200,11 @@ export default function Appointments() {
     setCurrentView(view);
   }, []);
 
+  const handleTimeSlotClick = useCallback((dateTime: Date) => {
+    setSelectedTimeSlot(dateTime);
+    setIsBookingDialogOpen(true);
+  }, []);
+
   const handleCreateClient = () => {
     setIsCreateClientDialogOpen(true);
   };
@@ -281,6 +289,7 @@ export default function Appointments() {
             onEventClick={handleEventClick}
             onDateClick={handleDateClick}
             onEventCreate={handleEventCreate}
+            onTimeSlotClick={handleTimeSlotClick}
             onDateChange={handleDateChange}
             onViewChange={handleViewChange}
           />
@@ -676,6 +685,12 @@ export default function Appointments() {
         onSelect={handleClientLinked}
         isLinking={syncAppointment.isPending}
         customerName={selectedAppointment?.accountName}
+      />
+
+      <BookingDialog
+        open={isBookingDialogOpen}
+        onOpenChange={setIsBookingDialogOpen}
+        selectedDateTime={selectedTimeSlot || undefined}
       />
     </>
   );

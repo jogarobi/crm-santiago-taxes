@@ -12,6 +12,7 @@ const Calendar: React.FC<CalendarProps> = ({
   currentDate,
   onEventClick,
   onDateClick,
+  onTimeSlotClick,
   onDateChange,
   onViewChange,
   className,
@@ -129,9 +130,16 @@ const Calendar: React.FC<CalendarProps> = ({
                 </div>
                 <div
                   className={cn(
-                    'border-gray-100 min-h-[15px] p-1 relative',
+                    'border-gray-100 min-h-[15px] p-1 relative cursor-pointer hover:bg-purple/5 transition-colors',
                     !isLastSlot && 'border-b'
                   )}
+                  onClick={() => {
+                    if (onTimeSlotClick) {
+                      const slotDateTime = new Date(currentDate);
+                      slotDateTime.setHours(hour, minute, 0, 0);
+                      onTimeSlotClick(slotDateTime);
+                    }
+                  }}
                 >
                   {slotEvents.map((event) => {
                     const durationMinutes = Math.round(
@@ -277,10 +285,17 @@ const Calendar: React.FC<CalendarProps> = ({
                         <div
                           key={`${day.toDateString()}-${hour}-${minute}`}
                           className={cn(
-                            'min-h-[15px] p-1 relative',
+                            'min-h-[15px] p-1 relative cursor-pointer hover:bg-purple/5 transition-colors',
                             !isLastSlot && 'border-b',
                             !isRightEdge && 'border-r'
                           )}
+                          onClick={() => {
+                            if (onTimeSlotClick) {
+                              const slotDateTime = new Date(day);
+                              slotDateTime.setHours(hour, minute, 0, 0);
+                              onTimeSlotClick(slotDateTime);
+                            }
+                          }}
                         >
                           {dayEvents.map((event) => {
                             const durationMinutes = Math.round(

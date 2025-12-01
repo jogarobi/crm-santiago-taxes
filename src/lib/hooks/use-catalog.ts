@@ -7,10 +7,23 @@ import type {
 
 export const catalogKeys = {
   all: ['catalog'] as const,
+  list: () => [...catalogKeys.all, 'list'] as const,
   objects: () => [...catalogKeys.all, 'objects'] as const,
   object: (id: string) => [...catalogKeys.objects(), id] as const,
   batch: (ids: string[]) => [...catalogKeys.objects(), 'batch', ids] as const,
 };
+
+async function fetchCatalogList(): Promise<CatalogObject[]> {
+  const response = await fetch('/api/catalog');
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch catalog items');
+  }
+
+  const data: { success: boolean; objects: CatalogObject[] } =
+    await response.json();
+  return data.objects;
+}
 
 async function fetchCatalogObject(
   objectId: string
@@ -57,5 +70,12 @@ export function useCatalogObject(objectId?: string) {
     queryKey: catalogKeys.object(objectId || ''),
     queryFn: () => fetchCatalogObject(objectId!),
     enabled: !!objectId,
+  });
+}
+
+export function useCatalogList() {
+  return useQuery({
+    queryKey: catalogKeys.list(),
+    queryFn: fetchCatalogList,
   });
 }
