@@ -17,9 +17,6 @@ import { Button } from './ui/button';
 import { InfoIcon, Loader2, SearchIcon } from 'lucide-react';
 import { useAccounts } from '@/lib/hooks/use-accounts';
 import type { Account } from '@/lib/types/account';
-import { TZDate } from '@date-fns/tz';
-
-const TIMEZONE = 'America/New_York';
 
 interface LinkClientDialogProps {
   open: boolean;
@@ -131,7 +128,7 @@ export function LinkClientDialog({
                 <>
                   {accounts.map((account) => {
                     const dob = account.dateOfBirth
-                      ? new TZDate(account.dateOfBirth, TIMEZONE)
+                      ? new Date(account.dateOfBirth)
                       : null;
                     const formattedDob = dob
                       ? dob.toLocaleDateString('en-US', {

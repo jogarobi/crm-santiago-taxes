@@ -9,9 +9,6 @@ import type {
   UpdateAppointmentInput,
   SearchAvailabilityInput,
 } from '@/lib/types/appointment';
-import { TZDate } from '@date-fns/tz';
-
-const TIMEZONE = 'America/New_York';
 
 type AvailabilityParams = {
   selectedDate: string;
@@ -245,9 +242,9 @@ async function fetchAvailability(
 ): Promise<string[]> {
   const { selectedDate, serviceVariationId, teamMemberId } = params;
 
-  const startOfDay = new TZDate(selectedDate, TIMEZONE);
+  const startOfDay = new Date(selectedDate);
   startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new TZDate(selectedDate, TIMEZONE);
+  const endOfDay = new Date(selectedDate);
   endOfDay.setHours(23, 59, 59, 999);
 
   const response = await fetch('/api/appointments/search-availability', {
@@ -284,7 +281,7 @@ async function fetchAvailability(
   availabilities.forEach(
     (availability: { startAt?: string; endAt?: string }) => {
       if (availability.startAt) {
-        const startTime = new TZDate(availability.startAt, TIMEZONE);
+        const startTime = new Date(availability.startAt);
         const hours = startTime.getHours().toString().padStart(2, '0');
         const minutes = startTime.getMinutes().toString().padStart(2, '0');
         timeSlots.push(`${hours}:${minutes}`);

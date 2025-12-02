@@ -18,7 +18,6 @@ import {
   startOfMonth,
   format,
 } from 'date-fns';
-import { TZDate } from '@date-fns/tz';
 import {
   Loader2,
   CalendarIcon,
@@ -53,17 +52,14 @@ import Link from 'next/link';
 import clsx from 'clsx';
 
 const TEAM_MEMBER_ID = 'YG3C3GKYDQ23T'; // Hardcoded until authentication is implemented
-const TIMEZONE = 'America/New_York';
 
 export default function Appointments() {
-  const [currentDate, setCurrentDate] = useState(
-    new TZDate(new Date(), TIMEZONE)
-  );
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState<CalendarView>('week');
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<TZDate | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
   const [viewingAppointmentFromDate, setViewingAppointmentFromDate] =
     useState(false);
@@ -71,9 +67,9 @@ export default function Appointments() {
     useState(false);
   const [isLinkClientDialogOpen, setIsLinkClientDialogOpen] = useState(false);
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TZDate | null>(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<Date | null>(null);
   const syncAppointment = useSyncAppointment();
-  const today = useMemo(() => new TZDate(new Date(), TIMEZONE), []);
+  const today = useMemo(() => new Date(), []);
 
   const dateRange = useMemo(() => {
     let start: Date;
@@ -151,7 +147,7 @@ export default function Appointments() {
     startAt: string,
     endAt?: string
   ): { date: string; time: string } => {
-    const startDate = new TZDate(startAt, TIMEZONE);
+    const startDate = new Date(startAt);
 
     const relativeDate = getRelativeDate(startAt);
 
@@ -167,7 +163,7 @@ export default function Appointments() {
     const startTimeFormatted = format(startDate, 'h:mm a');
 
     if (endAt) {
-      const endDate = new TZDate(endAt, TIMEZONE);
+      const endDate = new Date(endAt);
       const endTimeFormatted = format(endDate, 'h:mm a');
       return {
         date: dateFormatted,
@@ -204,16 +200,16 @@ export default function Appointments() {
     }
   };
 
-  const handleDateClick = (date: Date | TZDate) => {
-    setSelectedDate(date instanceof TZDate ? date : new TZDate(date, TIMEZONE));
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(new Date(date));
     setIsDateDialogOpen(true);
   };
 
-  const getAppointmentsForDate = (date: Date | TZDate) => {
+  const getAppointmentsForDate = (date: Date) => {
     if (!appointments) return [];
-    const tzDate = date instanceof TZDate ? date : new TZDate(date, TIMEZONE);
+    const tzDate = new Date(date);
     return appointments.filter((appointment) => {
-      const appointmentDate = new TZDate(appointment.startAt || '', TIMEZONE);
+      const appointmentDate = new Date(appointment.startAt || '');
       return appointmentDate.toDateString() === tzDate.toDateString();
     });
   };
@@ -227,18 +223,16 @@ export default function Appointments() {
     refetch();
   };
 
-  const handleDateChange = useCallback((date: Date | TZDate) => {
-    setCurrentDate(date instanceof TZDate ? date : new TZDate(date, TIMEZONE));
+  const handleDateChange = useCallback((date: Date) => {
+    setCurrentDate(new Date(date));
   }, []);
 
   const handleViewChange = useCallback((view: CalendarView) => {
     setCurrentView(view);
   }, []);
 
-  const handleTimeSlotClick = useCallback((dateTime: Date | TZDate) => {
-    setSelectedTimeSlot(
-      dateTime instanceof TZDate ? dateTime : new TZDate(dateTime, TIMEZONE)
-    );
+  const handleTimeSlotClick = useCallback((dateTime: Date) => {
+    setSelectedTimeSlot(new Date(dateTime));
     setIsBookingDialogOpen(true);
   }, []);
 
@@ -461,7 +455,7 @@ export default function Appointments() {
                   <p>
                     Created on:{' '}
                     {format(
-                      new TZDate(selectedAppointment.createdAt, TIMEZONE),
+                      new Date(selectedAppointment.createdAt),
                       'PPP p'
                     )}
                   </p>
@@ -694,9 +688,8 @@ export default function Appointments() {
                     {selectedAppointment.createdAt && (
                       <p>
                         Created on:{' '}
-                        {new TZDate(
-                          selectedAppointment.createdAt,
-                          TIMEZONE
+                        {new Date(
+                          selectedAppointment.createdAt
                         ).toLocaleString()}
                       </p>
                     )}
