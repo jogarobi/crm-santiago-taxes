@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { square } from '@/app/api/client';
 import { CatalogErrorResponse } from '@/lib/types/catalog';
-import { CatalogObject } from 'square';
+import type { CatalogObject } from 'square';
+
+export type { CatalogObject };
 
 export async function GET() {
   try {

@@ -1,5 +1,7 @@
 import type { CatalogObject } from 'square';
 
+export type { CatalogObject };
+
 export interface CatalogObjectResponse {
   success: boolean;
   object: CatalogObject;

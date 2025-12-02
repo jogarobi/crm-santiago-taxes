@@ -25,18 +25,13 @@ export function ServiceName({
     );
   }
 
-  // Get the service name from related objects
-  // When fetching a variation, the parent ITEM with the service name is in relatedObjects
   const relatedItem = catalogResponse?.relatedObjects?.find(
     (obj) => obj.type === 'ITEM'
   );
 
   const itemName = relatedItem?.itemData?.name;
-  const variationName = catalogResponse?.object?.itemVariationData?.name;
 
-  // Use item name (the service name) as priority, otherwise use variation name
-  const serviceName =
-    itemName || variationName || `Service ID: ${serviceVariationId}`;
+  const serviceName = itemName || `Service ID: ${serviceVariationId}`;
 
   return <span className={className}>{serviceName}</span>;
 }
