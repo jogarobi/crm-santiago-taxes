@@ -125,8 +125,6 @@ const Calendar: React.FC<CalendarProps> = ({
               .toISOString()
               .replace('00.000-05:00', '00Z');
 
-            // Check if this slot or the previous 15-minute slot is in availableSlots
-            // (since available slots are 30 minutes = two 15-minute slots)
             const slotDateTime15MinBefore = new TZDate(currentDate, TIMEZONE);
             slotDateTime15MinBefore.setHours(hour, minute - 15, 0, 0);
             const formattedSlot15MinBefore = slotDateTime15MinBefore

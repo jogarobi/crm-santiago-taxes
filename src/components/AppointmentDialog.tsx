@@ -31,6 +31,9 @@ import { useCatalogList } from '@/lib/hooks/use-catalog';
 import type { Account } from '@/lib/types/account';
 import { AlertCircle, CheckCircle2, Loader2, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { TZDate } from '@date-fns/tz';
+
+const TIMEZONE = 'America/New_York';
 
 interface AppointmentDialogProps {
   open: boolean;
@@ -83,15 +86,16 @@ export function AppointmentDialog({
 
   useEffect(() => {
     if (open && selectedDateTime) {
-      const year = selectedDateTime.getFullYear();
-      const month = (selectedDateTime.getMonth() + 1)
+      const tzDate = new TZDate(selectedDateTime, TIMEZONE);
+      const year = tzDate.getFullYear();
+      const month = (tzDate.getMonth() + 1)
         .toString()
         .padStart(2, '0');
-      const day = selectedDateTime.getDate().toString().padStart(2, '0');
+      const day = tzDate.getDate().toString().padStart(2, '0');
       const initialDate = `${year}-${month}-${day}`;
 
-      const hours = selectedDateTime.getHours().toString().padStart(2, '0');
-      const minutes = selectedDateTime.getMinutes().toString().padStart(2, '0');
+      const hours = tzDate.getHours().toString().padStart(2, '0');
+      const minutes = tzDate.getMinutes().toString().padStart(2, '0');
       const initialTime = `${hours}:${minutes}`;
 
       if (selectedDate !== initialDate) {
@@ -152,14 +156,15 @@ export function AppointmentDialog({
 
     const [year, month, day] = selectedDate.split('-').map(Number);
     const [hours, minutes] = selectedTime.split(':').map(Number);
-    const bookingDateTime = new Date(
+    const bookingDateTime = new TZDate(
       year,
       month - 1,
       day,
       hours,
       minutes,
       0,
-      0
+      0,
+      TIMEZONE
     );
 
     try {
