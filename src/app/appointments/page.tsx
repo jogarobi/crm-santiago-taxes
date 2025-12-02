@@ -72,9 +72,10 @@ export default function Appointments() {
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<Date | null>(null);
   const syncAppointment = useSyncAppointment();
+  const today = useMemo(() => new TZDate(new Date(), TIMEZONE), []);
 
   const dateRange = useMemo(() => {
-    let start: Date = currentDate;
+    let start: Date;
     let end: Date;
 
     switch (currentView) {
@@ -137,7 +138,7 @@ export default function Appointments() {
   const { data: availableSlots = [] } = useDateRangeAvailability(
     serviceVariationIds.length > 0
       ? {
-          startDate: dateRange.startAtMin,
+          startDate: today.toISOString(),
           endDate: dateRange.startAtMax,
           teamMemberId: TEAM_MEMBER_ID,
           serviceVariationIds,
@@ -323,11 +324,9 @@ export default function Appointments() {
     );
   }
 
-  if (currentView === 'day') {
-  }
-
   console.log(dateRange.startAtMin);
   console.log(dateRange.startAtMax);
+  console.log(availableSlots);
 
   return (
     <>

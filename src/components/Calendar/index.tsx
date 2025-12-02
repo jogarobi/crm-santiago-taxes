@@ -121,9 +121,24 @@ const Calendar: React.FC<CalendarProps> = ({
 
             const slotDateTime = new TZDate(currentDate, TIMEZONE);
             slotDateTime.setHours(hour, minute, 0, 0);
-            const isAvailable = availableSlots.includes(
-              slotDateTime.toISOString()
-            );
+            const formattedSlot = slotDateTime
+              .toISOString()
+              .replace('00.000-05:00', '00Z');
+
+            // Check if this slot or the previous 15-minute slot is in availableSlots
+            // (since available slots are 30 minutes = two 15-minute slots)
+            const slotDateTime15MinBefore = new TZDate(currentDate, TIMEZONE);
+            slotDateTime15MinBefore.setHours(hour, minute - 15, 0, 0);
+            const formattedSlot15MinBefore = slotDateTime15MinBefore
+              .toISOString()
+              .replace('00.000-05:00', '00Z');
+
+            const now = new TZDate(new Date(), TIMEZONE);
+            const isInPast = slotDateTime < now;
+            const isAvailableForBooking =
+              availableSlots.includes(formattedSlot) ||
+              availableSlots.includes(formattedSlot15MinBefore);
+            const isUnavailable = isInPast || !isAvailableForBooking;
 
             return (
               <Fragment key={`${hour}-${minute}`}>
@@ -142,15 +157,17 @@ const Calendar: React.FC<CalendarProps> = ({
                   className={cn(
                     'border-gray-100 min-h-[15px] p-1 relative transition-colors',
                     !isLastSlot && 'border-b',
-                    isAvailable && slotEvents.length === 0
-                      ? 'bg-gray-100 cursor-not-allowed'
-                      : 'cursor-pointer hover:bg-purple/5'
+                    isUnavailable && slotEvents.length === 0
+                      ? 'bg-gray-100 cursor-not-allowed opacity-60'
+                      : slotEvents.length === 0
+                      ? 'cursor-pointer hover:bg-green-50 bg-green-50/30'
+                      : 'cursor-pointer'
                   )}
                   onClick={() => {
                     if (
                       onTimeSlotClick &&
                       slotEvents.length === 0 &&
-                      !isAvailable
+                      !isUnavailable
                     ) {
                       onTimeSlotClick(slotDateTime);
                     }
@@ -300,9 +317,24 @@ const Calendar: React.FC<CalendarProps> = ({
                       const isRightEdge = dayIndex === 6;
                       const slotDateTime = new TZDate(day, TIMEZONE);
                       slotDateTime.setHours(hour, minute, 0, 0);
-                      const isUnavailable = availableSlots.includes(
-                        slotDateTime.toISOString()
-                      );
+                      const formattedSlot = slotDateTime
+                        .toISOString()
+                        .replace('00.000-05:00', '00Z');
+
+                      // Check if this slot or the previous 15-minute slot is in availableSlots
+                      // (since available slots are 30 minutes = two 15-minute slots)
+                      const slotDateTime15MinBefore = new TZDate(day, TIMEZONE);
+                      slotDateTime15MinBefore.setHours(hour, minute - 15, 0, 0);
+                      const formattedSlot15MinBefore = slotDateTime15MinBefore
+                        .toISOString()
+                        .replace('00.000-05:00', '00Z');
+
+                      const now = new TZDate(new Date(), TIMEZONE);
+                      const isInPast = slotDateTime < now;
+                      const isAvailableForBooking =
+                        availableSlots.includes(formattedSlot) ||
+                        availableSlots.includes(formattedSlot15MinBefore);
+                      const isUnavailable = isInPast || !isAvailableForBooking;
 
                       return (
                         <div
@@ -312,8 +344,10 @@ const Calendar: React.FC<CalendarProps> = ({
                             !isLastSlot && 'border-b',
                             !isRightEdge && 'border-r',
                             isUnavailable && dayEvents.length === 0
-                              ? 'bg-gray-100 cursor-not-allowed'
-                              : 'cursor-pointer hover:bg-purple/5'
+                              ? 'bg-gray-100 cursor-not-allowed opacity-60'
+                              : dayEvents.length === 0
+                              ? 'cursor-pointer hover:bg-green-50 bg-green-50/30'
+                              : 'cursor-pointer'
                           )}
                           onClick={() => {
                             if (
