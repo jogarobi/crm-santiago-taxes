@@ -15,7 +15,7 @@ export interface CalendarProps {
   events: CalendarEvent[];
   view: CalendarView;
   currentDate: Date;
-  unavailableSlots?: Set<string>;
+  availableSlots: string[];
   onEventClick?: (event: CalendarEvent) => void;
   onDateClick?: (date: Date) => void;
   onEventCreate?: (eventData: Partial<CalendarEvent>) => void;

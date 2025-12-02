@@ -9,6 +9,9 @@ import type {
   UpdateAppointmentInput,
   SearchAvailabilityInput,
 } from '@/lib/types/appointment';
+import { TZDate } from '@date-fns/tz';
+
+const TIMEZONE = 'America/New_York';
 
 type AvailabilityParams = {
   selectedDate: string;
@@ -242,9 +245,9 @@ async function fetchAvailability(
 ): Promise<string[]> {
   const { selectedDate, serviceVariationId, teamMemberId } = params;
 
-  const startOfDay = new Date(selectedDate);
+  const startOfDay = new TZDate(selectedDate, TIMEZONE);
   startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(selectedDate);
+  const endOfDay = new TZDate(selectedDate, TIMEZONE);
   endOfDay.setHours(23, 59, 59, 999);
 
   const response = await fetch('/api/appointments/search-availability', {
@@ -281,7 +284,7 @@ async function fetchAvailability(
   availabilities.forEach(
     (availability: { startAt?: string; endAt?: string }) => {
       if (availability.startAt) {
-        const startTime = new Date(availability.startAt);
+        const startTime = new TZDate(availability.startAt, TIMEZONE);
         const hours = startTime.getHours().toString().padStart(2, '0');
         const minutes = startTime.getMinutes().toString().padStart(2, '0');
         timeSlots.push(`${hours}:${minutes}`);
@@ -315,65 +318,44 @@ async function fetchDateRangeAvailability(
 ): Promise<string[]> {
   const { startDate, endDate, teamMemberId, serviceVariationIds } = params;
 
-  const daysToFetch: Date[] = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    daysToFetch.push(new Date(d));
-  }
-
-  const availabilityPromises = daysToFetch.map(async (day) => {
-    const dayStart = new Date(day);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(day);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    // Build segment filters - one for each service variation or just team member
-    const segmentFilters =
-      serviceVariationIds && serviceVariationIds.length > 0
-        ? serviceVariationIds.map((serviceVariationId) => ({
-            serviceVariationId,
+  const segmentFilters =
+    serviceVariationIds && serviceVariationIds.length > 0
+      ? serviceVariationIds.map((serviceVariationId) => ({
+          serviceVariationId,
+          teamMemberIdFilter: {
+            any: [teamMemberId],
+          },
+        }))
+      : [
+          {
             teamMemberIdFilter: {
               any: [teamMemberId],
             },
-          }))
-        : [
-            {
-              teamMemberIdFilter: {
-                any: [teamMemberId],
-              },
-            },
-          ];
-
-    const response = await fetch('/api/appointments/search-availability', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: {
-          filter: {
-            startAtRange: {
-              startAt: dayStart.toISOString(),
-              endAt: dayEnd.toISOString(),
-            },
-            segmentFilters,
           },
+        ];
+
+  const response = await fetch('/api/appointments/search-availability', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: {
+        filter: {
+          startAtRange: {
+            startAt: startDate,
+            endAt: endDate,
+          },
+          segmentFilters,
         },
-      }),
-    });
-
-    if (!response.ok) return [];
-
-    const data = await response.json();
-    const availabilities = data.availabilities || [];
-
-    return availabilities
-      .map((avail: { startAt?: string }) => avail.startAt)
-      .filter(Boolean);
+      },
+    }),
   });
 
-  const allAvailabilities = await Promise.all(availabilityPromises);
-  return allAvailabilities.flat();
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  const availabilities = data.availabilities || [];
+
+  return availabilities.map((avail: { startAt?: string }) => avail.startAt);
 }
 
 export function useDateRangeAvailability(

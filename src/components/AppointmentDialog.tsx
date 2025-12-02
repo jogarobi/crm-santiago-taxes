@@ -119,7 +119,6 @@ export function AppointmentDialog({
         ? { selectedDate, serviceVariationId, teamMemberId: 'YG3C3GKYDQ23T' }
         : null
     );
-  console.log(availableTimeSlots);
   const createAppointment = useCreateAppointment();
 
   const handleAccountSelect = (account: Account) => {

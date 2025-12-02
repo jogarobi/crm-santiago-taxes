@@ -5,12 +5,15 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { CalendarProps } from './types';
+import { TZDate } from '@date-fns/tz';
+
+const TIMEZONE = 'America/New_York';
 
 const Calendar: React.FC<CalendarProps> = ({
   events = [],
   view,
   currentDate,
-  unavailableSlots = new Set(),
+  availableSlots,
   onEventClick,
   onDateClick,
   onTimeSlotClick,
@@ -18,11 +21,11 @@ const Calendar: React.FC<CalendarProps> = ({
   onViewChange,
   className,
 }) => {
-  const today = new Date();
+  const today = new TZDate(new Date(), TIMEZONE);
   today.setHours(0, 0, 0, 0);
 
   const navigateDate = (direction: 'prev' | 'next') => {
-    const newDate = new Date(currentDate);
+    const newDate = new TZDate(currentDate, TIMEZONE);
 
     switch (view) {
       case 'day':
@@ -49,9 +52,9 @@ const Calendar: React.FC<CalendarProps> = ({
           day: 'numeric',
         });
       case 'week':
-        const startOfWeek = new Date(currentDate);
+        const startOfWeek = new TZDate(currentDate, TIMEZONE);
         startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
-        const endOfWeek = new Date(startOfWeek);
+        const endOfWeek = new TZDate(startOfWeek, TIMEZONE);
         endOfWeek.setDate(startOfWeek.getDate() + 6);
 
         return `${startOfWeek.toLocaleDateString('en-US', {
@@ -74,14 +77,14 @@ const Calendar: React.FC<CalendarProps> = ({
 
   const currentDayHasEvents = () => {
     return events.some((event) => {
-      const eventDate = new Date(event.startDate);
+      const eventDate = new TZDate(event.startDate, TIMEZONE);
       return eventDate.toDateString() === currentDate.toDateString();
     });
   };
 
   const renderDayView = () => {
     const dayEvents = events.filter((event) => {
-      const eventDate = new Date(event.startDate);
+      const eventDate = new TZDate(event.startDate, TIMEZONE);
       return eventDate.toDateString() === currentDate.toDateString();
     });
 
@@ -116,9 +119,11 @@ const Calendar: React.FC<CalendarProps> = ({
             const isLastSlot = index === timeSlots.length - 1;
             const isHourStart = minute === 0;
 
-            const slotDateTime = new Date(currentDate);
+            const slotDateTime = new TZDate(currentDate, TIMEZONE);
             slotDateTime.setHours(hour, minute, 0, 0);
-            const isUnavailable = unavailableSlots.has(slotDateTime.toISOString());
+            const isAvailable = availableSlots.includes(
+              slotDateTime.toISOString()
+            );
 
             return (
               <Fragment key={`${hour}-${minute}`}>
@@ -137,12 +142,16 @@ const Calendar: React.FC<CalendarProps> = ({
                   className={cn(
                     'border-gray-100 min-h-[15px] p-1 relative transition-colors',
                     !isLastSlot && 'border-b',
-                    isUnavailable && slotEvents.length === 0
+                    isAvailable && slotEvents.length === 0
                       ? 'bg-gray-100 cursor-not-allowed'
                       : 'cursor-pointer hover:bg-purple/5'
                   )}
                   onClick={() => {
-                    if (onTimeSlotClick && slotEvents.length === 0 && !isUnavailable) {
+                    if (
+                      onTimeSlotClick &&
+                      slotEvents.length === 0 &&
+                      !isAvailable
+                    ) {
                       onTimeSlotClick(slotDateTime);
                     }
                   }}
@@ -190,11 +199,11 @@ const Calendar: React.FC<CalendarProps> = ({
   };
 
   const renderWeekView = () => {
-    const startOfWeek = new Date(currentDate);
+    const startOfWeek = new TZDate(currentDate, TIMEZONE);
     startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
 
     const weekDays = Array.from({ length: 7 }, (_, i) => {
-      const day = new Date(startOfWeek);
+      const day = new TZDate(startOfWeek, TIMEZONE);
       day.setDate(startOfWeek.getDate() + i);
       return day;
     });
@@ -206,7 +215,7 @@ const Calendar: React.FC<CalendarProps> = ({
             <div className='border-r border-b p-2'></div>
             {weekDays.map((day, dayIndex) => {
               const dayHasEvents = events.some((event) => {
-                const eventDate = new Date(event.startDate);
+                const eventDate = new TZDate(event.startDate, TIMEZONE);
                 return eventDate.toDateString() === day.toDateString();
               });
 
@@ -276,7 +285,7 @@ const Calendar: React.FC<CalendarProps> = ({
                     </div>
                     {weekDays.map((day, dayIndex) => {
                       const dayEvents = events.filter((event) => {
-                        const eventDate = new Date(event.startDate);
+                        const eventDate = new TZDate(event.startDate, TIMEZONE);
                         const eventHour = eventDate.getHours();
                         const eventMinute = eventDate.getMinutes();
 
@@ -289,9 +298,11 @@ const Calendar: React.FC<CalendarProps> = ({
                       });
 
                       const isRightEdge = dayIndex === 6;
-                      const slotDateTime = new Date(day);
+                      const slotDateTime = new TZDate(day, TIMEZONE);
                       slotDateTime.setHours(hour, minute, 0, 0);
-                      const isUnavailable = unavailableSlots.has(slotDateTime.toISOString());
+                      const isUnavailable = availableSlots.includes(
+                        slotDateTime.toISOString()
+                      );
 
                       return (
                         <div
@@ -305,7 +316,11 @@ const Calendar: React.FC<CalendarProps> = ({
                               : 'cursor-pointer hover:bg-purple/5'
                           )}
                           onClick={() => {
-                            if (onTimeSlotClick && dayEvents.length === 0 && !isUnavailable) {
+                            if (
+                              onTimeSlotClick &&
+                              dayEvents.length === 0 &&
+                              !isUnavailable
+                            ) {
                               onTimeSlotClick(slotDateTime);
                             }
                           }}
@@ -358,12 +373,11 @@ const Calendar: React.FC<CalendarProps> = ({
   };
 
   const renderMonthView = () => {
-    const firstDayOfMonth = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      1
+    const firstDayOfMonth = new TZDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth(), 1),
+      TIMEZONE
     );
-    const startCalendar = new Date(firstDayOfMonth);
+    const startCalendar = new TZDate(firstDayOfMonth, TIMEZONE);
 
     const firstDayWeekday = firstDayOfMonth.getDay();
     startCalendar.setDate(firstDayOfMonth.getDate() - firstDayWeekday);
@@ -372,7 +386,7 @@ const Calendar: React.FC<CalendarProps> = ({
     const totalDays = 42;
 
     for (let i = 0; i < totalDays; i++) {
-      const day = new Date(startCalendar);
+      const day = new TZDate(startCalendar, TIMEZONE);
       day.setDate(startCalendar.getDate() + i);
       calendarDays.push(day);
     }
@@ -394,7 +408,7 @@ const Calendar: React.FC<CalendarProps> = ({
 
           {calendarDays.map((day, index) => {
             const dayEvents = events.filter((event) => {
-              const eventDate = new Date(event.startDate);
+              const eventDate = new TZDate(event.startDate, TIMEZONE);
               return eventDate.toDateString() === day.toDateString();
             });
 
@@ -484,7 +498,7 @@ const Calendar: React.FC<CalendarProps> = ({
             <Button
               variant='outline'
               size='sm'
-              onClick={() => onDateChange(new Date())}
+              onClick={() => onDateChange(new TZDate(new Date(), TIMEZONE))}
             >
               Today
             </Button>
