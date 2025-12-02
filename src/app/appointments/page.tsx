@@ -16,6 +16,7 @@ import {
   startOfDay,
   startOfWeek,
   startOfMonth,
+  format,
 } from 'date-fns';
 import { TZDate } from '@date-fns/tz';
 import {
@@ -62,7 +63,7 @@ export default function Appointments() {
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<TZDate | null>(null);
   const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
   const [viewingAppointmentFromDate, setViewingAppointmentFromDate] =
     useState(false);
@@ -70,7 +71,7 @@ export default function Appointments() {
     useState(false);
   const [isLinkClientDialogOpen, setIsLinkClientDialogOpen] = useState(false);
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<Date | null>(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TZDate | null>(null);
   const syncAppointment = useSyncAppointment();
   const today = useMemo(() => new TZDate(new Date(), TIMEZONE), []);
 
@@ -154,12 +155,7 @@ export default function Appointments() {
 
     const relativeDate = getRelativeDate(startAt);
 
-    const formattedDate = startDate.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    const formattedDate = format(startDate, 'EEEE, MMMM d, yyyy');
 
     let dateFormatted: string;
     if (relativeDate === 'Today') {
@@ -168,19 +164,11 @@ export default function Appointments() {
       dateFormatted = `${relativeDate}, ${formattedDate}`;
     }
 
-    const startTimeFormatted = startDate.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+    const startTimeFormatted = format(startDate, 'h:mm a');
 
     if (endAt) {
       const endDate = new TZDate(endAt, TIMEZONE);
-      const endTimeFormatted = endDate.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
+      const endTimeFormatted = format(endDate, 'h:mm a');
       return {
         date: dateFormatted,
         time: `${startTimeFormatted} - ${endTimeFormatted}`,
@@ -216,16 +204,17 @@ export default function Appointments() {
     }
   };
 
-  const handleDateClick = (date: Date) => {
-    setSelectedDate(new TZDate(date, TIMEZONE));
+  const handleDateClick = (date: Date | TZDate) => {
+    setSelectedDate(date instanceof TZDate ? date : new TZDate(date, TIMEZONE));
     setIsDateDialogOpen(true);
   };
 
-  const getAppointmentsForDate = (date: Date) => {
+  const getAppointmentsForDate = (date: Date | TZDate) => {
     if (!appointments) return [];
+    const tzDate = date instanceof TZDate ? date : new TZDate(date, TIMEZONE);
     return appointments.filter((appointment) => {
       const appointmentDate = new TZDate(appointment.startAt || '', TIMEZONE);
-      return appointmentDate.toDateString() === date.toDateString();
+      return appointmentDate.toDateString() === tzDate.toDateString();
     });
   };
 
@@ -238,16 +227,18 @@ export default function Appointments() {
     refetch();
   };
 
-  const handleDateChange = useCallback((date: Date) => {
-    setCurrentDate(new TZDate(date, TIMEZONE));
+  const handleDateChange = useCallback((date: Date | TZDate) => {
+    setCurrentDate(date instanceof TZDate ? date : new TZDate(date, TIMEZONE));
   }, []);
 
   const handleViewChange = useCallback((view: CalendarView) => {
     setCurrentView(view);
   }, []);
 
-  const handleTimeSlotClick = useCallback((dateTime: Date) => {
-    setSelectedTimeSlot(new TZDate(dateTime, TIMEZONE));
+  const handleTimeSlotClick = useCallback((dateTime: Date | TZDate) => {
+    setSelectedTimeSlot(
+      dateTime instanceof TZDate ? dateTime : new TZDate(dateTime, TIMEZONE)
+    );
     setIsBookingDialogOpen(true);
   }, []);
 
@@ -323,10 +314,6 @@ export default function Appointments() {
       </div>
     );
   }
-
-  console.log(dateRange.startAtMin);
-  console.log(dateRange.startAtMax);
-  console.log(availableSlots);
 
   return (
     <>
@@ -473,10 +460,10 @@ export default function Appointments() {
                 {selectedAppointment.createdAt && (
                   <p>
                     Created on:{' '}
-                    {new TZDate(
-                      selectedAppointment.createdAt,
-                      TIMEZONE
-                    ).toLocaleString()}
+                    {format(
+                      new TZDate(selectedAppointment.createdAt, TIMEZONE),
+                      'PPP p'
+                    )}
                   </p>
                 )}
               </div>
@@ -501,12 +488,7 @@ export default function Appointments() {
               <DialogHeader>
                 <DialogTitle className='text-[19px]'>
                   Appointments for{' '}
-                  {selectedDate?.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
+                  {selectedDate && format(selectedDate, 'EEEE, MMMM d, yyyy')}
                 </DialogTitle>
               </DialogHeader>
 

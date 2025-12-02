@@ -1,4 +1,4 @@
-import { CatalogObject } from 'square';
+import type { CatalogObject } from 'square';
 
 export interface CatalogObjectResponse {
   success: boolean;

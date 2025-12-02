@@ -17,6 +17,9 @@ import { Button } from './ui/button';
 import { InfoIcon, Loader2, SearchIcon } from 'lucide-react';
 import { useAccounts } from '@/lib/hooks/use-accounts';
 import type { Account } from '@/lib/types/account';
+import { TZDate } from '@date-fns/tz';
+
+const TIMEZONE = 'America/New_York';
 
 interface LinkClientDialogProps {
   open: boolean;
@@ -126,29 +129,44 @@ export function LinkClientDialog({
                 </div>
               ) : (
                 <>
-                  {accounts.map((account) => (
-                    <div
-                      key={account.id}
-                      className='flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-100 transition-colors text-left'
-                    >
-                      <div className='flex-1'>
-                        <p className='font-medium text-neutral-900'>
-                          {account.firstName} {account.lastName}
-                        </p>
-                        <p className='text-sm text-neutral-500'>
-                          SSN L4: {account.ssnLastFour || 'N/A'}
-                        </p>
-                      </div>
-                      <Button
-                        size='sm'
-                        variant='outline'
-                        disabled={isLinking}
-                        onClick={() => handleSelectClick(account)}
+                  {accounts.map((account) => {
+                    const dob = account.dateOfBirth
+                      ? new TZDate(account.dateOfBirth, TIMEZONE)
+                      : null;
+                    const formattedDob = dob
+                      ? dob.toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })
+                      : 'N/A';
+
+                    return (
+                      <div
+                        key={account.id}
+                        className='flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-100 transition-colors text-left'
                       >
-                        Select
-                      </Button>
-                    </div>
-                  ))}
+                        <div className='flex-1'>
+                          <p className='font-medium text-neutral-900'>
+                            {account.firstName} {account.lastName}
+                          </p>
+                          <div className='flex items-center gap-3 text-sm text-neutral-500'>
+                            <span>SSN L4: {account.ssnLastFour || 'N/A'}</span>
+                            <span>•</span>
+                            <span>DOB: {formattedDob}</span>
+                          </div>
+                        </div>
+                        <Button
+                          size='sm'
+                          variant='outline'
+                          disabled={isLinking}
+                          onClick={() => handleSelectClick(account)}
+                        >
+                          Select
+                        </Button>
+                      </div>
+                    );
+                  })}
 
                   {hasMore && (
                     <Button

@@ -59,6 +59,7 @@ export function AppointmentDialog({
   const [serviceVariationId, setServiceVariationId] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
+  const [initialTimeFromClick, setInitialTimeFromClick] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<boolean>(false);
 
@@ -98,14 +99,19 @@ export function AppointmentDialog({
       }
       if (selectedTime !== initialTime) {
         setSelectedTime(initialTime);
+        setInitialTimeFromClick(initialTime);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, selectedDateTime]);
 
   useEffect(() => {
-    setSelectedTime('');
-  }, [selectedDate, serviceVariationId]);
+    // Only clear time when date changes, but preserve time from initial click
+    // Don't clear when only serviceVariationId changes to keep the clicked time
+    if (selectedDate && !initialTimeFromClick) {
+      setSelectedTime('');
+    }
+  }, [selectedDate, initialTimeFromClick]);
 
   const { data: accountsData, isLoading: isAccountsLoading } = useAccounts(
     debouncedAccountSearch
@@ -207,6 +213,7 @@ export function AppointmentDialog({
     setServiceVariationId('');
     setSelectedDate('');
     setSelectedTime('');
+    setInitialTimeFromClick('');
     setError('');
     setSuccess(false);
   };
