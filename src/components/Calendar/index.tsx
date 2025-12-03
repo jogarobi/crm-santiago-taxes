@@ -122,9 +122,9 @@ const Calendar: React.FC<CalendarProps> = ({
               .toISOString()
               .replace('00.000-05:00', '00Z');
 
-            const slotDateTime15MinBefore = new Date(currentDate);
-            slotDateTime15MinBefore.setHours(hour, minute - 15, 0, 0);
-            const formattedSlot15MinBefore = slotDateTime15MinBefore
+            const slotDateTime15MinAfter = new Date(currentDate);
+            slotDateTime15MinAfter.setHours(hour, minute + 15, 0, 0);
+            const formattedSlot15MinAfter = slotDateTime15MinAfter
               .toISOString()
               .replace('00.000-05:00', '00Z');
 
@@ -132,7 +132,7 @@ const Calendar: React.FC<CalendarProps> = ({
             const isInPast = slotDateTime < now;
             const isAvailableForBooking =
               availableSlots.includes(formattedSlot) ||
-              availableSlots.includes(formattedSlot15MinBefore);
+              availableSlots.includes(formattedSlot15MinAfter);
             const isUnavailable = isInPast || !isAvailableForBooking;
 
             return (
@@ -402,7 +402,11 @@ const Calendar: React.FC<CalendarProps> = ({
   };
 
   const renderMonthView = () => {
-    const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const firstDayOfMonth = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      1
+    );
     const startCalendar = new Date(firstDayOfMonth);
 
     const firstDayWeekday = firstDayOfMonth.getDay();

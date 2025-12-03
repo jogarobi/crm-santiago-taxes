@@ -242,11 +242,6 @@ async function fetchAvailability(
 ): Promise<string[]> {
   const { selectedDate, serviceVariationId, teamMemberId } = params;
 
-  const startOfDay = new Date(selectedDate);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(selectedDate);
-  endOfDay.setHours(23, 59, 59, 999);
-
   const response = await fetch('/api/appointments/search-availability', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -254,8 +249,8 @@ async function fetchAvailability(
       query: {
         filter: {
           startAtRange: {
-            startAt: startOfDay.toISOString(),
-            endAt: endOfDay.toISOString(),
+            startAt: `${selectedDate}T00:00:00.000Z`,
+            endAt: `${selectedDate}T23:59:00.000Z`,
           },
           segmentFilters: [
             {

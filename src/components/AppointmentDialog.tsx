@@ -85,9 +85,7 @@ export function AppointmentDialog({
     if (open && selectedDateTime) {
       const tzDate = new Date(selectedDateTime);
       const year = tzDate.getFullYear();
-      const month = (tzDate.getMonth() + 1)
-        .toString()
-        .padStart(2, '0');
+      const month = (tzDate.getMonth() + 1).toString().padStart(2, '0');
       const day = tzDate.getDate().toString().padStart(2, '0');
       const initialDate = `${year}-${month}-${day}`;
 
@@ -266,16 +264,23 @@ export function AppointmentDialog({
                   ?.filter((item) => item.type === 'ITEM')
                   .map((item) => {
                     const variations = item.itemData?.variations || [];
-                    return variations.map((variation) => {
-                      return (
-                        <SelectItem
-                          key={variation.id}
-                          value={variation.id || ''}
-                        >
-                          {item.itemData?.name}
-                        </SelectItem>
-                      );
-                    });
+
+                    return variations
+                      .filter(
+                        (variation) =>
+                          variation.type === 'ITEM_VARIATION' &&
+                          variation.itemVariationData?.availableForBooking
+                      )
+                      .map((variation) => {
+                        return (
+                          <SelectItem
+                            key={variation.id}
+                            value={variation.id || ''}
+                          >
+                            {item.itemData?.name}
+                          </SelectItem>
+                        );
+                      });
                   })}
               </SelectContent>
             </Select>

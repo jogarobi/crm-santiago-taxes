@@ -135,8 +135,8 @@ export default function Appointments() {
   const { data: availableSlots = [] } = useDateRangeAvailability(
     serviceVariationIds.length > 0
       ? {
-          startDate: today.toISOString(),
-          endDate: dateRange.startAtMax,
+          startDate: `${today.toISOString().split('T')[0]}T00:00:00.00Z`,
+          endDate: `${dateRange.startAtMax.split('T')[0]}T00:00:00.00Z`,
           teamMemberId: TEAM_MEMBER_ID,
           serviceVariationIds,
         }
@@ -317,7 +317,9 @@ export default function Appointments() {
             events={events}
             view={currentView}
             currentDate={currentDate}
-            availableSlots={availableSlots}
+            availableSlots={availableSlots.map((slot) =>
+              new Date(slot).toISOString()
+            )}
             onEventClick={handleEventClick}
             onDateClick={handleDateClick}
             onEventCreate={handleEventCreate}
@@ -454,10 +456,7 @@ export default function Appointments() {
                 {selectedAppointment.createdAt && (
                   <p>
                     Created on:{' '}
-                    {format(
-                      new Date(selectedAppointment.createdAt),
-                      'PPP p'
-                    )}
+                    {format(new Date(selectedAppointment.createdAt), 'PPP p')}
                   </p>
                 )}
               </div>
