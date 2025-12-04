@@ -347,7 +347,7 @@ async function fetchDateRangeAvailability(
   const data = await response.json();
   const availabilities = data.availabilities || [];
 
-  return availabilities.map((avail: { startAt?: string }) => avail.startAt);
+  return availabilities.map((avail: { startAt: string }) => avail.startAt);
 }
 
 export function useDateRangeAvailability(

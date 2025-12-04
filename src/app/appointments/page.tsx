@@ -136,7 +136,7 @@ export default function Appointments() {
     serviceVariationIds.length > 0
       ? {
           startDate: `${today.toISOString().split('T')[0]}T00:00:00.00Z`,
-          endDate: `${dateRange.startAtMax.split('T')[0]}T00:00:00.00Z`,
+          endDate: `${dateRange.startAtMax.split('T')[0]}T23:59:00.00Z`,
           teamMemberId: TEAM_MEMBER_ID,
           serviceVariationIds,
         }
@@ -317,9 +317,7 @@ export default function Appointments() {
             events={events}
             view={currentView}
             currentDate={currentDate}
-            availableSlots={availableSlots.map((slot) =>
-              new Date(slot).toISOString()
-            )}
+            availableSlots={availableSlots}
             onEventClick={handleEventClick}
             onDateClick={handleDateClick}
             onEventCreate={handleEventCreate}

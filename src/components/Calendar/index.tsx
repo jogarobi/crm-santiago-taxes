@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { CalendarProps } from './types';
+import { startOfWeek } from 'date-fns';
 
 const Calendar: React.FC<CalendarProps> = ({
   events = [],
@@ -120,19 +121,22 @@ const Calendar: React.FC<CalendarProps> = ({
             slotDateTime.setHours(hour, minute, 0, 0);
             const formattedSlot = slotDateTime
               .toISOString()
-              .replace('00.000-05:00', '00Z');
+              .replace('.000Z', 'Z');
 
-            const slotDateTime15MinAfter = new Date(currentDate);
-            slotDateTime15MinAfter.setHours(hour, minute + 15, 0, 0);
-            const formattedSlot15MinAfter = slotDateTime15MinAfter
+            // Check 15 minutes before to cover the full 30-minute availability window
+            const slotDateTime15MinBefore = new Date(currentDate);
+            slotDateTime15MinBefore.setHours(hour, minute - 15, 0, 0);
+            const formattedSlot15MinBefore = slotDateTime15MinBefore
               .toISOString()
-              .replace('00.000-05:00', '00Z');
+              .replace('.000Z', 'Z');
 
             const now = new Date();
             const isInPast = slotDateTime < now;
+            // Available if this exact slot OR if a 30-min block started 15 min ago
             const isAvailableForBooking =
               availableSlots.includes(formattedSlot) ||
-              availableSlots.includes(formattedSlot15MinAfter);
+              (minute % 30 === 15 &&
+                availableSlots.includes(formattedSlot15MinBefore));
             const isUnavailable = isInPast || !isAvailableForBooking;
 
             return (
@@ -211,12 +215,11 @@ const Calendar: React.FC<CalendarProps> = ({
   };
 
   const renderWeekView = () => {
-    const startOfWeek = new Date(currentDate);
-    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+    const weekStart = startOfWeek(currentDate);
 
     const weekDays = Array.from({ length: 7 }, (_, i) => {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
+      const day = new Date(weekStart);
+      day.setDate(weekStart.getDate() + i);
       return day;
     });
 
@@ -295,6 +298,7 @@ const Calendar: React.FC<CalendarProps> = ({
                         </>
                       )}
                     </div>
+
                     {weekDays.map((day, dayIndex) => {
                       const dayEvents = events.filter((event) => {
                         const eventDate = new Date(event.startDate);
@@ -311,24 +315,28 @@ const Calendar: React.FC<CalendarProps> = ({
 
                       const isRightEdge = dayIndex === 6;
                       const slotDateTime = new Date(day);
+
                       slotDateTime.setHours(hour, minute, 0, 0);
+
                       const formattedSlot = slotDateTime
                         .toISOString()
-                        .replace('00.000-05:00', '00Z');
+                        .replace('.000Z', 'Z');
 
-                      // Check if this slot or the previous 15-minute slot is in availableSlots
-                      // (since available slots are 30 minutes = two 15-minute slots)
+                      // Check 15 minutes before to cover the full 30-minute availability window
                       const slotDateTime15MinBefore = new Date(day);
                       slotDateTime15MinBefore.setHours(hour, minute - 15, 0, 0);
                       const formattedSlot15MinBefore = slotDateTime15MinBefore
                         .toISOString()
-                        .replace('00.000-05:00', '00Z');
+                        .replace('.000Z', 'Z');
 
                       const now = new Date();
                       const isInPast = slotDateTime < now;
+                      // Available if this exact slot OR if a 30-min block started 15 min ago
                       const isAvailableForBooking =
                         availableSlots.includes(formattedSlot) ||
-                        availableSlots.includes(formattedSlot15MinBefore);
+                        (minute % 30 === 15 &&
+                          availableSlots.includes(formattedSlot15MinBefore));
+
                       const isUnavailable = isInPast || !isAvailableForBooking;
 
                       return (
