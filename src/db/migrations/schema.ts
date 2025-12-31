@@ -127,3 +127,13 @@ export const appointment = sqliteTable('Appointment', {
   service: text(),
   accountSquareId: text().notNull(),
 });
+
+export const note = sqliteTable('Note', {
+  id: integer().primaryKey(),
+  accountId: integer().references(() => account.id),
+  content: text(),
+  createdBy: text().notNull(),
+  createdAt: text().notNull(),
+  updatedBy: text(),
+  updatedAt: text(),
+});
