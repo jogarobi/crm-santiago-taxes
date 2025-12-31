@@ -158,25 +158,25 @@ export default function AccountDetailPage({ params }: Props) {
         </div>
       </div>
 
-      <Tabs defaultValue='activity-overview' className='w-full'>
+      <Tabs defaultValue='notes' className='w-full'>
         <TabsList className='mb-5 py-7 px-2 gap-2 w-full'>
+          <TabsTrigger className='py-5 cursor-pointer' value='notes'>
+            Notes
+          </TabsTrigger>
           <TabsTrigger
             className='py-5 cursor-pointer'
             value='activity-overview'
           >
             Overview & Activity
           </TabsTrigger>
-          <TabsTrigger className='py-5 cursor-pointer' value='notes'>
-            Notes
-          </TabsTrigger>
-          <TabsTrigger className='py-5 cursor-pointer' value='appointments'>
-            Appointments
+          <TabsTrigger className='py-5 cursor-pointer' value='businesses'>
+            Businesses
           </TabsTrigger>
           <TabsTrigger className='py-5 cursor-pointer' value='tasks'>
             Tasks
           </TabsTrigger>
-          <TabsTrigger className='py-5 cursor-pointer' value='businesses'>
-            Businesses
+          <TabsTrigger className='py-5 cursor-pointer' value='appointments'>
+            Appointments
           </TabsTrigger>
           <TabsTrigger className='py-5 cursor-pointer' value='relationships'>
             Relationships
