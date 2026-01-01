@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { note } from '@/db/migrations/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, like, and, count, sql } from 'drizzle-orm';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('accountId');
+    const search = searchParams.get('search');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const offset = parseInt(searchParams.get('offset') || '0');
 
     if (!accountId) {
       return NextResponse.json(
@@ -24,16 +27,40 @@ export async function GET(request: Request) {
       );
     }
 
+    // Build where conditions
+    const conditions = [eq(note.accountId, accountIdInt)];
+
+    if (search && search.trim()) {
+      conditions.push(like(note.content, `%${search.trim()}%`));
+    }
+
+    const whereClause = conditions.length > 1
+      ? and(...conditions)
+      : conditions[0];
+
+    // Get total count
+    const totalResult = await db
+      .select({ count: count() })
+      .from(note)
+      .where(whereClause);
+
+    const total = totalResult[0]?.count || 0;
+
+    // Get paginated notes
     const notes = await db
       .select()
       .from(note)
-      .where(eq(note.accountId, accountIdInt))
-      .orderBy(desc(note.createdAt));
+      .where(whereClause)
+      .orderBy(desc(note.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     return NextResponse.json({
       success: true,
       notes,
       count: notes.length,
+      total,
+      hasMore: offset + notes.length < total,
     });
   } catch (error) {
     console.error('Error fetching notes:', error);

@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useMemo } from 'react';
+import { use, useState } from 'react';
 
 function formatPhoneNumber(phoneNumber: string): string {
   const cleaned = phoneNumber.replace(/\D/g, '');
@@ -59,11 +59,17 @@ export default function AccountDetailPage({ params }: Props) {
   } = useActivities(accountId, 20);
   const { data: contacts } = useAccountContacts(accountId);
   const { data: relationships } = useAccountRelationships(accountId);
-  const { data: notes, isLoading: notesLoading } = useNotes(accountId);
   const [createNoteDialogOpen, setCreateNoteDialogOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [noteDetailDialogOpen, setNoteDetailDialogOpen] = useState(false);
   const [notesSearchQuery, setNotesSearchQuery] = useState('');
+  const [notesLimit, setNotesLimit] = useState(4);
+
+  const { data: notesData, isLoading: notesLoading } = useNotes(accountId, {
+    search: notesSearchQuery || undefined,
+    limit: notesLimit,
+    offset: 0,
+  });
 
   const handleNoteClick = (note: Note) => {
     setSelectedNote(note);
@@ -77,15 +83,14 @@ export default function AccountDetailPage({ params }: Props) {
     }
   };
 
-  const filteredNotes = useMemo(() => {
-    if (!notes) return [];
-    if (!notesSearchQuery.trim()) return notes;
+  const handleShowMore = () => {
+    setNotesLimit((prev) => prev + 4);
+  };
 
-    const searchLower = notesSearchQuery.toLowerCase();
-    return notes.filter((note) =>
-      note.content?.toLowerCase().includes(searchLower)
-    );
-  }, [notes, notesSearchQuery]);
+  const handleSearchChange = (value: string) => {
+    setNotesSearchQuery(value);
+    setNotesLimit(4);
+  };
 
   const primaryContact = contacts?.[0];
   const hasPhone = primaryContact?.phoneNumber;
@@ -216,7 +221,7 @@ export default function AccountDetailPage({ params }: Props) {
         </TabsList>
 
         <TabsContent value='notes'>
-          <div className='bg-white border rounded-xl p-6'>
+          <div className='bg-white border rounded-xl p-6.5'>
             <div className='flex items-center gap-6 justify-between mb-7'>
               <div className='flex items-center gap-4 w-full'>
                 <div className='relative w-full'>
@@ -226,9 +231,9 @@ export default function AccountDetailPage({ params }: Props) {
                   />
                   <input
                     type='text'
-                    onChange={(e) => setNotesSearchQuery(e.target.value)}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                     placeholder='Search notes...'
-                    className='pl-10 pr-3 py-2.5 rounded-md border text-sm w-full'
+                    className='pl-10 pr-3 py-3 rounded-lg border text-sm w-full'
                   />
                 </div>
               </div>
@@ -250,17 +255,30 @@ export default function AccountDetailPage({ params }: Props) {
               </div>
             ) : (
               <>
-                {filteredNotes.length === 0 && notesSearchQuery ? (
+                {notesData?.notes.length === 0 && notesSearchQuery ? (
                   <div className='text-center py-12 text-neutral-500'>
                     <p>
                       No notes found matching &quot;{notesSearchQuery}&quot;
                     </p>
                   </div>
                 ) : (
-                  <NotesGrid
-                    notes={filteredNotes}
-                    onNoteClick={handleNoteClick}
-                  />
+                  <>
+                    <NotesGrid
+                      notes={notesData?.notes || []}
+                      onNoteClick={handleNoteClick}
+                    />
+                    {notesData?.hasMore && (
+                      <div className='flex justify-center mt-6'>
+                        <Button
+                          variant='outline'
+                          onClick={handleShowMore}
+                          className='cursor-pointer'
+                        >
+                          Show More
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}

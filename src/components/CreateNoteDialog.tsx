@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
-import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { useCreateNote } from '@/lib/hooks/use-notes';
@@ -63,7 +62,7 @@ export function CreateNoteDialog({
           <DialogTitle className='text-xl'>Create New Note</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className='flex flex-col gap-6 mt-4'>
+        <form onSubmit={handleSubmit} className='flex flex-col gap-2 mt-4'>
           {error && (
             <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
               <p className='text-red-800 text-sm'>{error}</p>
@@ -71,9 +70,6 @@ export function CreateNoteDialog({
           )}
 
           <div className='flex flex-col gap-2'>
-            <Label htmlFor='content' className='text-sm font-medium text-neutral-700'>
-              Note Content <span className='text-red-500'>*</span>
-            </Label>
             <Textarea
               id='content'
               value={content}
@@ -84,7 +80,7 @@ export function CreateNoteDialog({
             />
           </div>
 
-          <div className='flex gap-3 justify-end mt-4 pt-4 border-t'>
+          <div className='flex gap-3 justify-end mt-4'>
             <Button
               type='button'
               variant='outline'

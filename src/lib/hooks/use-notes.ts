@@ -5,26 +5,49 @@ import type { Note, CreateNoteInput, UpdateNoteInput } from '@/lib/types/note';
 export const noteKeys = {
   all: ['notes'] as const,
   lists: () => [...noteKeys.all, 'list'] as const,
-  list: (accountId: number) => [...noteKeys.lists(), accountId] as const,
+  list: (accountId: number, params?: FetchNotesParams) =>
+    [...noteKeys.lists(), accountId, params] as const,
   details: () => [...noteKeys.all, 'detail'] as const,
   detail: (noteId: number) => [...noteKeys.details(), noteId] as const,
 };
 
 // Types
+export interface FetchNotesParams {
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
 export interface NotesResponse {
   success: boolean;
   notes: Note[];
   count: number;
+  total: number;
+  hasMore: boolean;
 }
 
 // API Functions
-async function fetchNotes(accountId: number): Promise<Note[]> {
-  const response = await fetch(`/api/notes?accountId=${accountId}`);
+async function fetchNotes(
+  accountId: number,
+  params?: FetchNotesParams
+): Promise<NotesResponse> {
+  const urlParams = new URLSearchParams({ accountId: accountId.toString() });
+
+  if (params?.search) {
+    urlParams.append('search', params.search);
+  }
+  if (params?.limit !== undefined) {
+    urlParams.append('limit', params.limit.toString());
+  }
+  if (params?.offset !== undefined) {
+    urlParams.append('offset', params.offset.toString());
+  }
+
+  const response = await fetch(`/api/notes?${urlParams.toString()}`);
   if (!response.ok) {
     throw new Error('Failed to fetch notes');
   }
-  const data: NotesResponse = await response.json();
-  return data.notes;
+  return response.json();
 }
 
 async function fetchNote(noteId: number): Promise<Note> {
@@ -80,10 +103,10 @@ async function deleteNote(noteId: number): Promise<{ message: string }> {
 }
 
 // Hooks
-export function useNotes(accountId: number) {
+export function useNotes(accountId: number, params?: FetchNotesParams) {
   return useQuery({
-    queryKey: noteKeys.list(accountId),
-    queryFn: () => fetchNotes(accountId),
+    queryKey: noteKeys.list(accountId, params),
+    queryFn: () => fetchNotes(accountId, params),
     enabled: !!accountId,
   });
 }
@@ -103,7 +126,13 @@ export function useCreateNote() {
     mutationFn: ({ accountId, data }: { accountId: number; data: CreateNoteInput }) =>
       createNote(accountId, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: noteKeys.list(variables.accountId) });
+      // Invalidate all list queries for this account, regardless of params
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === 'notes' &&
+          query.queryKey[1] === 'list' &&
+          query.queryKey[2] === variables.accountId,
+      });
     },
   });
 }
@@ -123,11 +152,16 @@ export function useUpdateNote() {
     }) => updateNote(noteId, data),
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: noteKeys.detail(variables.noteId) });
-      if (variables.accountId) {
-        queryClient.invalidateQueries({ queryKey: noteKeys.list(variables.accountId) });
-      }
-      if (result.accountId) {
-        queryClient.invalidateQueries({ queryKey: noteKeys.list(result.accountId) });
+
+      // Invalidate all list queries for this account
+      const accountIdToInvalidate = variables.accountId || result.accountId;
+      if (accountIdToInvalidate) {
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            query.queryKey[0] === 'notes' &&
+            query.queryKey[1] === 'list' &&
+            query.queryKey[2] === accountIdToInvalidate,
+        });
       }
     },
   });
@@ -141,8 +175,15 @@ export function useDeleteNote() {
       deleteNote(noteId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: noteKeys.detail(variables.noteId) });
+
+      // Invalidate all list queries for this account
       if (variables.accountId) {
-        queryClient.invalidateQueries({ queryKey: noteKeys.list(variables.accountId) });
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            query.queryKey[0] === 'notes' &&
+            query.queryKey[1] === 'list' &&
+            query.queryKey[2] === variables.accountId,
+        });
       }
     },
   });
