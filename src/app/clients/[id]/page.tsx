@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 
 function formatPhoneNumber(phoneNumber: string): string {
   const cleaned = phoneNumber.replace(/\D/g, '');
@@ -21,6 +21,7 @@ import { useAccount } from '@/lib/hooks/use-accounts';
 import { useActivities } from '@/lib/hooks/use-activities';
 import { useAccountContacts } from '@/lib/hooks/use-account-contact';
 import { useAccountRelationships } from '@/lib/hooks/use-account-relationships';
+import { useNotes } from '@/lib/hooks/use-notes';
 import {
   Building2Icon,
   ClockIcon,
@@ -37,7 +38,11 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { DynamicIcon, IconName } from '@/components/DynamicIcon';
+import { NotesGrid } from '@/components/NotesGrid';
+import { CreateNoteDialog } from '@/components/CreateNoteDialog';
+import { NoteDetailDialog } from '@/components/NoteDetailDialog';
 import clsx from 'clsx';
+import type { Note } from '@/lib/types/note';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -54,6 +59,22 @@ export default function AccountDetailPage({ params }: Props) {
   } = useActivities(accountId, 20);
   const { data: contacts } = useAccountContacts(accountId);
   const { data: relationships } = useAccountRelationships(accountId);
+  const { data: notes, isLoading: notesLoading } = useNotes(accountId);
+  const [createNoteDialogOpen, setCreateNoteDialogOpen] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [noteDetailDialogOpen, setNoteDetailDialogOpen] = useState(false);
+
+  const handleNoteClick = (note: Note) => {
+    setSelectedNote(note);
+    setNoteDetailDialogOpen(true);
+  };
+
+  const handleNoteDetailDialogClose = (open: boolean) => {
+    setNoteDetailDialogOpen(open);
+    if (!open) {
+      setSelectedNote(null);
+    }
+  };
 
   const primaryContact = contacts?.[0];
   const hasPhone = primaryContact?.phoneNumber;
@@ -182,6 +203,43 @@ export default function AccountDetailPage({ params }: Props) {
             Relationships
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value='notes'>
+          <div className='bg-white border rounded-xl p-6'>
+            <div className='flex items-center justify-between mb-6'>
+              <h3 className='text-lg font-semibold'>Notes</h3>
+              <Button
+                className='bg-purple cursor-pointer'
+                onClick={() => setCreateNoteDialogOpen(true)}
+              >
+                <span>Add Note</span>
+                <PlusIcon />
+              </Button>
+            </div>
+
+            {notesLoading ? (
+              <div className='flex items-center justify-center py-12'>
+                <Loader2 className='w-5 h-5 animate-spin text-purple' />
+                <span className='ml-2 text-neutral-600 text-sm'>
+                  Loading notes...
+                </span>
+              </div>
+            ) : (
+              <NotesGrid notes={notes || []} onNoteClick={handleNoteClick} />
+            )}
+          </div>
+
+          <CreateNoteDialog
+            open={createNoteDialogOpen}
+            onOpenChange={setCreateNoteDialogOpen}
+            accountId={accountId}
+          />
+          <NoteDetailDialog
+            open={noteDetailDialogOpen}
+            onOpenChange={handleNoteDetailDialogClose}
+            note={selectedNote}
+          />
+        </TabsContent>
 
         <TabsContent value='activity-overview' className='flex gap-8'>
           <div className='bg-white border rounded-xl p-6 flex-2 flex flex-col gap-6'>
@@ -444,11 +502,7 @@ export default function AccountDetailPage({ params }: Props) {
               </div>
             ) : (
               <div className='text-center py-8 text-neutral-500'>
-                <p className='text-lg mb-2'>No relationships found</p>
-                <p className='text-sm'>
-                  Add family members, business partners, or other related
-                  accounts
-                </p>
+                <p className='mb-2'>No relationships found</p>
               </div>
             )}
           </div>
