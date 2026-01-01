@@ -199,7 +199,7 @@ export default function AccountDetailPage({ params }: Props) {
             className='py-5 cursor-pointer'
             value='activity-overview'
           >
-            Overview & Activity
+            Overview & History
           </TabsTrigger>
           <TabsTrigger className='py-5 cursor-pointer' value='businesses'>
             Businesses
@@ -228,7 +228,7 @@ export default function AccountDetailPage({ params }: Props) {
                     type='text'
                     onChange={(e) => setNotesSearchQuery(e.target.value)}
                     placeholder='Search notes...'
-                    className='pl-10 pr-3 py-2 rounded-md border text-[15px] w-full'
+                    className='pl-10 pr-3 py-2.5 rounded-md border text-sm w-full'
                   />
                 </div>
               </div>
@@ -281,7 +281,7 @@ export default function AccountDetailPage({ params }: Props) {
         <TabsContent value='activity-overview' className='flex gap-8'>
           <div className='bg-white border rounded-xl p-6 flex-2 flex flex-col gap-6'>
             <div className='flex items-center justify-between'>
-              <h3 className='text-lg font-semibold'>Activity</h3>
+              <h3 className='text-lg font-semibold'>History</h3>
               <div className='flex items-center gap-4'>
                 <Button variant='outline'>
                   <span>Search</span>
@@ -298,7 +298,7 @@ export default function AccountDetailPage({ params }: Props) {
                 <div className='flex items-center justify-center py-8'>
                   <Loader2 className='w-5 h-5 animate-spin text-purple' />
                   <span className='ml-2 text-neutral-600 text-sm'>
-                    Loading activities...
+                    Loading...
                   </span>
                 </div>
               )}
@@ -367,7 +367,7 @@ export default function AccountDetailPage({ params }: Props) {
             </div>
           </div>
           <div className='bg-white border rounded-xl flex-1 p-6 w-full flex flex-col gap-6'>
-            <h3 className='text-lg font-semibold'>Details</h3>
+            <h3 className='text-lg font-semibold'>Overview</h3>
             <div className='grid grid-cols-2 gap-6'>
               {account.address && (
                 <div>
