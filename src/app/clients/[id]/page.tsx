@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useMemo } from 'react';
 
 function formatPhoneNumber(phoneNumber: string): string {
   const cleaned = phoneNumber.replace(/\D/g, '');
@@ -63,6 +63,7 @@ export default function AccountDetailPage({ params }: Props) {
   const [createNoteDialogOpen, setCreateNoteDialogOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [noteDetailDialogOpen, setNoteDetailDialogOpen] = useState(false);
+  const [notesSearchQuery, setNotesSearchQuery] = useState('');
 
   const handleNoteClick = (note: Note) => {
     setSelectedNote(note);
@@ -75,6 +76,16 @@ export default function AccountDetailPage({ params }: Props) {
       setSelectedNote(null);
     }
   };
+
+  const filteredNotes = useMemo(() => {
+    if (!notes) return [];
+    if (!notesSearchQuery.trim()) return notes;
+
+    const searchLower = notesSearchQuery.toLowerCase();
+    return notes.filter((note) =>
+      note.content?.toLowerCase().includes(searchLower)
+    );
+  }, [notes, notesSearchQuery]);
 
   const primaryContact = contacts?.[0];
   const hasPhone = primaryContact?.phoneNumber;
@@ -206,8 +217,21 @@ export default function AccountDetailPage({ params }: Props) {
 
         <TabsContent value='notes'>
           <div className='bg-white border rounded-xl p-6'>
-            <div className='flex items-center justify-between mb-6'>
-              <h3 className='text-lg font-semibold'>Notes</h3>
+            <div className='flex items-center gap-6 justify-between mb-7'>
+              <div className='flex items-center gap-4 w-full'>
+                <div className='relative w-full'>
+                  <SearchIcon
+                    className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'
+                    size={18}
+                  />
+                  <input
+                    type='text'
+                    onChange={(e) => setNotesSearchQuery(e.target.value)}
+                    placeholder='Search notes...'
+                    className='pl-10 pr-3 py-2 rounded-md border text-[15px] w-full'
+                  />
+                </div>
+              </div>
               <Button
                 className='bg-purple cursor-pointer'
                 onClick={() => setCreateNoteDialogOpen(true)}
@@ -225,7 +249,20 @@ export default function AccountDetailPage({ params }: Props) {
                 </span>
               </div>
             ) : (
-              <NotesGrid notes={notes || []} onNoteClick={handleNoteClick} />
+              <>
+                {filteredNotes.length === 0 && notesSearchQuery ? (
+                  <div className='text-center py-12 text-neutral-500'>
+                    <p>
+                      No notes found matching &quot;{notesSearchQuery}&quot;
+                    </p>
+                  </div>
+                ) : (
+                  <NotesGrid
+                    notes={filteredNotes}
+                    onNoteClick={handleNoteClick}
+                  />
+                )}
+              </>
             )}
           </div>
 
