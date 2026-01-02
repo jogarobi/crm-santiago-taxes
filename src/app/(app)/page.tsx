@@ -10,8 +10,8 @@ import { ArrowUpRightIcon, CheckCheckIcon, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { UpcomingAppointments } from '@/components/UpcomingAppointments';
 import { SearchAccounts } from '@/components/SearchAccounts';
-import { useAccountCount } from '@/lib/hooks/use-accounts';
-import { useAppointmentCount } from '@/lib/hooks/use-appointments';
+import { useAccountCount } from '@/hooks/use-accounts';
+import { useAppointmentCount } from '@/hooks/use-appointments';
 
 export default function Home() {
   const { data: accountCount, isLoading } = useAccountCount();

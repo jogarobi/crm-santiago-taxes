@@ -69,8 +69,8 @@ const US_STATES = [
   { value: 'WY', label: 'Wyoming' },
   { value: 'DC', label: 'Washington DC' },
 ];
-import { useCreateAccount } from '@/lib/hooks/use-accounts';
-import { useCustomer } from '@/lib/hooks/use-customer';
+import { useCreateAccount } from '@/hooks/use-accounts';
+import { useCustomer } from '@/hooks/use-customer';
 
 interface CreateClientDialogProps {
   open: boolean;

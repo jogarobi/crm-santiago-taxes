@@ -1,6 +1,6 @@
 'use client';
 
-import { useCustomer } from '@/lib/hooks/use-customer';
+import { useCustomer } from '@/hooks/use-customer';
 import { UserIcon } from 'lucide-react';
 
 interface CustomerNameProps {

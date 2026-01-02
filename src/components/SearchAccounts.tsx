@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccounts } from '@/lib/hooks/use-accounts';
+import { useAccounts } from '@/hooks/use-accounts';
 import {
   InputGroup,
   InputGroupInput,
@@ -51,7 +51,8 @@ export function SearchAccounts() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredAccounts = debouncedSearch && response?.data ? response.data : undefined;
+  const filteredAccounts =
+    debouncedSearch && response?.data ? response.data : undefined;
 
   return (
     <div className='relative search-container'>

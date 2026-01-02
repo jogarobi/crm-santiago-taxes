@@ -6,8 +6,8 @@ import { CalendarEvent, CalendarView } from '@/components/Calendar/types';
 import {
   useAppointments,
   useDateRangeAvailability,
-} from '@/lib/hooks/use-appointments';
-import { useCatalogList } from '@/lib/hooks/use-catalog';
+} from '@/hooks/use-appointments';
+import { useCatalogList } from '@/hooks/use-catalog';
 import { transformAppointmentsToCalendarEvents } from '@/lib/utils/appointmentUtils';
 import {
   endOfDay,
@@ -44,7 +44,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Appointment } from '@/lib/types/appointment';
 import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
-import { useSyncAppointment } from '@/lib/hooks/use-appointments';
+import { useSyncAppointment } from '@/hooks/use-appointments';
 import { CreateClientDialog } from '@/components/CreateClientDialog';
 import { LinkClientDialog } from '@/components/LinkClientDialog';
 import { AppointmentDialog } from '@/components/AppointmentDialog';

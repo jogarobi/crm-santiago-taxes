@@ -17,11 +17,11 @@ function formatPhoneNumber(phoneNumber: string): string {
 
   return phoneNumber;
 }
-import { useAccount } from '@/lib/hooks/use-accounts';
-import { useActivities } from '@/lib/hooks/use-activities';
-import { useAccountContacts } from '@/lib/hooks/use-account-contact';
-import { useAccountRelationships } from '@/lib/hooks/use-account-relationships';
-import { useNotes } from '@/lib/hooks/use-notes';
+import { useAccount } from '@/hooks/use-accounts';
+import { useActivities } from '@/hooks/use-activities';
+import { useAccountContacts } from '@/hooks/use-account-contact';
+import { useAccountRelationships } from '@/hooks/use-account-relationships';
+import { useNotes } from '@/hooks/use-notes';
 import {
   Building2Icon,
   ClockIcon,

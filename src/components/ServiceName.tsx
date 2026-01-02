@@ -1,6 +1,6 @@
 'use client';
 
-import { useCatalogObject } from '@/lib/hooks/use-catalog';
+import { useCatalogObject } from '@/hooks/use-catalog';
 
 interface ServiceNameProps {
   serviceVariationId?: string | null;

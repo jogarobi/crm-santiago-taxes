@@ -1,6 +1,6 @@
 'use client';
 
-import { useTeamMember } from '@/lib/hooks/use-team';
+import { useTeamMember } from '@/hooks/use-team';
 
 interface TeamMemberNameProps {
   teamMemberId?: string | null;

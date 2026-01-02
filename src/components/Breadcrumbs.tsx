@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ChevronRightIcon } from 'lucide-react';
-import { useBreadcrumbs } from '@/lib/hooks/use-breadcrumbs';
+import { useBreadcrumbs } from '@/hooks/use-breadcrumbs';
 
 export function Breadcrumbs() {
   const { breadcrumbs } = useBreadcrumbs();

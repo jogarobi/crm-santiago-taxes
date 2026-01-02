@@ -2,58 +2,60 @@
 
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { generatePKCEPair } from '@/lib/utils/crypto';
+import { useExchangeAuthorizationCode } from '@/hooks/use-square-auth';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
-
-const generateAuthUrl = async () => {
-  const AUTH_URL = 'https://connect.squareup.com/oauth2/authorize?';
-  const APPLICATION_ID = 'sq0idp-HIISMUgQPS83S6m2EIB6wg';
-  const pckePair = await generatePKCEPair();
-
-  const params = new URLSearchParams({
-    client_id: APPLICATION_ID,
-    scope: 'CUSTOMERS_WRITE CUSTOMERS_READ',
-    session: 'true',
-    state: 'dGhpcyBpcyBhIsZSB0b2tljM0nTY3ODkw',
-    code_challenge: pckePair.codeChallenge,
-    redirect_uri: 'https://2h5qvc5l-3000.use2.devtunnels.ms/login',
-  });
-
-  return AUTH_URL + params.toString();
-};
-
-// https://2h5qvc5l-3000.use2.devtunnels.ms/?code=sq0cgp-8rzUiXDX76UUEfjoNwkGSA&response_type=code&state=dGhpcyBpcyBhIsZSB0b2tljM0nTY3ODkw#_=_
-
-const redirectToSquareAuth = async () => {
-  const authUrl = await generateAuthUrl();
-  window.location.href = authUrl;
-};
+import { useEffect } from 'react';
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
   const code = searchParams.get('code');
+  const error = searchParams.get('error');
+  const description = searchParams.get('error_description');
 
-  if (code) {
-    console.log(code);
+  const { mutate: exchangeCode } = useExchangeAuthorizationCode();
 
-    const TOKEN_URL = 'https://connect.squareup.com/oauth2/token';
-  }
+  useEffect(() => {
+    const existingCode = localStorage.getItem('code_verifier');
+    const existingChallenge = localStorage.getItem('code_challenge');
+
+    if (code && existingCode && existingChallenge) {
+      exchangeCode(
+        {
+          code,
+          codeVerifier: existingCode,
+          redirectUri: process.env.NEXT_PUBLIC_SQUARE_REDIRECT_URI!,
+        },
+        {
+          onSuccess: (data) => {
+            console.log('TOKEN RESPONSE', data);
+          },
+          onError: (error) => {
+            console.error('Failed to exchange authorization code:', error);
+          },
+          onSettled: () => {
+            localStorage.removeItem('code_verifier');
+            localStorage.removeItem('code_challenge');
+          },
+        }
+      );
+    }
+  }, [code, exchangeCode]);
 
   return (
     <section className='w-screen h-screen flex flex-col justify-center items-center gap-10'>
       <Image
         src='/santiago-taxes-square-logo.png'
         alt='Square Logo'
-        width={270}
-        height={270}
+        width={230}
+        height={230}
         preload
         style={{ objectFit: 'contain' }}
       />
 
       <form className='w-1/3'>
         <h1 className='text-purple font-semibold text-2xl text-center mb-4'>
-          Login
+          Hello!
         </h1>
         <FieldGroup>
           <Field>
@@ -81,7 +83,14 @@ export default function LoginPage() {
         </FieldGroup>
 
         <button
-          onClick={redirectToSquareAuth}
+          type='button'
+          className='text-[15px] font-medium flex items-center gap-3 w-full justify-center border rounded-md p-3 mt-8 cursor-pointer bg-purple hover:bg-primary text-white'
+        >
+          Login
+        </button>
+
+        {/*         <button
+          onClick={handleAuthRedirect}
           type='button'
           className='text-[15px] font-medium flex items-center gap-3 w-full justify-center border rounded-md p-3 mt-8 cursor-pointer hover:bg-muted'
         >
@@ -94,7 +103,13 @@ export default function LoginPage() {
             preload
             style={{ objectFit: 'contain' }}
           />
-        </button>
+        </button> */}
+
+        {error && description && (
+          <p className='text-red-600 text-[15px] font-medium text-center mt-6'>
+            There has been an error: {error}, {description}
+          </p>
+        )}
       </form>
 
       <p className='text-[15px] text-neutral-500 mt-8'>

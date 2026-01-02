@@ -1,10 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import {
-  useAppointments,
-  useSyncAppointment,
-} from '@/lib/hooks/use-appointments';
+import { useAppointments, useSyncAppointment } from '@/hooks/use-appointments';
 import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
 import {
   Empty,

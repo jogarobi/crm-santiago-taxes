@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Loader2, Edit2Icon, TrashIcon, XIcon, CheckIcon } from 'lucide-react';
-import { useUpdateNote, useDeleteNote } from '@/lib/hooks/use-notes';
+import { useUpdateNote, useDeleteNote } from '@/hooks/use-notes';
 import { Note } from '@/lib/types/note';
 import { format } from 'date-fns';
 import {

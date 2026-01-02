@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccounts } from '@/lib/hooks/use-accounts';
+import { useAccounts } from '@/hooks/use-accounts';
 import {
   Table,
   TableBody,

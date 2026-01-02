@@ -1,6 +1,6 @@
 'use client';
 
-import { useBreadcrumbs } from '@/lib/hooks/use-breadcrumbs';
+import { useBreadcrumbs } from '@/hooks/use-breadcrumbs';
 
 export function PageTitle() {
   const { title } = useBreadcrumbs();

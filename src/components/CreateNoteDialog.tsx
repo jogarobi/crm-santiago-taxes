@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Loader2 } from 'lucide-react';
-import { useCreateNote } from '@/lib/hooks/use-notes';
+import { useCreateNote } from '@/hooks/use-notes';
 
 interface CreateNoteDialogProps {
   open: boolean;

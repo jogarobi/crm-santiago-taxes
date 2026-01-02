@@ -22,12 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useAccounts } from '@/lib/hooks/use-accounts';
+import { useAccounts } from '@/hooks/use-accounts';
 import {
   useCreateAppointment,
   useAvailability,
-} from '@/lib/hooks/use-appointments';
-import { useCatalogList } from '@/lib/hooks/use-catalog';
+} from '@/hooks/use-appointments';
+import { useCatalogList } from '@/hooks/use-catalog';
 import type { Account } from '@/lib/types/account';
 import { AlertCircle, CheckCircle2, Loader2, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';

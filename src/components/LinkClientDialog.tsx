@@ -15,7 +15,7 @@ import {
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { InfoIcon, Loader2, SearchIcon } from 'lucide-react';
-import { useAccounts } from '@/lib/hooks/use-accounts';
+import { useAccounts } from '@/hooks/use-accounts';
 import type { Account } from '@/lib/types/account';
 
 interface LinkClientDialogProps {

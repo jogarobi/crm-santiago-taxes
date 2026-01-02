@@ -33,6 +33,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from './ui/dropdown-menu';
+import { SignOutButton, UserAvatar, useUser } from '@clerk/nextjs';
 
 const items = [
   {
@@ -78,6 +79,7 @@ const managementItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const session = useUser();
 
   return (
     <CNSidebar>
@@ -163,12 +165,10 @@ export default function Sidebar() {
               <DropdownMenuTrigger className='h-full' asChild>
                 <SidebarMenuButton className='px-3'>
                   <div className='flex items-center gap-3'>
-                    <span className='inline-block p-2 rounded-full bg-purple text-white'>
-                      GS
-                    </span>
+                    <UserAvatar />
                     <div>
                       <p className='w-max text-sm font-semibold text-zinc-800'>
-                        Guelmie Santiago
+                        {session.user?.firstName}
                       </p>
                       <p className='text-muted-foreground text-sm'>Admin</p>
                     </div>
@@ -180,10 +180,12 @@ export default function Sidebar() {
                 side='top'
                 className='w-[--radix-popper-anchor-width]'
               >
-                <DropdownMenuItem className='cursor-pointer text-destructive'>
-                  <LogOut className='mr-2 h-4 w-4 stroke-destructive' />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
+                <SignOutButton>
+                  <DropdownMenuItem className='cursor-pointer text-destructive'>
+                    <LogOut className='mr-2 h-4 w-4 stroke-destructive' />
+                    <span>Sign out</span>
+                  </DropdownMenuItem>
+                </SignOutButton>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>

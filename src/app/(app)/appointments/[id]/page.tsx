@@ -1,10 +1,7 @@
 'use client';
 
 import { use, useEffect } from 'react';
-import {
-  useAppointment,
-  useCancelAppointment,
-} from '@/lib/hooks/use-appointments';
+import { useAppointment, useCancelAppointment } from '@/hooks/use-appointments';
 import { CustomerName } from '@/components/CustomerName';
 import { ServiceName } from '@/components/ServiceName';
 import { TeamMemberName } from '@/components/TeamMemberName';
@@ -179,7 +176,10 @@ export default function AppointmentDetailPage({
 
   const durationMinutes =
     appointment.appointmentSegments?.[0]?.durationMinutes || undefined;
-  const { date, time } = formatDateTime(appointment.startAt || '', durationMinutes);
+  const { date, time } = formatDateTime(
+    appointment.startAt || '',
+    durationMinutes
+  );
 
   return (
     <div className='flex flex-col gap-6 max-w-4xl'>
@@ -267,7 +267,10 @@ export default function AppointmentDetailPage({
           <div className='bg-white border rounded-lg p-6'>
             <h2 className='text-lg font-semibold mb-4'>Customer</h2>
             <div className='flex items-center gap-2 flex-wrap'>
-              <CustomerName customerId={appointment.customerId} showIcon={false} />
+              <CustomerName
+                customerId={appointment.customerId}
+                showIcon={false}
+              />
               {appointment.appointmentSegments?.[0]?.teamMemberId && (
                 <>
                   <span className='text-[15px] text-neutral-500'>with</span>
