@@ -3,7 +3,7 @@ import { square } from '@/app/api/client';
 import { db } from '@/lib/db';
 import {
   appointment,
-  account,
+  clientAccount,
   log,
   staff,
   activity,
@@ -79,8 +79,8 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
         if (booking.customerId) {
           const accounts = await db
             .select()
-            .from(account)
-            .where(eq(account.squareId, booking.customerId))
+            .from(clientAccount)
+            .where(eq(clientAccount.squareId, booking.customerId))
             .limit(1);
 
           dbAccount = accounts[0];
@@ -297,8 +297,8 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
         if (booking.customerId) {
           const accounts = await db
             .select()
-            .from(account)
-            .where(eq(account.squareId, booking.customerId))
+            .from(clientAccount)
+            .where(eq(clientAccount.squareId, booking.customerId))
             .limit(1);
 
           dbAccount = accounts[0];

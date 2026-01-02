@@ -1,105 +1,88 @@
-import { relations } from 'drizzle-orm/relations';
-import {
-  account,
-  accountRelation,
-  accountContact,
-  businessEntity,
-  business,
-  activityType,
-  activity,
-  staff,
-  appointment,
-  note,
-} from './schema';
+import { relations } from "drizzle-orm/relations";
+import { clientAccount, clientAccountRelation, clientAccountContact, businessEntity, business, activityType, activity, staff, appointment, note } from "./schema";
 
-export const accountRelationRelations = relations(
-  accountRelation,
-  ({ one }) => ({
-    account_relatedAccountId: one(account, {
-      fields: [accountRelation.relatedAccountId],
-      references: [account.id],
-      relationName: 'accountRelation_relatedAccountId_account_id',
-    }),
-    account_accountId: one(account, {
-      fields: [accountRelation.accountId],
-      references: [account.id],
-      relationName: 'accountRelation_accountId_account_id',
-    }),
-  })
-);
-
-export const accountRelations = relations(account, ({ many }) => ({
-  accountRelations_relatedAccountId: many(accountRelation, {
-    relationName: 'accountRelation_relatedAccountId_account_id',
-  }),
-  accountRelations_accountId: many(accountRelation, {
-    relationName: 'accountRelation_accountId_account_id',
-  }),
-  accountContacts: many(accountContact),
-  businesses: many(business),
-  activities: many(activity),
-  appointments: many(appointment),
-  notes: many(note),
+export const clientAccountRelationRelations = relations(clientAccountRelation, ({one}) => ({
+	clientAccount_relatedAccountId: one(clientAccount, {
+		fields: [clientAccountRelation.relatedAccountId],
+		references: [clientAccount.id],
+		relationName: "clientAccountRelation_relatedAccountId_clientAccount_id"
+	}),
+	clientAccount_accountId: one(clientAccount, {
+		fields: [clientAccountRelation.accountId],
+		references: [clientAccount.id],
+		relationName: "clientAccountRelation_accountId_clientAccount_id"
+	}),
 }));
 
-export const accountContactRelations = relations(accountContact, ({ one }) => ({
-  account: one(account, {
-    fields: [accountContact.accountId],
-    references: [account.id],
-  }),
+export const clientAccountRelations = relations(clientAccount, ({many}) => ({
+	clientAccountRelations_relatedAccountId: many(clientAccountRelation, {
+		relationName: "clientAccountRelation_relatedAccountId_clientAccount_id"
+	}),
+	clientAccountRelations_accountId: many(clientAccountRelation, {
+		relationName: "clientAccountRelation_accountId_clientAccount_id"
+	}),
+	clientAccountContacts: many(clientAccountContact),
+	businesses: many(business),
+	activities: many(activity),
+	appointments: many(appointment),
+	notes: many(note),
 }));
 
-export const businessRelations = relations(business, ({ one }) => ({
-  businessEntity: one(businessEntity, {
-    fields: [business.entityId],
-    references: [businessEntity.id],
-  }),
-  account: one(account, {
-    fields: [business.accountId],
-    references: [account.id],
-  }),
+export const clientAccountContactRelations = relations(clientAccountContact, ({one}) => ({
+	clientAccount: one(clientAccount, {
+		fields: [clientAccountContact.accountId],
+		references: [clientAccount.id]
+	}),
 }));
 
-export const businessEntityRelations = relations(
-  businessEntity,
-  ({ many }) => ({
-    businesses: many(business),
-  })
-);
-
-export const activityRelations = relations(activity, ({ one }) => ({
-  activityType: one(activityType, {
-    fields: [activity.typeId],
-    references: [activityType.id],
-  }),
-  account: one(account, {
-    fields: [activity.accountId],
-    references: [account.id],
-  }),
+export const businessRelations = relations(business, ({one}) => ({
+	businessEntity: one(businessEntity, {
+		fields: [business.entityId],
+		references: [businessEntity.id]
+	}),
+	clientAccount: one(clientAccount, {
+		fields: [business.accountId],
+		references: [clientAccount.id]
+	}),
 }));
 
-export const activityTypeRelations = relations(activityType, ({ many }) => ({
-  activities: many(activity),
+export const businessEntityRelations = relations(businessEntity, ({many}) => ({
+	businesses: many(business),
 }));
 
-export const appointmentRelations = relations(appointment, ({ one }) => ({
-  staff: one(staff, {
-    fields: [appointment.staffId],
-    references: [staff.id],
-  }),
-  account: one(account, {
-    fields: [appointment.accountId],
-    references: [account.id],
-  }),
+export const activityRelations = relations(activity, ({one}) => ({
+	activityType: one(activityType, {
+		fields: [activity.typeId],
+		references: [activityType.id]
+	}),
+	clientAccount: one(clientAccount, {
+		fields: [activity.accountId],
+		references: [clientAccount.id]
+	}),
 }));
 
-export const staffRelations = relations(staff, ({ many }) => ({
-  appointments: many(appointment),
+export const activityTypeRelations = relations(activityType, ({many}) => ({
+	activities: many(activity),
 }));
 
-export const noteRelations = relations(note, ({ one }) => ({
-  account: one(account, {
-    fields: [note.accountId],
-    references: [account.id],
-  }),
+export const appointmentRelations = relations(appointment, ({one}) => ({
+	staff: one(staff, {
+		fields: [appointment.staffId],
+		references: [staff.id]
+	}),
+	clientAccount: one(clientAccount, {
+		fields: [appointment.accountId],
+		references: [clientAccount.id]
+	}),
+}));
+
+export const staffRelations = relations(staff, ({many}) => ({
+	appointments: many(appointment),
+}));
+
+export const noteRelations = relations(note, ({one}) => ({
+	clientAccount: one(clientAccount, {
+		fields: [note.accountId],
+		references: [clientAccount.id]
+	}),
 }));

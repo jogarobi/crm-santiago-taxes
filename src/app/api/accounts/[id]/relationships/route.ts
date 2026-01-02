@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { accountRelation, account } from '@/db/migrations/schema';
+import { clientAccountRelation, clientAccount } from '@/db/migrations/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(
@@ -20,8 +20,8 @@ export async function GET(
 
     const accountResult = await db
       .select()
-      .from(account)
-      .where(eq(account.id, accountId))
+      .from(clientAccount)
+      .where(eq(clientAccount.id, accountId))
       .limit(1);
 
     if (accountResult.length === 0) {
@@ -30,24 +30,27 @@ export async function GET(
 
     const relationships = await db
       .select({
-        id: accountRelation.id,
-        accountId: accountRelation.accountId,
-        relatedAccountId: accountRelation.relatedAccountId,
-        relationship: accountRelation.relationship,
-        createdAt: accountRelation.createdAt,
-        createdBy: accountRelation.createdBy,
-        updatedAt: accountRelation.updatedAt,
-        updatedBy: accountRelation.updatedBy,
+        id: clientAccountRelation.id,
+        accountId: clientAccountRelation.accountId,
+        relatedAccountId: clientAccountRelation.relatedAccountId,
+        relationship: clientAccountRelation.relationship,
+        createdAt: clientAccountRelation.createdAt,
+        createdBy: clientAccountRelation.createdBy,
+        updatedAt: clientAccountRelation.updatedAt,
+        updatedBy: clientAccountRelation.updatedBy,
         relatedAccount: {
-          id: account.id,
-          firstName: account.firstName,
-          lastName: account.lastName,
-          dateOfBirth: account.dateOfBirth,
+          id: clientAccount.id,
+          firstName: clientAccount.firstName,
+          lastName: clientAccount.lastName,
+          dateOfBirth: clientAccount.dateOfBirth,
         },
       })
-      .from(accountRelation)
-      .leftJoin(account, eq(accountRelation.relatedAccountId, account.id))
-      .where(eq(accountRelation.accountId, accountId));
+      .from(clientAccountRelation)
+      .leftJoin(
+        clientAccount,
+        eq(clientAccountRelation.relatedAccountId, clientAccount.id)
+      )
+      .where(eq(clientAccountRelation.accountId, accountId));
 
     return NextResponse.json(relationships);
   } catch (error) {
@@ -88,8 +91,8 @@ export async function POST(
     // Check if account exists
     const accountResult = await db
       .select()
-      .from(account)
-      .where(eq(account.id, accountId))
+      .from(clientAccount)
+      .where(eq(clientAccount.id, accountId))
       .limit(1);
 
     if (accountResult.length === 0) {
@@ -99,8 +102,8 @@ export async function POST(
     // Check if related account exists
     const relatedAccountResult = await db
       .select()
-      .from(account)
-      .where(eq(account.id, body.relatedAccountId))
+      .from(clientAccount)
+      .where(eq(clientAccount.id, body.relatedAccountId))
       .limit(1);
 
     if (relatedAccountResult.length === 0) {
@@ -111,7 +114,7 @@ export async function POST(
     }
 
     const newRelationship = await db
-      .insert(accountRelation)
+      .insert(clientAccountRelation)
       .values({
         accountId,
         relatedAccountId: body.relatedAccountId,

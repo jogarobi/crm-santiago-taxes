@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { appointment, account } from '@/db/migrations/schema';
+import { appointment, clientAccount } from '@/db/migrations/schema';
 import { eq, or } from 'drizzle-orm';
 
 export async function PATCH(
@@ -44,13 +44,13 @@ export async function PATCH(
     // If customerId is provided, update the account's squareId
     if (body.customerId) {
       await db
-        .update(account)
+        .update(clientAccount)
         .set({
           squareId: body.customerId,
           updatedAt: new Date().toISOString(),
           updatedBy: 'system',
         })
-        .where(eq(account.id, body.accountId));
+        .where(eq(clientAccount.id, body.accountId));
     }
 
     return NextResponse.json({

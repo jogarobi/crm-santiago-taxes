@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { note } from '@/db/migrations/schema';
-import { eq, desc, like, and, count, sql } from 'drizzle-orm';
+import { eq, desc, like, and, count } from 'drizzle-orm';
 
 export async function GET(request: Request) {
   try {
@@ -34,9 +34,8 @@ export async function GET(request: Request) {
       conditions.push(like(note.content, `%${search.trim()}%`));
     }
 
-    const whereClause = conditions.length > 1
-      ? and(...conditions)
-      : conditions[0];
+    const whereClause =
+      conditions.length > 1 ? and(...conditions) : conditions[0];
 
     // Get total count
     const totalResult = await db

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { accountContact, account } from '@/db/migrations/schema';
+import { clientAccountContact, clientAccount } from '@/db/migrations/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(
@@ -21,8 +21,8 @@ export async function GET(
     // Check if account exists
     const accountResult = await db
       .select()
-      .from(account)
-      .where(eq(account.id, accountId))
+      .from(clientAccount)
+      .where(eq(clientAccount.id, accountId))
       .limit(1);
 
     if (accountResult.length === 0) {
@@ -32,8 +32,8 @@ export async function GET(
     // Get contacts for the account
     const contacts = await db
       .select()
-      .from(accountContact)
-      .where(eq(accountContact.accountId, accountId));
+      .from(clientAccountContact)
+      .where(eq(clientAccountContact.accountId, accountId));
 
     return NextResponse.json(contacts);
   } catch (error) {
@@ -71,8 +71,8 @@ export async function POST(
     // Check if account exists
     const accountResult = await db
       .select()
-      .from(account)
-      .where(eq(account.id, accountId))
+      .from(clientAccount)
+      .where(eq(clientAccount.id, accountId))
       .limit(1);
 
     if (accountResult.length === 0) {
@@ -80,7 +80,7 @@ export async function POST(
     }
 
     const newContact = await db
-      .insert(accountContact)
+      .insert(clientAccountContact)
       .values({
         accountId,
         email: body.email,

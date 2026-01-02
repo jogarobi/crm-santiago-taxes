@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { account } from '@/db/migrations/schema';
+import { clientAccount } from '@/db/migrations/schema';
 import { or, like, eq, count, sql } from 'drizzle-orm';
 
 export async function GET(request: Request) {
@@ -18,40 +18,41 @@ export async function GET(request: Request) {
     if (search) {
       conditions.push(
         or(
-          like(account.firstName, `%${search}%`),
-          like(account.lastName, `%${search}%`),
+          like(clientAccount.firstName, `%${search}%`),
+          like(clientAccount.lastName, `%${search}%`),
           like(
-            sql`${account.firstName} || ' ' || ${account.lastName}`,
+            sql`${clientAccount.firstName} || ' ' || ${clientAccount.lastName}`,
             `%${search}%`
           ),
-          like(account.ssnLastFour, `%${search}%`),
-          eq(account.id, isNaN(parseInt(search)) ? -1 : parseInt(search))
+          like(clientAccount.ssnLastFour, `%${search}%`),
+          eq(clientAccount.id, isNaN(parseInt(search)) ? -1 : parseInt(search))
         )
       );
     }
 
     if (onlyWithSquareId) {
-      conditions.push(sql`${account.squareId} IS NOT NULL`);
+      conditions.push(sql`${clientAccount.squareId} IS NOT NULL`);
     }
 
-    const whereClause = conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined;
+    const whereClause =
+      conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined;
 
     const totalResult = await db
       .select({ count: count() })
-      .from(account)
+      .from(clientAccount)
       .where(whereClause);
 
     const total = totalResult[0]?.count || 0;
 
-    const accounts = await db
+    const clientAccounts = await db
       .select()
-      .from(account)
+      .from(clientAccount)
       .where(whereClause)
       .limit(pageSize)
       .offset(offset);
 
     return NextResponse.json({
-      data: accounts,
+      data: clientAccounts,
       meta: {
         total,
         pageSize,
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
     }
 
     const newAccount = await db
-      .insert(account)
+      .insert(clientAccount)
       .values({
         firstName: body.firstName,
         lastName: body.lastName,

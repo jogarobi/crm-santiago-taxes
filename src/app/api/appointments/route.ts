@@ -1,5 +1,5 @@
 import { square } from '@/app/api/client';
-import { account, appointment } from '@/db/migrations/schema';
+import { clientAccount, appointment } from '@/db/migrations/schema';
 import { db } from '@/lib/db';
 import {
   Appointment,
@@ -132,8 +132,8 @@ export async function POST(request: Request) {
         if (body.customerId) {
           const accountResult = await db
             .select()
-            .from(account)
-            .where(eq(account.squareId, body.customerId))
+            .from(clientAccount)
+            .where(eq(clientAccount.squareId, body.customerId))
             .limit(1);
 
           if (accountResult.length > 0) {

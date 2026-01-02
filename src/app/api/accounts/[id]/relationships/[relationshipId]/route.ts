@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { accountRelation, account } from '@/db/migrations/schema';
+import { clientAccountRelation, clientAccount } from '@/db/migrations/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(
@@ -22,8 +22,8 @@ export async function GET(
     // Check if account exists
     const accountResult = await db
       .select()
-      .from(account)
-      .where(eq(account.id, accountId))
+      .from(clientAccount)
+      .where(eq(clientAccount.id, accountId))
       .limit(1);
 
     if (accountResult.length === 0) {
@@ -32,8 +32,8 @@ export async function GET(
 
     const result = await db
       .select()
-      .from(accountRelation)
-      .where(eq(accountRelation.id, relationshipIdInt))
+      .from(clientAccountRelation)
+      .where(eq(clientAccountRelation.id, relationshipIdInt))
       .limit(1);
 
     if (result.length === 0) {
@@ -88,8 +88,8 @@ export async function PUT(
     // Check if account exists
     const accountResult = await db
       .select()
-      .from(account)
-      .where(eq(account.id, accountId))
+      .from(clientAccount)
+      .where(eq(clientAccount.id, accountId))
       .limit(1);
 
     if (accountResult.length === 0) {
@@ -98,8 +98,8 @@ export async function PUT(
 
     const existingRelationship = await db
       .select()
-      .from(accountRelation)
-      .where(eq(accountRelation.id, relationshipIdInt))
+      .from(clientAccountRelation)
+      .where(eq(clientAccountRelation.id, relationshipIdInt))
       .limit(1);
 
     if (existingRelationship.length === 0) {
@@ -118,14 +118,14 @@ export async function PUT(
     }
 
     const updatedRelationship = await db
-      .update(accountRelation)
+      .update(clientAccountRelation)
       .set({
         relatedAccountId: body.relatedAccountId,
         relationship: body.relationship,
         updatedBy: body.updatedBy,
         updatedAt: new Date().toISOString(),
       })
-      .where(eq(accountRelation.id, relationshipIdInt))
+      .where(eq(clientAccountRelation.id, relationshipIdInt))
       .returning();
 
     return NextResponse.json(updatedRelationship[0]);
@@ -157,8 +157,8 @@ export async function DELETE(
     // Check if account exists
     const accountResult = await db
       .select()
-      .from(account)
-      .where(eq(account.id, accountId))
+      .from(clientAccount)
+      .where(eq(clientAccount.id, accountId))
       .limit(1);
 
     if (accountResult.length === 0) {
@@ -167,8 +167,8 @@ export async function DELETE(
 
     const existingRelationship = await db
       .select()
-      .from(accountRelation)
-      .where(eq(accountRelation.id, relationshipIdInt))
+      .from(clientAccountRelation)
+      .where(eq(clientAccountRelation.id, relationshipIdInt))
       .limit(1);
 
     if (existingRelationship.length === 0) {
@@ -186,7 +186,9 @@ export async function DELETE(
       );
     }
 
-    await db.delete(accountRelation).where(eq(accountRelation.id, relationshipIdInt));
+    await db
+      .delete(clientAccountRelation)
+      .where(eq(clientAccountRelation.id, relationshipIdInt));
 
     return NextResponse.json(
       { message: 'Account relationship deleted successfully' },
