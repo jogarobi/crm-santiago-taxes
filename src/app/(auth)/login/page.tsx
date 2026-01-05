@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { authClient } from '@/app/api/clients';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
+import { Loader2 } from 'lucide-react';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -238,6 +239,8 @@ export default function LoginPage() {
             loading || !email || !password || (mode === 'signup' && !name)
           }
         >
+          {loading && <Loader2 className='w-6 h-6 animate-spin text-white' />}
+
           {loading
             ? mode === 'login'
               ? 'Logging in...'
