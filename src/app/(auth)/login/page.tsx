@@ -9,34 +9,19 @@ import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
-const signupSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.email('Invalid email address'),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
-    ),
-});
-
 const loginSchema = z.object({
   email: z.email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
 });
 
-type SignupFormData = z.infer<typeof signupSchema>;
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<
-    Partial<Record<keyof SignupFormData, string>>
+    Partial<Record<keyof LoginFormData, string>>
   >({});
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -87,59 +72,9 @@ export default function LoginPage() {
     }
   };
 
-  const handleSignup = async () => {
-    setError(null);
-    setValidationErrors({});
-
-    const validationResult = signupSchema.safeParse({ email, password, name });
-
-    if (!validationResult.success) {
-      const errors: Partial<Record<keyof SignupFormData, string>> = {};
-      validationResult.error.issues.forEach((err) => {
-        if (err.path[0]) {
-          errors[err.path[0] as keyof SignupFormData] = err.message;
-        }
-      });
-      setValidationErrors(errors);
-      return;
-    }
-
-    setLoading(true);
-
-    const { error } = await authClient.signUp.email(
-      {
-        email,
-        password,
-        name,
-        callbackURL: '/',
-      },
-      {
-        onRequest: () => {
-          setLoading(true);
-        },
-        onSuccess: () => {
-          router.push('/');
-        },
-        onError: (ctx) => {
-          setError(ctx.error.message);
-          setLoading(false);
-        },
-      }
-    );
-
-    if (error) {
-      setError(error.message || 'An error occurred during signup');
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === 'login') {
-      handleLogin();
-    } else {
-      handleSignup();
-    }
+    handleLogin();
   };
 
   return (
@@ -155,33 +90,10 @@ export default function LoginPage() {
 
       <form className='w-1/3 pb-5' onSubmit={handleSubmit}>
         <h1 className='text-purple font-semibold text-2xl text-center mb-8'>
-          {mode === 'login' ? 'Welcome back' : 'Create account'}
+          Welcome back
         </h1>
 
         <FieldGroup>
-          {mode === 'signup' && (
-            <Field>
-              <FieldLabel htmlFor='name' className='text-[15px]'>
-                Name
-              </FieldLabel>
-              <Input
-                id='name'
-                type='text'
-                placeholder='John Doe'
-                className='p-3'
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setValidationErrors((prev) => ({ ...prev, name: undefined }));
-                }}
-              />
-              {validationErrors.name && (
-                <p className='text-red-600 text-sm mt-1'>
-                  {validationErrors.name}
-                </p>
-              )}
-            </Field>
-          )}
           <Field>
             <FieldLabel htmlFor='email' className='text-[15px]'>
               Email
@@ -212,11 +124,7 @@ export default function LoginPage() {
                 id='password'
                 type={showPassword ? 'text' : 'password'}
                 className='p-3 pr-12'
-                placeholder={
-                  mode === 'signup'
-                    ? 'Minimum 8 characters, 1 uppercase, 1 lowercase, 1 number'
-                    : 'Enter your password'
-                }
+                placeholder='Enter your password'
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
@@ -250,19 +158,10 @@ export default function LoginPage() {
         <button
           type='submit'
           className='text-[15px] font-medium flex items-center gap-3 w-full justify-center border rounded-md p-3 mt-8 cursor-pointer bg-purple hover:bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed'
-          disabled={
-            loading || !email || !password || (mode === 'signup' && !name)
-          }
+          disabled={loading || !email || !password}
         >
           {loading && <Loader2 className='w-6 h-6 animate-spin text-white' />}
-
-          {loading
-            ? mode === 'login'
-              ? 'Logging in...'
-              : 'Creating account...'
-            : mode === 'login'
-            ? 'Login'
-            : 'Sign up'}
+          {loading ? 'Logging in...' : 'Login'}
         </button>
 
         {error && (
@@ -270,40 +169,6 @@ export default function LoginPage() {
             {error}
           </p>
         )}
-
-        <p className='text-center text-[15px] text-neutral-500 mt-6'>
-          {mode === 'login' ? (
-            <>
-              Don&apos;t have an account?{' '}
-              <button
-                type='button'
-                onClick={() => {
-                  setMode('signup');
-                  setError(null);
-                  setValidationErrors({});
-                }}
-                className='text-purple font-semibold hover:underline'
-              >
-                Sign up
-              </button>
-            </>
-          ) : (
-            <>
-              Already have an account?{' '}
-              <button
-                type='button'
-                onClick={() => {
-                  setMode('login');
-                  setError(null);
-                  setValidationErrors({});
-                }}
-                className='text-purple font-semibold hover:underline'
-              >
-                Sign in
-              </button>
-            </>
-          )}
-        </p>
       </form>
 
       <p className='text-[15px] text-neutral-500 mt-8'>
