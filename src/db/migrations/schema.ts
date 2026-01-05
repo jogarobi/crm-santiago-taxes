@@ -1,11 +1,11 @@
-import { relations, sql } from 'drizzle-orm';
 import {
-  sqliteTable,
   text,
   integer,
+  sqliteTable,
   index,
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core';
+import { relations, sql } from 'drizzle-orm';
 
 export const clientAccountRelation = sqliteTable('ClientAccountRelation', {
   id: integer().primaryKey({ autoIncrement: true }),
