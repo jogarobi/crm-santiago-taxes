@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Sidebar as CNSidebar,
   SidebarContent,
@@ -22,6 +22,7 @@ import {
   ChevronUp,
   DollarSignIcon,
   HomeIcon,
+  Loader2,
   LogOut,
   SettingsIcon,
   UserIcon,
@@ -33,6 +34,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from './ui/dropdown-menu';
+import { authClient } from '@/app/api/clients';
+import { useState } from 'react';
 
 const items = [
   {
@@ -76,8 +79,34 @@ const managementItems = [
   },
 ];
 
+function getInitials(name: string): string {
+  const names = name.trim().split(' ');
+  if (names.length >= 2) {
+    return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          router.push('/login');
+        },
+        onError: (ctx) => {
+          console.error('Sign out error:', ctx.error);
+          setIsSigningOut(false);
+        },
+      },
+    });
+  };
 
   return (
     <CNSidebar>
@@ -159,33 +188,59 @@ export default function Sidebar() {
       <SidebarFooter className='bg-white'>
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger className='h-full' asChild>
-                <SidebarMenuButton className='px-3'>
-                  <div className='flex items-center gap-3'>
-                    <span className='inline-block p-2 rounded-full bg-purple text-white'>
-                      GS
-                    </span>
-                    <div>
-                      <p className='w-max text-sm font-semibold text-zinc-800'>
-                        Guelmie Santiago
-                      </p>
-                      <p className='text-muted-foreground text-sm'>Admin</p>
+            {isPending ? (
+              <SidebarMenuButton className='px-3' disabled>
+                <div className='flex items-center gap-3'>
+                  <Loader2 className='w-4 h-4 animate-spin' />
+                  <span className='text-sm text-muted-foreground'>
+                    Loading...
+                  </span>
+                </div>
+              </SidebarMenuButton>
+            ) : session ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger className='h-full' asChild>
+                  <SidebarMenuButton className='px-3'>
+                    <div className='flex items-center gap-3'>
+                      <span className='inline-block p-2 rounded-full bg-purple text-white text-xs font-semibold'>
+                        {getInitials(session.user.name)}
+                      </span>
+                      <div className='flex-1 min-w-0'>
+                        <p className='text-sm font-semibold text-zinc-800 truncate'>
+                          {session.user.name}
+                        </p>
+                        <p className='text-muted-foreground text-xs truncate'>
+                          Admin
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <ChevronUp className='ml-auto h-4 w-4' />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                side='top'
-                className='w-[--radix-popper-anchor-width]'
-              >
-                <DropdownMenuItem className='cursor-pointer text-destructive'>
-                  <LogOut className='mr-2 h-4 w-4 stroke-destructive' />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <ChevronUp className='ml-auto h-4 w-4 shrink-0' />
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  side='top'
+                  className='w-[--radix-popper-anchor-width]'
+                >
+                  <DropdownMenuItem
+                    className='cursor-pointer text-destructive'
+                    onClick={handleSignOut}
+                    disabled={isSigningOut}
+                  >
+                    {isSigningOut ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 stroke-destructive animate-spin' />
+                        <span>Signing out...</span>
+                      </>
+                    ) : (
+                      <>
+                        <LogOut className='mr-2 h-4 w-4 stroke-destructive' />
+                        <span>Sign out</span>
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
