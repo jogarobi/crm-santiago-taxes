@@ -20,8 +20,8 @@ export async function GET(
 
     const result = await db
       .select()
-      .from(account)
-      .where(eq(account.id, accountId))
+      .from(clientAccount)
+      .where(eq(clientAccount.id, accountId))
       .limit(1);
 
     if (result.length === 0) {
@@ -56,8 +56,8 @@ export async function PUT(
 
     const existingAccount = await db
       .select()
-      .from(account)
-      .where(eq(account.id, accountId))
+      .from(clientAccount)
+      .where(eq(clientAccount.id, accountId))
       .limit(1);
 
     if (existingAccount.length === 0) {
@@ -65,7 +65,7 @@ export async function PUT(
     }
 
     const updatedAccount = await db
-      .update(account)
+      .update(clientAccount)
       .set({
         firstName: body.firstName,
         lastName: body.lastName,
@@ -79,7 +79,7 @@ export async function PUT(
         updatedAt: new Date().toISOString(),
         squareId: body.squareId,
       })
-      .where(eq(account.id, accountId))
+      .where(eq(clientAccount.id, accountId))
       .returning();
 
     return NextResponse.json(updatedAccount[0]);
@@ -109,15 +109,15 @@ export async function DELETE(
 
     const existingAccount = await db
       .select()
-      .from(account)
-      .where(eq(account.id, accountId))
+      .from(clientAccount)
+      .where(eq(clientAccount.id, accountId))
       .limit(1);
 
     if (existingAccount.length === 0) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    await db.delete(account).where(eq(account.id, accountId));
+    await db.delete(clientAccount).where(eq(clientAccount.id, accountId));
 
     return NextResponse.json(
       { message: 'Account deleted successfully' },
