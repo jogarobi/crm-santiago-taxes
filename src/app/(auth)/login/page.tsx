@@ -56,7 +56,23 @@ export default function LoginPage() {
         onRequest: () => {
           setLoading(true);
         },
-        onSuccess: () => {
+        onSuccess: async () => {
+          // Set Santiago Taxes as active organization
+          try {
+            const orgs = await authClient.organization.list();
+            const santiagoTaxes = orgs?.data?.find(
+              (org) => org.slug === 'santiago-taxes'
+            );
+
+            if (santiagoTaxes) {
+              await authClient.organization.setActive({
+                organizationId: santiagoTaxes.id,
+              });
+            }
+          } catch (orgError) {
+            console.error('Failed to set active organization:', orgError);
+          }
+
           router.push('/');
         },
         onError: (ctx) => {
