@@ -1,4 +1,4 @@
-import { square } from '@/app/api/client';
+import { square } from '@/app/api/clients';
 import { clientAccount, appointment } from '@/db/migrations/schema';
 import { db } from '@/lib/db';
 import {

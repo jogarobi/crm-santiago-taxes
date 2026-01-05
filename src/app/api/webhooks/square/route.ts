@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { square } from '@/app/api/client';
+import { square } from '@/app/api/clients';
 import { db } from '@/lib/db';
 import {
   appointment,

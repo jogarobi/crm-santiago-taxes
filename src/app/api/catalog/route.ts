@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { square } from '@/app/api/client';
+import { square } from '@/app/api/clients';
 import { CatalogErrorResponse } from '@/lib/types/catalog';
 import type { CatalogObject } from 'square';
 

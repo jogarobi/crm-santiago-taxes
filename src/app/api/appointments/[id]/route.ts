@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { square } from '@/app/api/client';
+import { square } from '@/app/api/clients';
 import { Appointment, AppointmentErrorResponse } from '@/lib/types/appointment';
 import { db } from '@/lib/db';
 import { appointment } from '@/db/migrations/schema';
@@ -32,7 +32,9 @@ export async function GET(
         updatedBy: appointment.updatedBy,
       })
       .from(appointment)
-      .where(or(eq(appointment.squareId, id), eq(appointment.id, parseInt(id) || 0)))
+      .where(
+        or(eq(appointment.squareId, id), eq(appointment.id, parseInt(id) || 0))
+      )
       .limit(1);
 
     if (dbAppointment.length === 0) {

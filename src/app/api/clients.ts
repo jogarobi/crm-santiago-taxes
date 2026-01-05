@@ -1,4 +1,5 @@
 import { SquareClient, SquareEnvironment } from 'square';
+import { createAuthClient } from 'better-auth/react';
 
 export const square = new SquareClient({
   token: process.env.SQUARE_ACCESS_TOKEN,
@@ -7,3 +8,5 @@ export const square = new SquareClient({
       ? SquareEnvironment.Production
       : SquareEnvironment.Sandbox,
 });
+
+export const authClient = createAuthClient({});
