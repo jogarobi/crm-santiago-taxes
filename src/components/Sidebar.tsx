@@ -35,7 +35,7 @@ import {
   DropdownMenuItem,
 } from './ui/dropdown-menu';
 import { authClient } from '@/app/api/clients';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const items = [
   {
@@ -91,7 +91,29 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
+  const [userRole, setUserRole] = useState<string>('Member');
+  const [isLoadingRole, setIsLoadingRole] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  useEffect(() => {
+    async function fetchRole() {
+      if (session?.user) {
+        setIsLoadingRole(true);
+        try {
+          const result = await authClient.organization.getActiveMemberRole();
+          if (result?.data?.role) {
+            setUserRole(result.data.role);
+          }
+        } catch (error) {
+          console.error('Failed to fetch role:', error);
+          setUserRole('Member');
+        } finally {
+          setIsLoadingRole(false);
+        }
+      }
+    }
+    fetchRole();
+  }, [session?.user]);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -210,7 +232,16 @@ export default function Sidebar() {
                           {session.user.name}
                         </p>
                         <p className='text-muted-foreground text-xs truncate'>
-                          Admin
+                          {isLoadingRole
+                            ? 'Loading...'
+                            : userRole
+                                .split(',')
+                                .map(
+                                  (r: string) =>
+                                    r.trim().charAt(0).toUpperCase() +
+                                    r.trim().slice(1).toLowerCase()
+                                )
+                                .join(', ')}
                         </p>
                       </div>
                     </div>
