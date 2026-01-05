@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { authClient } from '@/app/api/clients';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
-import { Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -39,6 +39,7 @@ export default function LoginPage() {
     Partial<Record<keyof SignupFormData, string>>
   >({});
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   const handleLogin = async () => {
@@ -152,7 +153,7 @@ export default function LoginPage() {
         style={{ objectFit: 'contain' }}
       />
 
-      <form className='w-1/3' onSubmit={handleSubmit}>
+      <form className='w-1/3 pb-5' onSubmit={handleSubmit}>
         <h1 className='text-purple font-semibold text-2xl text-center mb-8'>
           {mode === 'login' ? 'Welcome back' : 'Create account'}
         </h1>
@@ -206,24 +207,38 @@ export default function LoginPage() {
             <FieldLabel htmlFor='password' className='text-[15px]'>
               Password
             </FieldLabel>
-            <Input
-              id='password'
-              type='password'
-              className='p-3'
-              placeholder={
-                mode === 'signup'
-                  ? 'Minimum 8 characters, 1 uppercase, 1 lowercase, 1 number'
-                  : 'Enter your password'
-              }
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setValidationErrors((prev) => ({
-                  ...prev,
-                  password: undefined,
-                }));
-              }}
-            />
+            <div className='relative'>
+              <Input
+                id='password'
+                type={showPassword ? 'text' : 'password'}
+                className='p-3 pr-12'
+                placeholder={
+                  mode === 'signup'
+                    ? 'Minimum 8 characters, 1 uppercase, 1 lowercase, 1 number'
+                    : 'Enter your password'
+                }
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setValidationErrors((prev) => ({
+                    ...prev,
+                    password: undefined,
+                  }));
+                }}
+              />
+              <button
+                type='button'
+                onClick={() => setShowPassword(!showPassword)}
+                className='absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700 transition-colors'
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <EyeOff className='w-4.5 h-4.5' />
+                ) : (
+                  <Eye className='w-4.5 h-4.5' />
+                )}
+              </button>
+            </div>
             {validationErrors.password && (
               <p className='text-red-600 text-sm mt-1'>
                 {validationErrors.password}
@@ -256,7 +271,7 @@ export default function LoginPage() {
           </p>
         )}
 
-        <p className='text-center text-[15px] text-neutral-600 mt-6'>
+        <p className='text-center text-[15px] text-neutral-500 mt-6'>
           {mode === 'login' ? (
             <>
               Don&apos;t have an account?{' '}
