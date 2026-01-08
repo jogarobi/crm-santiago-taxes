@@ -105,11 +105,13 @@ export const log = sqliteTable('Log', {
 
 export const staff = sqliteTable('Staff', {
   id: integer().primaryKey({ autoIncrement: true }),
+  userId: text().references(() => user.id),
   squareId: text(),
   title: text().notNull(),
   status: text().notNull(),
   firstName: text().notNull(),
   lastName: text().notNull(),
+  email: text(),
   createdAt: text().default("DATETIME('NOW')"),
   createdBy: text().notNull(),
   updatedAt: text(),
@@ -288,11 +290,15 @@ export const invitation = sqliteTable(
   ]
 );
 
-export const userRelations = relations(user, ({ many }) => ({
+export const userRelations = relations(user, ({ many, one }) => ({
   sessions: many(session),
   accounts: many(account),
   members: many(member),
   invitations: many(invitation),
+  staffProfile: one(staff, {
+    fields: [user.id],
+    references: [staff.userId],
+  }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -332,6 +338,13 @@ export const invitationRelations = relations(invitation, ({ one }) => ({
   }),
   user: one(user, {
     fields: [invitation.inviterId],
+    references: [user.id],
+  }),
+}));
+
+export const staffRelations = relations(staff, ({ one }) => ({
+  user: one(user, {
+    fields: [staff.userId],
     references: [user.id],
   }),
 }));

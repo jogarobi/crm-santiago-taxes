@@ -33,6 +33,11 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { InviteStaffDialog } from '@/components/InviteStaffDialog';
+import { CreateStaffDialog } from '@/components/CreateStaffDialog';
+import { EditStaffDialog } from '@/components/EditStaffDialog';
+import { Mail, Pencil } from 'lucide-react';
+import type { Staff } from '@/hooks/use-staff';
 
 export default function StaffPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,6 +45,11 @@ export default function StaffPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState<string>('');
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
 
   // Set document title
   useEffect(() => {
@@ -60,6 +70,7 @@ export default function StaffPage() {
     data: response,
     isLoading,
     error,
+    refetch,
   } = useStaff({
     search: debouncedSearch || undefined,
     pageSize,
@@ -68,6 +79,34 @@ export default function StaffPage() {
 
   const staffMembers = response?.data || [];
   const meta = response?.meta;
+
+  const handleCreateSuccess = (staffMember: { id: number; email?: string | null }) => {
+    // If staff has email, open invite dialog
+    if (staffMember.email) {
+      setInviteEmail(staffMember.email);
+      setIsInviteDialogOpen(true);
+    }
+  };
+
+  const handleInviteClick = (email?: string | null) => {
+    if (email) {
+      setInviteEmail(email);
+      setIsInviteDialogOpen(true);
+    }
+  };
+
+  const handleEditClick = (staff: Staff) => {
+    setSelectedStaff(staff);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleInviteSuccess = () => {
+    refetch();
+  };
+
+  const handleUpdateSuccess = () => {
+    refetch();
+  };
 
   // Clear selection when page changes
   useEffect(() => {
@@ -127,7 +166,10 @@ export default function StaffPage() {
     <div className='flex flex-col gap-6'>
       <div className='flex items-center justify-between'>
         <h1 className='text-2xl font-semibold'>Staff Members</h1>
-        <Button className='bg-purple'>
+        <Button
+          className='bg-purple'
+          onClick={() => setIsCreateDialogOpen(true)}
+        >
           <PlusIcon className='w-4 h-4' />
           <span>New Staff Member</span>
         </Button>
@@ -173,7 +215,10 @@ export default function StaffPage() {
               : 'No staff members yet'}
           </h3>
           {!searchQuery && (
-            <Button className='bg-purple mt-4'>
+            <Button
+              className='bg-purple mt-4'
+              onClick={() => setIsCreateDialogOpen(true)}
+            >
               <PlusIcon className='w-4 h-4' />
               <span>Add Staff Member</span>
             </Button>
@@ -218,9 +263,11 @@ export default function StaffPage() {
                 <TableHead className='p-4'>Name</TableHead>
                 <TableHead className='p-4'>Title</TableHead>
                 <TableHead className='p-4'>Status</TableHead>
+                <TableHead className='p-4'>Account</TableHead>
                 <TableHead className='p-4'>Square ID</TableHead>
                 <TableHead className='p-4'>Created</TableHead>
                 <TableHead className='p-4'>Created By</TableHead>
+                <TableHead className='p-4'>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -253,6 +300,17 @@ export default function StaffPage() {
                     {getStatusBadge(member.status)}
                   </TableCell>
                   <TableCell className='p-4'>
+                    {member.userId ? (
+                      <Badge variant='default' className='bg-green-100 text-green-800'>
+                        Linked
+                      </Badge>
+                    ) : (
+                      <Badge variant='secondary' className='bg-yellow-100 text-yellow-800'>
+                        Pending
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className='p-4'>
                     {member.squareId ? (
                       <span className='font-mono text-sm'>
                         {member.squareId}
@@ -266,6 +324,35 @@ export default function StaffPage() {
                   </TableCell>
                   <TableCell className='p-4 text-neutral-600'>
                     {member.createdBy}
+                  </TableCell>
+                  <TableCell className='p-4'>
+                    <div className='flex gap-2'>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditClick(member);
+                        }}
+                        className='h-8'
+                      >
+                        <Pencil className='w-4 h-4 mr-1' />
+                        Edit
+                      </Button>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleInviteClick(member.email);
+                        }}
+                        disabled={!member.email}
+                        className='h-8'
+                      >
+                        <Mail className='w-4 h-4 mr-1' />
+                        Invite
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -358,6 +445,23 @@ export default function StaffPage() {
           </div>
         </div>
       )}
+      <CreateStaffDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onCreateSuccess={handleCreateSuccess}
+      />
+      <EditStaffDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        staffMember={selectedStaff}
+        onUpdateSuccess={handleUpdateSuccess}
+      />
+      <InviteStaffDialog
+        open={isInviteDialogOpen}
+        onOpenChange={setIsInviteDialogOpen}
+        onInviteSuccess={handleInviteSuccess}
+        defaultEmail={inviteEmail}
+      />
     </div>
   );
 }

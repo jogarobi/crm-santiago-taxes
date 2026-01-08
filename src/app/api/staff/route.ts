@@ -60,3 +60,47 @@ export async function GET(request: Request) {
     );
   }
 }
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+
+    if (
+      !body.firstName ||
+      !body.lastName ||
+      !body.title ||
+      !body.status ||
+      !body.createdBy
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Missing required fields: firstName, lastName, title, status, createdBy',
+        },
+        { status: 400 }
+      );
+    }
+
+    const newStaff = await db
+      .insert(staff)
+      .values({
+        firstName: body.firstName,
+        lastName: body.lastName,
+        title: body.title,
+        status: body.status,
+        email: body.email || null,
+        squareId: body.squareId || null,
+        createdBy: body.createdBy,
+        createdAt: new Date().toISOString(),
+      })
+      .returning();
+
+    return NextResponse.json(newStaff[0], { status: 201 });
+  } catch (error) {
+    console.error('Error creating staff member:', error);
+    return NextResponse.json(
+      { error: 'Failed to create staff member' },
+      { status: 500 }
+    );
+  }
+}
