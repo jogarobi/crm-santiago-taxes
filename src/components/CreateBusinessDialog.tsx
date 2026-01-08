@@ -16,6 +16,7 @@ import {
 } from './ui/select';
 import { Loader2, ChevronDownIcon } from 'lucide-react';
 import { useCreateBusiness } from '@/hooks/use-businesses';
+import { useBusinessEntities } from '@/hooks/use-business-entities';
 
 interface CreateBusinessDialogProps {
   open: boolean;
@@ -23,27 +24,20 @@ interface CreateBusinessDialogProps {
   accountId: number;
 }
 
-const BUSINESS_ENTITY_TYPES = [
-  { value: 'sole-proprietor', label: 'Sole Proprietor' },
-  { value: 'llc', label: 'LLC (Limited Liability Company)' },
-  { value: 'corporation', label: 'C Corporation' },
-  { value: 's-corporation', label: 'S Corporation' },
-  { value: 'partnership', label: 'Partnership' },
-  { value: 'non-profit', label: 'Non-Profit' },
-];
-
 export function CreateBusinessDialog({
   open,
   onOpenChange,
   accountId,
 }: CreateBusinessDialogProps) {
   const createBusiness = useCreateBusiness();
+  const { data: businessEntities, isLoading: entitiesLoading } =
+    useBusinessEntities();
   const [error, setError] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     registeredName: '',
-    entityType: '',
+    entityId: '',
     ein: '',
     address: '',
   });
@@ -71,6 +65,7 @@ export function CreateBusinessDialog({
             : undefined,
           ein: formData.ein || undefined,
           address: formData.address || undefined,
+          entityId: formData.entityId ? parseInt(formData.entityId) : undefined,
           createdBy: 'system', // TODO: Replace with actual user
         },
       });
@@ -78,7 +73,7 @@ export function CreateBusinessDialog({
       onOpenChange(false);
       setFormData({
         registeredName: '',
-        entityType: '',
+        entityId: '',
         ein: '',
         address: '',
       });
@@ -96,7 +91,7 @@ export function CreateBusinessDialog({
     if (!newOpen) {
       setFormData({
         registeredName: '',
-        entityType: '',
+        entityId: '',
         ein: '',
         address: '',
       });
@@ -139,22 +134,29 @@ export function CreateBusinessDialog({
 
           <div className='flex flex-col gap-2'>
             <Label
-              htmlFor='entityType'
+              htmlFor='entityId'
               className='text-sm font-medium text-neutral-700'
             >
               Entity Type
             </Label>
             <Select
-              value={formData.entityType}
-              onValueChange={(value) => handleChange('entityType', value)}
+              value={formData.entityId}
+              onValueChange={(value) => handleChange('entityId', value)}
+              disabled={entitiesLoading}
             >
-              <SelectTrigger id='entityType' className='w-full'>
-                <SelectValue placeholder='Select entity type' />
+              <SelectTrigger id='entityId' className='w-full'>
+                <SelectValue
+                  placeholder={
+                    entitiesLoading
+                      ? 'Loading entity types...'
+                      : 'Select entity type'
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                {BUSINESS_ENTITY_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
+                {businessEntities?.map((entity) => (
+                  <SelectItem key={entity.id} value={entity.id.toString()}>
+                    {entity.name}
                   </SelectItem>
                 ))}
               </SelectContent>

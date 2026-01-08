@@ -1,3 +1,12 @@
+export interface BusinessEntity {
+  id: number;
+  name: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
 export interface Business {
   id: number;
   accountId: number;

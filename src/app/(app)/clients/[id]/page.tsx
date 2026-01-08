@@ -17,6 +17,51 @@ function formatPhoneNumber(phoneNumber: string): string {
 
   return phoneNumber;
 }
+
+function getTimeUntilAnniversary(establishedDate: string): string {
+  const established = new Date(establishedDate);
+  const today = new Date();
+
+  // Get this year's anniversary
+  let nextAnniversary = new Date(
+    today.getFullYear(),
+    established.getMonth(),
+    established.getDate()
+  );
+
+  // If this year's anniversary has passed, use next year's
+  if (nextAnniversary < today) {
+    nextAnniversary = new Date(
+      today.getFullYear() + 1,
+      established.getMonth(),
+      established.getDate()
+    );
+  }
+
+  // Calculate months difference
+  const monthsDiff =
+    (nextAnniversary.getFullYear() - today.getFullYear()) * 12 +
+    (nextAnniversary.getMonth() - today.getMonth());
+
+  // Calculate days remaining after full months
+  const daysDiff = Math.floor(
+    (nextAnniversary.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  ) - (monthsDiff * 30);
+
+  if (monthsDiff === 0) {
+    if (daysDiff <= 0) {
+      return 'Today';
+    } else if (daysDiff === 1) {
+      return 'Due in 1 day';
+    } else {
+      return `Due in ${daysDiff} days`;
+    }
+  } else if (monthsDiff === 1) {
+    return 'Due in 1 month';
+  } else {
+    return `Due in ${monthsDiff} months`;
+  }
+}
 import { useAccount } from '@/hooks/use-accounts';
 import { useActivities } from '@/hooks/use-activities';
 import { useAccountContacts } from '@/hooks/use-account-contact';
@@ -579,6 +624,15 @@ export default function AccountDetailPage({ params }: Props) {
                               day: 'numeric',
                             })}
                           </p>
+                        </div>
+                      )}
+
+                      {business.establishedDate && (
+                        <div className='flex items-center gap-1.5'>
+                          <ClockIcon size={16} strokeWidth={2.3} />
+                          <span className='text-[15px]'>
+                            {getTimeUntilAnniversary(business.establishedDate)}
+                          </span>
                         </div>
                       )}
                     </div>
