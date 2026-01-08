@@ -21,9 +21,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 import { AppointmentDialog } from './AppointmentDialog';
+import { CreateNoteDialog } from './CreateNoteDialog';
 
 export function AppHeader() {
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
+  const [createNoteDialogOpen, setCreateNoteDialogOpen] = useState(false);
 
   return (
     <>
@@ -46,7 +48,10 @@ export function AppHeader() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align='end'>
-              <DropdownMenuItem className='px-4 py-3'>
+              <DropdownMenuItem
+                className='px-4 py-3 cursor-pointer'
+                onClick={() => setCreateNoteDialogOpen(true)}
+              >
                 <StickyNoteIcon className='stroke-neutral-500' />
                 <span className=' font-normal'>Create note</span>
               </DropdownMenuItem>
@@ -77,6 +82,10 @@ export function AppHeader() {
       <AppointmentDialog
         open={appointmentDialogOpen}
         onOpenChange={setAppointmentDialogOpen}
+      />
+      <CreateNoteDialog
+        open={createNoteDialogOpen}
+        onOpenChange={setCreateNoteDialogOpen}
       />
     </>
   );
