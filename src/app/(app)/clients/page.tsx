@@ -118,7 +118,7 @@ export default function ClientsPage() {
 
       <InputGroup className='py-6 bg-white'>
         <InputGroupInput
-          placeholder='Search by name, SSN last 4 digits, or ID...'
+          placeholder='Search by name, business name, SSN last 4 digits, or ID...'
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -199,6 +199,7 @@ export default function ClientsPage() {
                   />
                 </TableHead>
                 <TableHead className='p-4'>Name</TableHead>
+                <TableHead className='p-4'>Businesses</TableHead>
                 <TableHead className='p-4'>Date of Birth</TableHead>
                 <TableHead className='p-4'>SSN (Last 4)</TableHead>
                 <TableHead className='p-4'>Address</TableHead>
@@ -236,6 +237,17 @@ export default function ClientsPage() {
                     </div>
                   </TableCell>
                   <TableCell className='p-4'>
+                    {account.businesses && account.businesses.length > 0 ? (
+                      <span className='text-[15px]'>
+                        {account.businesses
+                          .map((b) => b.registeredName)
+                          .join(', ')}
+                      </span>
+                    ) : (
+                      <span className='text-neutral-400'>None</span>
+                    )}
+                  </TableCell>
+                  <TableCell className='p-4'>
                     {new Date(account.dateOfBirth).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
@@ -249,6 +261,7 @@ export default function ClientsPage() {
                       <span className='text-neutral-400'>—</span>
                     )}
                   </TableCell>
+
                   <TableCell className='p-4'>
                     {account.city && account.state && (
                       <span>

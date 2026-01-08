@@ -58,7 +58,7 @@ export function SearchAccounts() {
     <div className='relative search-container'>
       <InputGroup className='py-6 bg-white'>
         <InputGroupInput
-          placeholder='Search client...'
+          placeholder='Search by client name or business name...'
           value={searchInput}
           onChange={handleInputChange}
           onFocus={() => searchInput.length > 0 && setIsOpen(true)}
@@ -92,7 +92,7 @@ export function SearchAccounts() {
                   className='block px-4 py-4 hover:bg-neutral-50 transition-colors border-b last:border-b-0'
                 >
                   <div className='flex items-center justify-between'>
-                    <div>
+                    <div className='w-full'>
                       <div className='flex items-center gap-3'>
                         <p className='font-medium text-[15px] text-neutral-900'>
                           {account.firstName} {account.lastName}
@@ -109,6 +109,16 @@ export function SearchAccounts() {
                           )}
                         </div>
                       </div>
+                      {account.businesses && account.businesses.length > 0 && (
+                        <p className='text-sm text-purple font-medium mt-1.5'>
+                          {account.businesses.length === 1
+                            ? 'Business: '
+                            : 'Businesses: '}
+                          {account.businesses
+                            .map((b) => b.registeredName)
+                            .join(', ')}
+                        </p>
+                      )}
                       {account.address && (
                         <p className='text-[13px] text-neutral-600 mt-2'>
                           {account.address}

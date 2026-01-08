@@ -13,6 +13,10 @@ export type Account = {
   updatedAt?: string | null;
   updatedBy?: string | null;
   squareId?: string | null;
+  businesses?: {
+    id: number;
+    registeredName: string;
+  }[];
 };
 
 export type CreateAccountInput = {

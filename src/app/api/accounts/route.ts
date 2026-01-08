@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { clientAccount } from '@/db/migrations/schema';
+import { clientAccount, business } from '@/db/migrations/schema';
 import { or, like, eq, count, sql } from 'drizzle-orm';
 
 export async function GET(request: Request) {
@@ -25,7 +25,12 @@ export async function GET(request: Request) {
             `%${search}%`
           ),
           like(clientAccount.ssnLastFour, `%${search}%`),
-          eq(clientAccount.id, isNaN(parseInt(search)) ? -1 : parseInt(search))
+          eq(clientAccount.id, isNaN(parseInt(search)) ? -1 : parseInt(search)),
+          sql`EXISTS (
+            SELECT 1 FROM ${business}
+            WHERE ${business.accountId} = CAST(${clientAccount.id} AS TEXT)
+            AND ${business.registeredName} LIKE ${`%${search}%`}
+          )`
         )
       );
     }
@@ -51,8 +56,26 @@ export async function GET(request: Request) {
       .limit(pageSize)
       .offset(offset);
 
+    // Fetch businesses for each account
+    const accountsWithBusinesses = await Promise.all(
+      clientAccounts.map(async (account) => {
+        const accountBusinesses = await db
+          .select({
+            id: business.id,
+            registeredName: business.registeredName,
+          })
+          .from(business)
+          .where(eq(business.accountId, account.id.toString()));
+
+        return {
+          ...account,
+          businesses: accountBusinesses,
+        };
+      })
+    );
+
     return NextResponse.json({
-      data: clientAccounts,
+      data: accountsWithBusinesses,
       meta: {
         total,
         pageSize,
