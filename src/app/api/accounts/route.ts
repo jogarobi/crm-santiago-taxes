@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const onlyWithSquareId = searchParams.get('onlyWithSquareId') === 'true';
+    const accountType = searchParams.get('accountType') || 'all';
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const pageIndex = parseInt(searchParams.get('pageIndex') || '0');
 
@@ -37,6 +38,18 @@ export async function GET(request: Request) {
 
     if (onlyWithSquareId) {
       conditions.push(sql`${clientAccount.squareId} IS NOT NULL`);
+    }
+
+    if (accountType === 'clients') {
+      conditions.push(sql`NOT EXISTS (
+        SELECT 1 FROM ${business}
+        WHERE ${business.accountId} = CAST(${clientAccount.id} AS TEXT)
+      )`);
+    } else if (accountType === 'businesses') {
+      conditions.push(sql`EXISTS (
+        SELECT 1 FROM ${business}
+        WHERE ${business.accountId} = CAST(${clientAccount.id} AS TEXT)
+      )`);
     }
 
     const whereClause =

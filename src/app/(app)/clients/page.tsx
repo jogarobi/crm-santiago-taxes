@@ -32,7 +32,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CreateClientDialog } from '@/components/CreateClientDialog';
+import { CreateBusinessDialog } from '@/components/CreateBusinessDialog';
+import { SelectClientForBusinessDialog } from '@/components/SelectClientForBusinessDialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function ClientsPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,6 +44,12 @@ export default function ClientsPage() {
   const [pageSize, setPageSize] = useState(10);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isSelectClientDialogOpen, setIsSelectClientDialogOpen] = useState(false);
+  const [isCreateBusinessDialogOpen, setIsCreateBusinessDialogOpen] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [accountType, setAccountType] = useState<
+    'all' | 'clients' | 'businesses'
+  >('all');
 
   // Set document title
   useEffect(() => {
@@ -65,17 +74,25 @@ export default function ClientsPage() {
     search: debouncedSearch || undefined,
     pageSize,
     pageIndex,
+    accountType,
   });
 
   const accounts = response?.data || [];
   const meta = response?.meta;
+
+  // Reset to first page when accountType changes
+  useEffect(() => {
+    // Intentionally resetting pagination when filter changes
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPageIndex(0);
+  }, [accountType]);
 
   // Clear selection when page changes
   useEffect(() => {
     // Intentionally clearing selection when pagination or search changes
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedRows(new Set());
-  }, [pageIndex, pageSize, debouncedSearch]);
+  }, [pageIndex, pageSize, debouncedSearch, accountType]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -108,16 +125,52 @@ export default function ClientsPage() {
     accounts.length > 0 && selectedRows.size === accounts.length;
   const isSomeSelected = selectedRows.size > 0 && !isAllSelected;
 
+  const handleClientSelected = (accountId: number) => {
+    setSelectedAccountId(accountId);
+    setIsCreateBusinessDialogOpen(true);
+  };
+
+  const handleNewButtonClick = () => {
+    if (accountType === 'businesses') {
+      setIsSelectClientDialogOpen(true);
+    } else {
+      setIsCreateDialogOpen(true);
+    }
+  };
+
+  const getButtonLabel = () => {
+    if (accountType === 'businesses') {
+      return 'New Business';
+    }
+    return 'New Client';
+  };
+
   return (
     <div className='flex flex-col gap-6'>
       <div className='flex items-center justify-between'>
-        <h1 className='text-2xl font-semibold'>Clients</h1>
+        <div className='flex items-center gap-4'>
+          <h1 className='text-2xl font-semibold'>Clients</h1>
+
+          <Tabs
+            value={accountType}
+            onValueChange={(value) =>
+              setAccountType(value as 'all' | 'clients' | 'businesses')
+            }
+          >
+            <TabsList>
+              <TabsTrigger value='all'>All</TabsTrigger>
+              <TabsTrigger value='clients'>Clients Only</TabsTrigger>
+              <TabsTrigger value='businesses'>Businesses Only</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
         <Button
           className='bg-purple'
-          onClick={() => setIsCreateDialogOpen(true)}
+          onClick={handleNewButtonClick}
         >
           <PlusIcon className='w-4 h-4' />
-          <span>New Client</span>
+          <span>{getButtonLabel()}</span>
         </Button>
       </div>
 
@@ -163,10 +216,10 @@ export default function ClientsPage() {
           {!searchQuery && (
             <Button
               className='bg-purple'
-              onClick={() => setIsCreateDialogOpen(true)}
+              onClick={handleNewButtonClick}
             >
               <PlusIcon className='w-4 h-4' />
-              <span>Add Client</span>
+              <span>{accountType === 'businesses' ? 'Add Business' : 'Add Client'}</span>
             </Button>
           )}
         </div>
@@ -378,6 +431,18 @@ export default function ClientsPage() {
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
       />
+      <SelectClientForBusinessDialog
+        open={isSelectClientDialogOpen}
+        onOpenChange={setIsSelectClientDialogOpen}
+        onClientSelected={handleClientSelected}
+      />
+      {selectedAccountId && (
+        <CreateBusinessDialog
+          open={isCreateBusinessDialogOpen}
+          onOpenChange={setIsCreateBusinessDialogOpen}
+          accountId={selectedAccountId}
+        />
+      )}
     </div>
   );
 }

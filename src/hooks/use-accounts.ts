@@ -27,6 +27,7 @@ export interface FetchAccountsParams {
   pageSize?: number;
   pageIndex?: number;
   onlyWithSquareId?: boolean;
+  accountType?: 'all' | 'clients' | 'businesses';
 }
 
 export interface AccountCountResponse {
@@ -49,6 +50,9 @@ async function fetchAccounts(params?: FetchAccountsParams): Promise<PaginatedAcc
   }
   if (params?.onlyWithSquareId) {
     urlParams.append('onlyWithSquareId', 'true');
+  }
+  if (params?.accountType) {
+    urlParams.append('accountType', params.accountType);
   }
 
   const url = `/api/accounts${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
