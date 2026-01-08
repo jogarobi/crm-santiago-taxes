@@ -492,6 +492,11 @@ export default function AccountDetailPage({ params }: Props) {
           <div className='bg-white border rounded-xl p-6 flex flex-col gap-5'>
             <div className='flex items-center justify-between'>
               <h3 className='text-lg font-semibold'>Businesses</h3>
+
+              <Button className='bg-purple'>
+                <span>New</span>
+                <PlusIcon />
+              </Button>
             </div>
 
             <div>
