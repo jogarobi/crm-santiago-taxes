@@ -22,6 +22,7 @@ import { useActivities } from '@/hooks/use-activities';
 import { useAccountContacts } from '@/hooks/use-account-contact';
 import { useAccountRelationships } from '@/hooks/use-account-relationships';
 import { useNotes } from '@/hooks/use-notes';
+import { useBusinesses } from '@/hooks/use-businesses';
 import {
   Building2Icon,
   ClockIcon,
@@ -41,6 +42,7 @@ import { DynamicIcon, IconName } from '@/components/DynamicIcon';
 import { NotesGrid } from '@/components/NotesGrid';
 import { CreateNoteDialog } from '@/components/CreateNoteDialog';
 import { NoteDetailDialog } from '@/components/NoteDetailDialog';
+import { CreateBusinessDialog } from '@/components/CreateBusinessDialog';
 import clsx from 'clsx';
 import type { Note } from '@/lib/types/note';
 
@@ -59,7 +61,11 @@ export default function AccountDetailPage({ params }: Props) {
   } = useActivities(accountId, 20);
   const { data: contacts } = useAccountContacts(accountId);
   const { data: relationships } = useAccountRelationships(accountId);
+  const { data: businesses, isLoading: businessesLoading } =
+    useBusinesses(accountId);
   const [createNoteDialogOpen, setCreateNoteDialogOpen] = useState(false);
+  const [createBusinessDialogOpen, setCreateBusinessDialogOpen] =
+    useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [noteDetailDialogOpen, setNoteDetailDialogOpen] = useState(false);
   const [notesSearchQuery, setNotesSearchQuery] = useState('');
@@ -168,8 +174,16 @@ export default function AccountDetailPage({ params }: Props) {
 
             <div className='flex gap-2 items-center'>
               <Building2Icon size={18} className='inline-block' />
-              <span className='text-[16px] text-neutral-500'>
-                No business associated
+              <span
+                className={clsx('text-[16px]', {
+                  'text-neutral-500': !businesses || businesses.length === 0,
+                })}
+              >
+                {businesses && businesses.length > 0
+                  ? `${businesses.length} ${
+                      businesses.length === 1 ? 'business' : 'businesses'
+                    }`
+                  : 'No business associated'}
               </span>
             </div>
           </div>
@@ -194,6 +208,22 @@ export default function AccountDetailPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      <CreateNoteDialog
+        open={createNoteDialogOpen}
+        onOpenChange={setCreateNoteDialogOpen}
+        accountId={accountId}
+      />
+      <NoteDetailDialog
+        open={noteDetailDialogOpen}
+        onOpenChange={handleNoteDetailDialogClose}
+        note={selectedNote}
+      />
+      <CreateBusinessDialog
+        open={createBusinessDialogOpen}
+        onOpenChange={setCreateBusinessDialogOpen}
+        accountId={accountId}
+      />
 
       <Tabs defaultValue='notes' className='w-full'>
         <TabsList className='mb-5 py-7 px-2 gap-2 w-full'>
@@ -283,17 +313,6 @@ export default function AccountDetailPage({ params }: Props) {
               </>
             )}
           </div>
-
-          <CreateNoteDialog
-            open={createNoteDialogOpen}
-            onOpenChange={setCreateNoteDialogOpen}
-            accountId={accountId}
-          />
-          <NoteDetailDialog
-            open={noteDetailDialogOpen}
-            onOpenChange={handleNoteDetailDialogClose}
-            note={selectedNote}
-          />
         </TabsContent>
 
         <TabsContent value='activity-overview' className='flex gap-8'>
@@ -493,54 +512,87 @@ export default function AccountDetailPage({ params }: Props) {
             <div className='flex items-center justify-between'>
               <h3 className='text-lg font-semibold'>Businesses</h3>
 
-              <Button className='bg-purple'>
+              <Button
+                className='bg-purple cursor-pointer'
+                onClick={() => setCreateBusinessDialogOpen(true)}
+              >
                 <span>New</span>
                 <PlusIcon />
               </Button>
             </div>
 
-            <div>
-              <button className='border w-full p-5 pr-6 rounded-lg flex flex-col gap-3.5 min-w-1/3'>
-                <div className='mb-1 flex items-center justify-between'>
-                  <span className='text-sm -ml-0.5 self-start font-medium bg-neutral-100 rounded-full px-2.5 py-0.5'>
-                    Sole Proprietor
-                  </span>
+            {businessesLoading ? (
+              <div className='flex items-center justify-center py-12'>
+                <Loader2 className='w-5 h-5 animate-spin text-purple' />
+                <span className='ml-2 text-neutral-600 text-sm'>
+                  Loading businesses...
+                </span>
+              </div>
+            ) : businesses && businesses.length > 0 ? (
+              <div className='flex flex-col gap-4'>
+                {businesses.map((business) => (
+                  <div
+                    key={business.id}
+                    className='border w-full p-5 pr-6 rounded-lg flex flex-col gap-3.5'
+                  >
+                    <div className='mb-1 flex items-center justify-between'>
+                      {business.entity?.name && (
+                        <span className='text-sm -ml-0.5 self-start font-medium bg-neutral-100 rounded-full px-2.5 py-0.5 capitalize'>
+                          {business.entity.name}
+                        </span>
+                      )}
 
-                  <div className='ml-auto flex items-center gap-5'>
-                    <div className='flex items-center gap-2 text-purple'>
-                      <Edit2Icon size={15} strokeWidth={2.4} />
-                      <span className='text-[15px] font-medium'>Edit</span>
+                      <div className='ml-auto flex items-center gap-5'>
+                        <div className='flex items-center gap-2 text-purple cursor-pointer'>
+                          <Edit2Icon size={15} strokeWidth={2.4} />
+                          <span className='text-[15px] font-medium'>Edit</span>
+                        </div>
+
+                        <div className='text-red-700 flex items-center gap-2 cursor-pointer'>
+                          <TrashIcon size={15} strokeWidth={2.4} />
+                          <span className='text-[15px] font-medium'>
+                            Delete
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className='text-red-700 flex items-center gap-2'>
-                      <TrashIcon size={15} strokeWidth={2.4} />
-                      <span className='text-[15px] font-medium'>Delete</span>
+                    <h4 className='font-semibold text-start text-lg text-purple'>
+                      {business.registeredName}
+                    </h4>
+                    {business.address && (
+                      <p className='text-[15px] font-medium text-start'>
+                        {business.address}
+                      </p>
+                    )}
+                    <div className='flex items-center justify-between'>
+                      {business.establishedDate && (
+                        <div className='flex items-center gap-1.5 text-neutral-500'>
+                          <Building2Icon size={19} strokeWidth={2.3} />
+                          <p className='text-start text-[15px]'>
+                            Incorporated{' '}
+                            {new Date(
+                              business.establishedDate
+                            ).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-
-                <h4 className='font-semibold text-start text-lg text-purple'>
-                  Abbett Appliances
-                </h4>
-                <p className='text-[15px] font-medium text-start'>
-                  694 BROCK AVE APT 1, NEW BEDFORD, MA 2744
+                ))}
+              </div>
+            ) : (
+              <div className='text-center py-12 text-neutral-500'>
+                <p>No businesses found</p>
+                <p className='text-sm mt-2'>
+                  Click &quot;New&quot; to add a business
                 </p>
-                <div className='flex items-center justify-between'>
-                  <div className='flex items-center gap-1.5 text-neutral-500'>
-                    <Building2Icon size={19} strokeWidth={2.3} />
-
-                    <p className='text-start text-[15px]'>
-                      Incorporated June 13, 2021
-                    </p>
-                  </div>
-
-                  <div className='flex items-center gap-1.5'>
-                    <ClockIcon size={16} strokeWidth={2.3} />
-                    <span className='text-[15px]'>Due in 5 months</span>
-                  </div>
-                </div>
-              </button>
-            </div>
+              </div>
+            )}
           </div>
         </TabsContent>
 
