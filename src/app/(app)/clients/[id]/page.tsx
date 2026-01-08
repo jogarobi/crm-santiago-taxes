@@ -88,8 +88,11 @@ import { NotesGrid } from '@/components/NotesGrid';
 import { CreateNoteDialog } from '@/components/CreateNoteDialog';
 import { NoteDetailDialog } from '@/components/NoteDetailDialog';
 import { CreateBusinessDialog } from '@/components/CreateBusinessDialog';
+import { EditBusinessDialog } from '@/components/EditBusinessDialog';
+import { DeleteBusinessDialog } from '@/components/DeleteBusinessDialog';
 import clsx from 'clsx';
 import type { Note } from '@/lib/types/note';
+import type { Business } from '@/lib/types/business';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -111,6 +114,12 @@ export default function AccountDetailPage({ params }: Props) {
   const [createNoteDialogOpen, setCreateNoteDialogOpen] = useState(false);
   const [createBusinessDialogOpen, setCreateBusinessDialogOpen] =
     useState(false);
+  const [editBusinessDialogOpen, setEditBusinessDialogOpen] = useState(false);
+  const [deleteBusinessDialogOpen, setDeleteBusinessDialogOpen] =
+    useState(false);
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
+    null
+  );
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [noteDetailDialogOpen, setNoteDetailDialogOpen] = useState(false);
   const [notesSearchQuery, setNotesSearchQuery] = useState('');
@@ -268,6 +277,18 @@ export default function AccountDetailPage({ params }: Props) {
         open={createBusinessDialogOpen}
         onOpenChange={setCreateBusinessDialogOpen}
         accountId={accountId}
+      />
+      <EditBusinessDialog
+        open={editBusinessDialogOpen}
+        onOpenChange={setEditBusinessDialogOpen}
+        accountId={accountId}
+        business={selectedBusiness}
+      />
+      <DeleteBusinessDialog
+        open={deleteBusinessDialogOpen}
+        onOpenChange={setDeleteBusinessDialogOpen}
+        accountId={accountId}
+        business={selectedBusiness}
       />
 
       <Tabs defaultValue='notes' className='w-full'>
@@ -588,12 +609,24 @@ export default function AccountDetailPage({ params }: Props) {
                       )}
 
                       <div className='ml-auto flex items-center gap-5'>
-                        <div className='flex items-center gap-2 text-purple cursor-pointer'>
+                        <div
+                          className='flex items-center gap-2 text-purple cursor-pointer'
+                          onClick={() => {
+                            setSelectedBusiness(business);
+                            setEditBusinessDialogOpen(true);
+                          }}
+                        >
                           <Edit2Icon size={15} strokeWidth={2.4} />
                           <span className='text-[15px] font-medium'>Edit</span>
                         </div>
 
-                        <div className='text-red-700 flex items-center gap-2 cursor-pointer'>
+                        <div
+                          className='text-red-700 flex items-center gap-2 cursor-pointer'
+                          onClick={() => {
+                            setSelectedBusiness(business);
+                            setDeleteBusinessDialogOpen(true);
+                          }}
+                        >
                           <TrashIcon size={15} strokeWidth={2.4} />
                           <span className='text-[15px] font-medium'>
                             Delete

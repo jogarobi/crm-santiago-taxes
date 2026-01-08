@@ -161,35 +161,33 @@ export default function StaffPage() {
         </div>
       )}
 
-      {!isLoading &&
-        !error &&
-        (!staffMembers || staffMembers.length === 0) && (
-          <div className='bg-white border rounded-lg p-12 text-center'>
-            <UsersIcon
-              className='w-8 h-8 text-neutral-400 mx-auto mb-4'
-              strokeWidth={1.8}
-            />
-            <h3 className='text-[15px] text-neutral-500 mb-2'>
-              {searchQuery
-                ? `No staff members found for "${searchQuery}"`
-                : 'No staff members yet'}
-            </h3>
-            {!searchQuery && (
-              <Button className='bg-purple mt-4'>
-                <PlusIcon className='w-4 h-4' />
-                <span>Add Staff Member</span>
-              </Button>
-            )}
-          </div>
-        )}
+      {!isLoading && !error && (!staffMembers || staffMembers.length === 0) && (
+        <div className='bg-white border rounded-lg p-12 text-center'>
+          <UsersIcon
+            className='w-8 h-8 text-neutral-400 mx-auto mb-4'
+            strokeWidth={1.8}
+          />
+          <h3 className='text-[15px] text-neutral-500 mb-2'>
+            {searchQuery
+              ? `No staff members found for "${searchQuery}"`
+              : 'No staff members yet'}
+          </h3>
+          {!searchQuery && (
+            <Button className='bg-purple mt-4'>
+              <PlusIcon className='w-4 h-4' />
+              <span>Add Staff Member</span>
+            </Button>
+          )}
+        </div>
+      )}
 
       {!isLoading && !error && staffMembers && staffMembers.length > 0 && (
         <div className='bg-white border rounded-lg overflow-hidden'>
           {selectedRows.size > 0 && (
             <div className='flex items-center justify-between px-4 py-3 bg-purple/10 border-b'>
               <p className='text-sm font-medium text-purple'>
-                {selectedRows.size} staff member{selectedRows.size !== 1 ? 's' : ''}{' '}
-                selected
+                {selectedRows.size} staff member
+                {selectedRows.size !== 1 ? 's' : ''} selected
               </p>
               <Button
                 variant='outline'

@@ -23,9 +23,9 @@ import {
   HomeIcon,
   Loader2,
   LogOut,
-  SettingsIcon,
   UserIcon,
   UserCog,
+  BarChartIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -67,9 +67,9 @@ const items = [
 const managementItems = [
   { title: 'Staff', url: '/staff', icon: UserCog },
   {
-    title: 'Settings',
+    title: 'Reports',
     url: '#',
-    icon: SettingsIcon,
+    icon: BarChartIcon,
   },
 ];
 
