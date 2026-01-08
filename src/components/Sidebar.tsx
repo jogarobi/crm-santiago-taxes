@@ -16,7 +16,6 @@ import {
   SidebarMenuItem,
 } from './ui/sidebar';
 import {
-  BriefcaseIcon,
   CalendarIcon,
   CheckCheckIcon,
   ChevronUp,
@@ -26,7 +25,7 @@ import {
   LogOut,
   SettingsIcon,
   UserIcon,
-  UsersIcon,
+  UserCog,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -66,12 +65,7 @@ const items = [
 ];
 
 const managementItems = [
-  {
-    title: 'Staff',
-    url: '#',
-    icon: BriefcaseIcon,
-  },
-  { title: 'Users', url: '#', icon: UsersIcon },
+  { title: 'Staff', url: '/staff', icon: UserCog },
   {
     title: 'Settings',
     url: '#',

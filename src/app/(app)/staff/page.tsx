@@ -1,0 +1,365 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useStaff } from '@/hooks/use-staff';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import {
+  Loader2,
+  PlusIcon,
+  UsersIcon,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+} from 'lucide-react';
+import {
+  InputGroup,
+  InputGroupInput,
+  InputGroupAddon,
+} from '@/components/ui/input-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+
+export default function StaffPage() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+
+  // Set document title
+  useEffect(() => {
+    document.title = 'Staff | Santiago Taxes CRM';
+  }, []);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPageIndex(0); // Reset to first page on search
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const {
+    data: response,
+    isLoading,
+    error,
+  } = useStaff({
+    search: debouncedSearch || undefined,
+    pageSize,
+    pageIndex,
+  });
+
+  const staffMembers = response?.data || [];
+  const meta = response?.meta;
+
+  // Clear selection when page changes
+  useEffect(() => {
+    // Intentionally clearing selection when pagination or search changes
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedRows(new Set());
+  }, [pageIndex, pageSize, debouncedSearch]);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  // Selection handlers
+  const toggleRowSelection = (staffId: number) => {
+    const newSelection = new Set(selectedRows);
+    if (newSelection.has(staffId)) {
+      newSelection.delete(staffId);
+    } else {
+      newSelection.add(staffId);
+    }
+    setSelectedRows(newSelection);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedRows.size === staffMembers.length) {
+      setSelectedRows(new Set());
+    } else {
+      setSelectedRows(new Set(staffMembers.map((member) => member.id)));
+    }
+  };
+
+  const isAllSelected =
+    staffMembers.length > 0 && selectedRows.size === staffMembers.length;
+  const isSomeSelected = selectedRows.size > 0 && !isAllSelected;
+
+  const getStatusBadge = (status: string) => {
+    const statusLower = status.toLowerCase();
+    if (statusLower === 'active') {
+      return (
+        <Badge variant='default' className='bg-green-100 text-green-800'>
+          Active
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant='secondary' className='bg-gray-100 text-gray-800'>
+        {status}
+      </Badge>
+    );
+  };
+
+  return (
+    <div className='flex flex-col gap-6'>
+      <div className='flex items-center justify-between'>
+        <h1 className='text-2xl font-semibold'>Staff Members</h1>
+        <Button className='bg-purple'>
+          <PlusIcon className='w-4 h-4' />
+          <span>New Staff Member</span>
+        </Button>
+      </div>
+
+      <InputGroup className='py-6 bg-white'>
+        <InputGroupInput
+          placeholder='Search by name, title, or ID...'
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        <InputGroupAddon>
+          <Search />
+        </InputGroupAddon>
+      </InputGroup>
+
+      {isLoading && (
+        <div className='flex items-center justify-center py-12'>
+          <Loader2 className='w-6 h-6 animate-spin text-purple' />
+          <span className='ml-3 text-[15px] text-neutral-600'>
+            Loading staff members...
+          </span>
+        </div>
+      )}
+
+      {error && (
+        <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
+          <p className='text-red-800'>
+            Failed to load staff members. Please try again later.
+          </p>
+        </div>
+      )}
+
+      {!isLoading &&
+        !error &&
+        (!staffMembers || staffMembers.length === 0) && (
+          <div className='bg-white border rounded-lg p-12 text-center'>
+            <UsersIcon
+              className='w-8 h-8 text-neutral-400 mx-auto mb-4'
+              strokeWidth={1.8}
+            />
+            <h3 className='text-[15px] text-neutral-500 mb-2'>
+              {searchQuery
+                ? `No staff members found for "${searchQuery}"`
+                : 'No staff members yet'}
+            </h3>
+            {!searchQuery && (
+              <Button className='bg-purple mt-4'>
+                <PlusIcon className='w-4 h-4' />
+                <span>Add Staff Member</span>
+              </Button>
+            )}
+          </div>
+        )}
+
+      {!isLoading && !error && staffMembers && staffMembers.length > 0 && (
+        <div className='bg-white border rounded-lg overflow-hidden'>
+          {selectedRows.size > 0 && (
+            <div className='flex items-center justify-between px-4 py-3 bg-purple/10 border-b'>
+              <p className='text-sm font-medium text-purple'>
+                {selectedRows.size} staff member{selectedRows.size !== 1 ? 's' : ''}{' '}
+                selected
+              </p>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={() => setSelectedRows(new Set())}
+                className='h-8'
+              >
+                Clear selection
+              </Button>
+            </div>
+          )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className='p-4 w-12'>
+                  <Checkbox
+                    checked={
+                      isAllSelected
+                        ? true
+                        : isSomeSelected
+                        ? 'indeterminate'
+                        : false
+                    }
+                    onCheckedChange={toggleSelectAll}
+                    aria-label='Select all'
+                  />
+                </TableHead>
+                <TableHead className='p-4'>Name</TableHead>
+                <TableHead className='p-4'>Title</TableHead>
+                <TableHead className='p-4'>Status</TableHead>
+                <TableHead className='p-4'>Square ID</TableHead>
+                <TableHead className='p-4'>Created</TableHead>
+                <TableHead className='p-4'>Created By</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {staffMembers.map((member) => (
+                <TableRow
+                  key={member.id}
+                  data-state={
+                    selectedRows.has(member.id) ? 'selected' : undefined
+                  }
+                >
+                  <TableCell
+                    className='p-4'
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={selectedRows.has(member.id)}
+                      onCheckedChange={() => toggleRowSelection(member.id)}
+                      aria-label={`Select ${member.firstName} ${member.lastName}`}
+                    />
+                  </TableCell>
+                  <TableCell className='font-medium p-4'>
+                    <div className='flex items-center gap-3'>
+                      <span>
+                        {member.firstName} {member.lastName}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className='p-4'>{member.title}</TableCell>
+                  <TableCell className='p-4'>
+                    {getStatusBadge(member.status)}
+                  </TableCell>
+                  <TableCell className='p-4'>
+                    {member.squareId ? (
+                      <span className='font-mono text-sm'>
+                        {member.squareId}
+                      </span>
+                    ) : (
+                      <span className='text-neutral-400'>—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className='p-4'>
+                    {formatDate(member.createdAt)}
+                  </TableCell>
+                  <TableCell className='p-4 text-neutral-600'>
+                    {member.createdBy}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          <div className='flex items-center justify-between p-5 border-t'>
+            <div className='flex items-center gap-4'>
+              <p className='text-sm text-neutral-600'>
+                {Math.min((pageIndex + 1) * pageSize, meta?.total || 0)} of{' '}
+                {meta?.total || 0} staff member{meta?.total !== 1 ? 's' : ''}
+              </p>
+              {meta && meta.totalPages > 1 && (
+                <div className='flex items-center gap-2'>
+                  <span className='text-sm text-neutral-600'>
+                    Rows per page:
+                  </span>
+                  <Select
+                    value={pageSize.toString()}
+                    onValueChange={(value) => {
+                      setPageSize(Number(value));
+                      setPageIndex(0);
+                    }}
+                  >
+                    <SelectTrigger size='sm'>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='10'>10</SelectItem>
+                      <SelectItem value='25'>25</SelectItem>
+                      <SelectItem value='50'>50</SelectItem>
+                      <SelectItem value='100'>100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            {meta && meta.totalPages > 1 && (
+              <div className='flex items-center gap-5'>
+                <span className='text-sm text-neutral-600'>
+                  Page {pageIndex + 1} of {meta.totalPages}
+                </span>
+                <div className='flex gap-2'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setPageIndex(0)}
+                    disabled={pageIndex === 0}
+                    className='h-8 w-8 p-0'
+                  >
+                    <span className='sr-only'>First page</span>
+                    <ChevronLeft className='h-4 w-4' />
+                    <ChevronLeft className='h-4 w-4 -ml-3' />
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setPageIndex(pageIndex - 1)}
+                    disabled={pageIndex === 0}
+                    className='h-8 w-8 p-0'
+                  >
+                    <span className='sr-only'>Previous page</span>
+                    <ChevronLeft className='h-4 w-4' />
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setPageIndex(pageIndex + 1)}
+                    disabled={pageIndex >= meta.totalPages - 1}
+                    className='h-8 w-8 p-0'
+                  >
+                    <span className='sr-only'>Next page</span>
+                    <ChevronRight className='h-4 w-4' />
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setPageIndex(meta.totalPages - 1)}
+                    disabled={pageIndex >= meta.totalPages - 1}
+                    className='h-8 w-8 p-0'
+                  >
+                    <span className='sr-only'>Last page</span>
+                    <ChevronRight className='h-4 w-4' />
+                    <ChevronRight className='h-4 w-4 -ml-3' />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
