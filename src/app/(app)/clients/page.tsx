@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { CreateClientDialog } from '@/components/CreateClientDialog';
 import { Checkbox } from '@/components/ui/checkbox';
 
 export default function ClientsPage() {
@@ -39,6 +40,7 @@ export default function ClientsPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   // Set document title
   useEffect(() => {
@@ -110,7 +112,10 @@ export default function ClientsPage() {
     <div className='flex flex-col gap-6'>
       <div className='flex items-center justify-between'>
         <h1 className='text-2xl font-semibold'>Clients</h1>
-        <Button className='bg-purple'>
+        <Button
+          className='bg-purple'
+          onClick={() => setIsCreateDialogOpen(true)}
+        >
           <PlusIcon className='w-4 h-4' />
           <span>New Client</span>
         </Button>
@@ -156,7 +161,10 @@ export default function ClientsPage() {
               : 'No clients yet'}
           </h3>
           {!searchQuery && (
-            <Button className='bg-purple'>
+            <Button
+              className='bg-purple'
+              onClick={() => setIsCreateDialogOpen(true)}
+            >
               <PlusIcon className='w-4 h-4' />
               <span>Add Client</span>
             </Button>
@@ -366,6 +374,10 @@ export default function ClientsPage() {
           </div>
         </div>
       )}
+      <CreateClientDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+      />
     </div>
   );
 }

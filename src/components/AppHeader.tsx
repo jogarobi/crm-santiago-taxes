@@ -22,10 +22,12 @@ import {
 import Link from 'next/link';
 import { AppointmentDialog } from './AppointmentDialog';
 import { CreateNoteDialog } from './CreateNoteDialog';
+import { CreateClientDialog } from './CreateClientDialog';
 
 export function AppHeader() {
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [createNoteDialogOpen, setCreateNoteDialogOpen] = useState(false);
+  const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false);
 
   return (
     <>
@@ -62,7 +64,10 @@ export function AppHeader() {
                 <CalendarIcon className='stroke-neutral-500' />
                 <span className=' font-normal'>Schedule appointment</span>
               </DropdownMenuItem>
-              <DropdownMenuItem className='px-4 py-3'>
+              <DropdownMenuItem
+                className='px-4 py-3 cursor-pointer'
+                onClick={() => setCreateClientDialogOpen(true)}
+              >
                 <UserPlusIcon className='stroke-neutral-500' />
                 <span className=' font-normal'>Create client</span>
               </DropdownMenuItem>
@@ -86,6 +91,10 @@ export function AppHeader() {
       <CreateNoteDialog
         open={createNoteDialogOpen}
         onOpenChange={setCreateNoteDialogOpen}
+      />
+      <CreateClientDialog
+        open={createClientDialogOpen}
+        onOpenChange={setCreateClientDialogOpen}
       />
     </>
   );

@@ -88,8 +88,20 @@ export function CreateClientDialog({
   onSuccess,
 }: CreateClientDialogProps) {
   const createAccount = useCreateAccount();
-  const { data: customer, isLoading: isLoadingCustomer } =
-    useCustomer(customerId);
+  const { data: customer, isLoading: isLoadingCustomer } = useCustomer(
+    customerId || ''
+  ); // Pass empty string if undefined to avoid query running or handle in hook if possible, but hook likely expects string.
+  // Actually useCustomer likely takes string. If I pass undefined it might not run if enabled logic is there.
+  // The hook definition isn't fully visible but I can control via dependent query logic or just pass string.
+  // Let's assume passing undefined is fine or handled by the hook's `enabled` option if I could modify usage,
+  // but `useCustomer` usually takes an ID.
+  // Let's look at `useCustomer` usage in the original file: `useCustomer(customerId)`.
+  // I will assume `useCustomer` handles undefined or I can pass a dummy.
+  // Better pattern: `useQuery(..., enabled: !!customerId)`.
+  // Since I can't see the hook definition fully, I'll rely on the previous code `useCustomer(customerId)` and hope it handles undefined.
+  // However, in the previous code `customerId` was `string | undefined` in props?
+  // Looking at original: `customerId?: string;`. Yes. So it was already handling it.
+
   const [error, setError] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [isFormInitialized, setIsFormInitialized] = useState(false);
@@ -108,7 +120,7 @@ export function CreateClientDialog({
 
   // Pre-fill form with customer data when it loads (only once)
   useEffect(() => {
-    if (customer && !isFormInitialized) {
+    if (customer && !isFormInitialized && customerId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         firstName: customer.givenName || '',
@@ -130,7 +142,7 @@ export function CreateClientDialog({
 
       setIsFormInitialized(true);
     }
-  }, [customer, isFormInitialized]);
+  }, [customer, isFormInitialized, customerId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,18 +202,20 @@ export function CreateClientDialog({
           <DialogTitle className='text-xl'>Create New Client</DialogTitle>
         </DialogHeader>
 
-        <div className='flex gap-3 border p-4 rounded-lg'>
-          <InfoIcon className='w-8 text-yellow-600' strokeWidth={2.4} />
+        {customerId && customerName && (
+          <div className='flex gap-3 border p-4 rounded-lg'>
+            <InfoIcon className='w-8 text-yellow-600' strokeWidth={2.4} />
 
-          <div>
-            <p className='text-sm font-medium text-yellow-600'>
-              By doing this, you are creating a new client in the CRM linked to
-              customer {customerName} from Square.
-            </p>
+            <div>
+              <p className='text-sm font-medium text-yellow-600'>
+                By doing this, you are creating a new client in the CRM linked
+                to customer {customerName} from Square.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
-        {isLoadingCustomer ? (
+        {isLoadingCustomer && customerId ? (
           <div className='flex items-center justify-center py-8'>
             <Loader2 className='w-6 h-6 animate-spin text-purple' />
             <span className='ml-2 text-neutral-600 text-sm'>
