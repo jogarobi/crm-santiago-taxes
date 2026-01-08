@@ -9,6 +9,7 @@ import {
   CheckCheckIcon,
   CircleDollarSignIcon,
   PlusIcon,
+  StickyNoteIcon,
   UserPlusIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,10 @@ export function AppHeader() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align='end'>
+              <DropdownMenuItem className='px-4 py-3'>
+                <StickyNoteIcon className='stroke-neutral-500' />
+                <span className=' font-normal'>Create note</span>
+              </DropdownMenuItem>
               <DropdownMenuItem
                 className='px-4 py-3 cursor-pointer'
                 onClick={() => setAppointmentDialogOpen(true)}
