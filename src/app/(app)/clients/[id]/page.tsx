@@ -204,7 +204,7 @@ export default function AccountDetailPage({ params }: Props) {
             className='py-5 cursor-pointer'
             value='activity-overview'
           >
-            Overview & History
+            Overview
           </TabsTrigger>
           <TabsTrigger className='py-5 cursor-pointer' value='businesses'>
             Businesses
@@ -297,94 +297,7 @@ export default function AccountDetailPage({ params }: Props) {
         </TabsContent>
 
         <TabsContent value='activity-overview' className='flex gap-8'>
-          <div className='bg-white border rounded-xl p-6 flex-2 flex flex-col gap-6'>
-            <div className='flex items-center justify-between'>
-              <h3 className='text-lg font-semibold'>History</h3>
-              <div className='flex items-center gap-4'>
-                <Button variant='outline'>
-                  <span>Search</span>
-                  <SearchIcon />
-                </Button>
-                <Button className='bg-purple'>
-                  <span>New</span>
-                  <PlusIcon />
-                </Button>
-              </div>
-            </div>
-            <div className='flex flex-col gap-0'>
-              {activitiesLoading && (
-                <div className='flex items-center justify-center py-8'>
-                  <Loader2 className='w-5 h-5 animate-spin text-purple' />
-                  <span className='ml-2 text-neutral-600 text-sm'>
-                    Loading...
-                  </span>
-                </div>
-              )}
-
-              {activitiesError && (
-                <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
-                  <p className='text-red-800 text-sm'>
-                    Failed to load activities
-                  </p>
-                </div>
-              )}
-
-              {!activitiesLoading &&
-                !activitiesError &&
-                activities &&
-                activities.length === 0 && (
-                  <div className='py-8 text-center text-neutral-500'>
-                    <p>No activities yet</p>
-                  </div>
-                )}
-
-              {!activitiesLoading &&
-                !activitiesError &&
-                activities &&
-                activities.map((activity, index) => (
-                  <div key={activity.id} className='flex gap-4'>
-                    <div className='flex flex-col items-center'>
-                      <div className='w-2 h-2 rounded-full bg-neutral-300 my-2'></div>
-                      {index < activities.length - 1 && (
-                        <div className='w-px flex-1 bg-neutral-200 min-h-[60px]'></div>
-                      )}
-                    </div>
-                    <div className='flex-1 pb-6'>
-                      <div className='flex flex-col gap-3 p-2 rounded-lg'>
-                        <p className='font-medium'>{activity.title}</p>
-                        <div className='flex items-center gap-4 flex-wrap'>
-                          {activity.typeIcon && activity.typeName && (
-                            <div className='flex items-center gap-1.5 text-purple'>
-                              <DynamicIcon
-                                name={activity.typeIcon as IconName}
-                                size={16}
-                                strokeWidth={2.3}
-                              />
-                              <span className='text-[15px] font-semibold'>
-                                {activity.typeName}
-                              </span>
-                            </div>
-                          )}
-                          <div className='flex items-center gap-1 text-neutral-500'>
-                            <UserIcon size={15} strokeWidth={2.3} />
-                            <span className='text-[15px]'>
-                              {activity.createdBy}
-                            </span>
-                          </div>
-                          <div className='flex items-center gap-1 text-neutral-500'>
-                            <ClockIcon size={15} strokeWidth={2.5} />
-                            <span className='text-[15px]'>
-                              {new Date(activity.createdAt).toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
-          <div className='bg-white border rounded-xl flex-1 p-6 w-full flex flex-col gap-6'>
+          <div className='bg-white border rounded-xl flex-1 p-6 flex flex-col gap-6'>
             <h3 className='text-lg font-semibold'>Overview</h3>
             <div className='grid grid-cols-2 gap-6'>
               {account.address && (
@@ -482,6 +395,83 @@ export default function AccountDetailPage({ params }: Props) {
               )}
             </div>
           </div>
+          <div className='bg-white w-full border rounded-xl p-6 flex-2 flex flex-col gap-6'>
+            <div className='flex items-center justify-between'>
+              <h3 className='text-lg font-semibold'>History</h3>
+            </div>
+            <div className='flex flex-col gap-0'>
+              {activitiesLoading && (
+                <div className='flex items-center justify-center py-8'>
+                  <Loader2 className='w-5 h-5 animate-spin text-purple' />
+                  <span className='ml-2 text-neutral-600 text-sm'>
+                    Loading...
+                  </span>
+                </div>
+              )}
+
+              {activitiesError && (
+                <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
+                  <p className='text-red-800 text-sm'>
+                    Failed to load activities
+                  </p>
+                </div>
+              )}
+
+              {!activitiesLoading &&
+                !activitiesError &&
+                activities &&
+                activities.length === 0 && (
+                  <div className='py-8 text-center text-neutral-500'>
+                    <p>No activities yet</p>
+                  </div>
+                )}
+
+              {!activitiesLoading &&
+                !activitiesError &&
+                activities &&
+                activities.map((activity, index) => (
+                  <div key={activity.id} className='flex gap-4'>
+                    <div className='flex flex-col items-center'>
+                      <div className='w-2 h-2 rounded-full bg-neutral-300 my-2'></div>
+                      {index < activities.length - 1 && (
+                        <div className='w-px flex-1 bg-neutral-200 min-h-[60px]'></div>
+                      )}
+                    </div>
+                    <div className='flex-1 pb-6'>
+                      <div className='flex flex-col gap-3 p-2 rounded-lg'>
+                        <p className='font-medium'>{activity.title}</p>
+                        <div className='flex items-center gap-4 flex-wrap'>
+                          {activity.typeIcon && activity.typeName && (
+                            <div className='flex items-center gap-1.5 text-purple'>
+                              <DynamicIcon
+                                name={activity.typeIcon as IconName}
+                                size={16}
+                                strokeWidth={2.3}
+                              />
+                              <span className='text-[15px] font-semibold'>
+                                {activity.typeName}
+                              </span>
+                            </div>
+                          )}
+                          <div className='flex items-center gap-1 text-neutral-500'>
+                            <UserIcon size={15} strokeWidth={2.3} />
+                            <span className='text-[15px]'>
+                              {activity.createdBy}
+                            </span>
+                          </div>
+                          <div className='flex items-center gap-1 text-neutral-500'>
+                            <ClockIcon size={15} strokeWidth={2.5} />
+                            <span className='text-[15px]'>
+                              {new Date(activity.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value='documents'>
@@ -499,10 +489,53 @@ export default function AccountDetailPage({ params }: Props) {
         </TabsContent>
 
         <TabsContent value='businesses'>
-          <div className='bg-white border rounded-xl p-6'>
-            <p className='text-neutral-500'>
-              Businesses content coming soon...
-            </p>
+          <div className='bg-white border rounded-xl p-6 flex flex-col gap-5'>
+            <div className='flex items-center justify-between'>
+              <h3 className='text-lg font-semibold'>Businesses</h3>
+            </div>
+
+            <div>
+              <button className='border w-full p-5 pr-6 rounded-lg flex flex-col gap-3.5 min-w-1/3'>
+                <div className='mb-1 flex items-center justify-between'>
+                  <span className='text-sm -ml-0.5 self-start font-medium bg-neutral-100 rounded-full px-2.5 py-0.5'>
+                    Sole Proprietor
+                  </span>
+
+                  <div className='ml-auto flex items-center gap-5'>
+                    <div className='flex items-center gap-2 text-purple'>
+                      <Edit2Icon size={15} strokeWidth={2.4} />
+                      <span className='text-[15px] font-medium'>Edit</span>
+                    </div>
+
+                    <div className='text-red-700 flex items-center gap-2'>
+                      <TrashIcon size={15} strokeWidth={2.4} />
+                      <span className='text-[15px] font-medium'>Delete</span>
+                    </div>
+                  </div>
+                </div>
+
+                <h4 className='font-semibold text-start text-lg text-purple'>
+                  Abbett Appliances
+                </h4>
+                <p className='text-[15px] font-medium text-start'>
+                  694 BROCK AVE APT 1, NEW BEDFORD, MA 2744
+                </p>
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center gap-1.5 text-neutral-500'>
+                    <Building2Icon size={19} strokeWidth={2.3} />
+
+                    <p className='text-start text-[15px]'>
+                      Incorporated June 13, 2021
+                    </p>
+                  </div>
+
+                  <div className='flex items-center gap-1.5'>
+                    <ClockIcon size={16} strokeWidth={2.3} />
+                    <span className='text-[15px]'>Due in 5 months</span>
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
         </TabsContent>
 
