@@ -1,6 +1,8 @@
 import { createAccessControl } from 'better-auth/plugins/access';
+import { defaultStatements, ownerAc, adminAc } from 'better-auth/plugins/organization/access';
 
 const customStatements = {
+  ...defaultStatements,
   client: ['create', 'read', 'update', 'delete'],
   appointment: ['create', 'read', 'update', 'delete', 'cancel'],
   payment: ['create', 'read', 'refund'],
@@ -10,7 +12,17 @@ const customStatements = {
 
 export const ac = createAccessControl(customStatements);
 
+export const owner = ac.newRole({
+  ...ownerAc.statements,
+  client: ['create', 'read', 'update', 'delete'],
+  appointment: ['create', 'read', 'update', 'delete', 'cancel'],
+  payment: ['create', 'read', 'refund'],
+  report: ['read', 'export'],
+  staff: ['create', 'read', 'update', 'delete'],
+});
+
 export const admin = ac.newRole({
+  ...adminAc.statements,
   client: ['create', 'read', 'update', 'delete'],
   appointment: ['create', 'read', 'update', 'delete', 'cancel'],
   payment: ['create', 'read', 'refund'],
@@ -27,6 +39,7 @@ export const staff = ac.newRole({
 });
 
 export const roles = {
+  owner,
   admin,
   staff,
 };

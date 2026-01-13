@@ -111,6 +111,19 @@ async function updateStaff(id: number, data: UpdateStaffInput): Promise<Staff> {
   return response.json();
 }
 
+async function deleteStaff(id: number): Promise<void> {
+  const response = await fetch(`/api/staff/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to delete staff member');
+  }
+
+  return response.json();
+}
+
 export function useStaff(params?: UseStaffParams) {
   return useQuery({
     queryKey: staffKeys.list(params),
@@ -135,6 +148,17 @@ export function useUpdateStaff() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateStaffInput }) =>
       updateStaff(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: staffKeys.lists() });
+    },
+  });
+}
+
+export function useDeleteStaff() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteStaff,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: staffKeys.lists() });
     },

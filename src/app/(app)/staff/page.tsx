@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useStaff } from '@/hooks/use-staff';
+import { useStaff, useDeleteStaff } from '@/hooks/use-staff';
 import {
   Table,
   TableBody,
@@ -33,10 +33,10 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { InviteStaffDialog } from '@/components/InviteStaffDialog';
 import { CreateStaffDialog } from '@/components/CreateStaffDialog';
 import { EditStaffDialog } from '@/components/EditStaffDialog';
-import { Mail, Pencil } from 'lucide-react';
+import { DeleteStaffDialog } from '@/components/DeleteStaffDialog';
+import { Pencil, Trash2 } from 'lucide-react';
 import type { Staff } from '@/hooks/use-staff';
 
 export default function StaffPage() {
@@ -47,9 +47,9 @@ export default function StaffPage() {
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState<string>('');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+  const deleteStaff = useDeleteStaff();
 
   // Set document title
   useEffect(() => {
@@ -80,19 +80,8 @@ export default function StaffPage() {
   const staffMembers = response?.data || [];
   const meta = response?.meta;
 
-  const handleCreateSuccess = (staffMember: { id: number; email?: string | null }) => {
-    // If staff has email, open invite dialog
-    if (staffMember.email) {
-      setInviteEmail(staffMember.email);
-      setIsInviteDialogOpen(true);
-    }
-  };
-
-  const handleInviteClick = (email?: string | null) => {
-    if (email) {
-      setInviteEmail(email);
-      setIsInviteDialogOpen(true);
-    }
+  const handleCreateSuccess = () => {
+    refetch();
   };
 
   const handleEditClick = (staff: Staff) => {
@@ -100,8 +89,24 @@ export default function StaffPage() {
     setIsEditDialogOpen(true);
   };
 
-  const handleInviteSuccess = () => {
-    refetch();
+  const handleDeleteClick = (staff: Staff) => {
+    setSelectedStaff(staff);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedStaff) return;
+
+    try {
+      console.log('STAFF ID');
+      console.log(selectedStaff.id);
+      await deleteStaff.mutateAsync(selectedStaff.id);
+      setIsDeleteDialogOpen(false);
+      setSelectedStaff(null);
+      refetch();
+    } catch (error) {
+      console.error('Error deleting staff member:', error);
+    }
   };
 
   const handleUpdateSuccess = () => {
@@ -301,11 +306,17 @@ export default function StaffPage() {
                   </TableCell>
                   <TableCell className='p-4'>
                     {member.userId ? (
-                      <Badge variant='default' className='bg-green-100 text-green-800'>
+                      <Badge
+                        variant='default'
+                        className='bg-green-100 text-green-800'
+                      >
                         Linked
                       </Badge>
                     ) : (
-                      <Badge variant='secondary' className='bg-yellow-100 text-yellow-800'>
+                      <Badge
+                        variant='secondary'
+                        className='bg-yellow-100 text-yellow-800'
+                      >
                         Pending
                       </Badge>
                     )}
@@ -344,13 +355,12 @@ export default function StaffPage() {
                         size='sm'
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleInviteClick(member.email);
+                          handleDeleteClick(member);
                         }}
-                        disabled={!member.email}
-                        className='h-8'
+                        className='h-8 text-red-600 hover:text-red-700 hover:bg-red-50'
                       >
-                        <Mail className='w-4 h-4 mr-1' />
-                        Invite
+                        <Trash2 className='w-4 h-4 mr-1' />
+                        Delete
                       </Button>
                     </div>
                   </TableCell>
@@ -456,11 +466,17 @@ export default function StaffPage() {
         staffMember={selectedStaff}
         onUpdateSuccess={handleUpdateSuccess}
       />
-      <InviteStaffDialog
-        open={isInviteDialogOpen}
-        onOpenChange={setIsInviteDialogOpen}
-        onInviteSuccess={handleInviteSuccess}
-        defaultEmail={inviteEmail}
+      <DeleteStaffDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        staffName={
+          selectedStaff
+            ? `${selectedStaff.firstName} ${selectedStaff.lastName}`
+            : ''
+        }
+        hasLinkedAccount={!!selectedStaff?.userId}
+        onConfirm={handleDeleteConfirm}
+        isDeleting={deleteStaff.isPending}
       />
     </div>
   );

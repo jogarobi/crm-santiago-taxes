@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,7 +14,6 @@ import {
   SelectValue,
 } from './ui/select';
 import { Loader2 } from 'lucide-react';
-import { authClient } from '@/app/api/clients';
 
 interface InviteStaffDialogProps {
   open: boolean;
@@ -28,7 +28,9 @@ export function InviteStaffDialog({
   onInviteSuccess,
   defaultEmail = '',
 }: InviteStaffDialogProps) {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState(defaultEmail);
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState('member');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,21 +47,47 @@ export function InviteStaffDialog({
     setError(null);
     setSuccess(false);
 
+    if (!name) {
+      setError('Please enter a name');
+      return;
+    }
+
     if (!email || !email.includes('@')) {
       setError('Please enter a valid email address');
+      return;
+    }
+
+    if (!password || password.length < 8) {
+      setError('Password must be at least 8 characters');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      await authClient.organization.inviteMember({
-        email,
-        role,
+      const response = await fetch('/api/staff/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          role,
+        }),
       });
 
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create user');
+      }
+
       setSuccess(true);
+      setName('');
       setEmail('');
+      setPassword('');
       setRole('member');
 
       // Show success message briefly before closing
@@ -69,9 +97,7 @@ export function InviteStaffDialog({
         onInviteSuccess?.();
       }, 1500);
     } catch (err: any) {
-      setError(
-        err?.message || 'Failed to send invitation. Please try again.'
-      );
+      setError(err?.message || 'Failed to create user. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +105,9 @@ export function InviteStaffDialog({
 
   const handleDialogOpenChange = (newOpen: boolean) => {
     if (!newOpen && !isLoading) {
+      setName('');
       setEmail('');
+      setPassword('');
       setRole('member');
       setError(null);
       setSuccess(false);
@@ -91,10 +119,10 @@ export function InviteStaffDialog({
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className='max-w-md'>
         <DialogHeader>
-          <DialogTitle className='text-xl'>Invite Staff Member</DialogTitle>
+          <DialogTitle className='text-xl'>Create Staff Member</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className='flex flex-col gap-6 mt-4'>
+        <form onSubmit={handleSubmit} className='flex flex-col gap-4 mt-4'>
           {error && (
             <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
               <p className='text-red-800 text-sm'>{error}</p>
@@ -104,10 +132,29 @@ export function InviteStaffDialog({
           {success && (
             <div className='bg-green-50 border border-green-200 rounded-lg p-3'>
               <p className='text-green-800 text-sm'>
-                Invitation sent successfully!
+                User created successfully!
               </p>
             </div>
           )}
+
+          <div className='flex flex-col gap-2'>
+            <Label
+              htmlFor='name'
+              className='text-sm font-medium text-neutral-700'
+            >
+              Full Name <span className='text-red-500'>*</span>
+            </Label>
+            <Input
+              id='name'
+              type='text'
+              value={name}
+              className='p-2'
+              onChange={(e) => setName(e.target.value)}
+              required
+              placeholder='John Doe'
+              disabled={isLoading || success}
+            />
+          </div>
 
           <div className='flex flex-col gap-2'>
             <Label
@@ -123,16 +170,38 @@ export function InviteStaffDialog({
               className='p-2'
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder='colleague@example.com'
+              placeholder='john@example.com'
+              disabled={isLoading || success}
+            />
+          </div>
+
+          <div className='flex flex-col gap-2'>
+            <Label
+              htmlFor='password'
+              className='text-sm font-medium text-neutral-700'
+            >
+              Password <span className='text-red-500'>*</span>
+            </Label>
+            <Input
+              id='password'
+              type='password'
+              value={password}
+              className='p-2'
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              placeholder='Minimum 8 characters'
               disabled={isLoading || success}
             />
             <p className='text-xs text-neutral-500'>
-              An invitation email will be sent to this address
+              Must be at least 8 characters
             </p>
           </div>
 
           <div className='flex flex-col gap-2'>
-            <Label htmlFor='role' className='text-sm font-medium text-neutral-700'>
+            <Label
+              htmlFor='role'
+              className='text-sm font-medium text-neutral-700'
+            >
               Role <span className='text-red-500'>*</span>
             </Label>
             <Select
@@ -171,12 +240,12 @@ export function InviteStaffDialog({
               {isLoading ? (
                 <>
                   <Loader2 className='w-4 h-4 animate-spin mr-2' />
-                  Sending...
+                  Creating...
                 </>
               ) : success ? (
-                'Sent!'
+                'Created!'
               ) : (
-                'Send Invitation'
+                'Create User'
               )}
             </Button>
           </div>

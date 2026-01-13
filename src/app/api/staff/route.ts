@@ -81,6 +81,69 @@ export async function POST(request: Request) {
       );
     }
 
+    // If creating user account, validate those fields
+    if (body.createAccount) {
+      if (!body.email) {
+        return NextResponse.json(
+          { error: 'Email is required to create an account' },
+          { status: 400 }
+        );
+      }
+      if (!body.password || body.password.length < 8) {
+        return NextResponse.json(
+          { error: 'Password must be at least 8 characters' },
+          { status: 400 }
+        );
+      }
+      if (!body.role) {
+        return NextResponse.json(
+          { error: 'Role is required to create an account' },
+          { status: 400 }
+        );
+      }
+    }
+
+    let userId = null;
+
+    // Create user account if requested
+    if (body.createAccount && body.email && body.password && body.role) {
+      try {
+        const createUserResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/staff/create-user`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              cookie: request.headers.get('cookie') || '',
+            },
+            body: JSON.stringify({
+              name: `${body.firstName} ${body.lastName}`,
+              email: body.email,
+              password: body.password,
+              role: body.role,
+            }),
+          }
+        );
+
+        if (!createUserResponse.ok) {
+          const errorData = await createUserResponse.json();
+          return NextResponse.json(
+            { error: errorData.error || 'Failed to create user account' },
+            { status: createUserResponse.status }
+          );
+        }
+
+        const userData = await createUserResponse.json();
+        userId = userData.user?.id || null;
+      } catch (error) {
+        console.error('Error creating user account:', error);
+        return NextResponse.json(
+          { error: 'Failed to create user account' },
+          { status: 500 }
+        );
+      }
+    }
+
     const newStaff = await db
       .insert(staff)
       .values({
@@ -90,6 +153,7 @@ export async function POST(request: Request) {
         status: body.status,
         email: body.email || null,
         squareId: body.squareId || null,
+        userId: userId,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
       })
