@@ -257,7 +257,7 @@ export const member = sqliteTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    role: text('role').default('member').notNull(),
+    role: text('role').default('staff').notNull(),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   },
   (table) => [
@@ -348,3 +348,14 @@ export const staffRelations = relations(staff, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+export const rolePermission = sqliteTable('RolePermission', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  role: text().notNull(), // owner, admin, staff
+  resource: text().notNull(), // client, appointment, payment, report, staff
+  action: text().notNull(), // create, read, update, delete, cancel, refund, export
+  enabled: integer({ mode: 'boolean' }).default(true).notNull(),
+  createdAt: text().default("DATETIME('NOW')"),
+  updatedAt: text(),
+  updatedBy: text(),
+});

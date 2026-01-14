@@ -23,6 +23,9 @@ export interface CreateStaffInput {
   email?: string;
   squareId?: string;
   createdBy: string;
+  createAccount?: boolean;
+  password?: string;
+  role?: string;
 }
 
 export interface UpdateStaffInput {

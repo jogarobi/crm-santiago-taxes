@@ -39,7 +39,7 @@ export function CreateStaffDialog({
     email: '',
     squareId: '',
     password: '',
-    role: 'member',
+    role: 'staff',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,7 +85,7 @@ export function CreateStaffDialog({
         email: '',
         squareId: '',
         password: '',
-        role: 'member',
+        role: 'staff',
       });
       setCreateAccount(false);
 
@@ -109,7 +109,7 @@ export function CreateStaffDialog({
         email: '',
         squareId: '',
         password: '',
-        role: 'member',
+        role: 'staff',
       });
       setCreateAccount(false);
       setError(null);
@@ -254,7 +254,7 @@ export function CreateStaffDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='member'>Member</SelectItem>
+                    <SelectItem value='staff'>Staff</SelectItem>
                     <SelectItem value='admin'>Admin</SelectItem>
                     <SelectItem value='owner'>Owner</SelectItem>
                   </SelectContent>

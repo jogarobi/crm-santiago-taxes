@@ -17,6 +17,7 @@ export const auth = betterAuth({
     organization({
       ac,
       roles,
+      defaultRole: 'staff',
       async sendInvitationEmail(data) {
         const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/accept-invitation/${data.id}`;
 

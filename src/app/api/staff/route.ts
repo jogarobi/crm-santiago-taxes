@@ -106,7 +106,9 @@ export async function POST(request: Request) {
     let userId = null;
 
     // Create user account if requested
+    console.log('Staff creation - createAccount:', body.createAccount);
     if (body.createAccount && body.email && body.password && body.role) {
+      console.log('Creating user account for staff member:', body.email, 'with role:', body.role);
       try {
         const createUserResponse = await fetch(
           `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/staff/create-user`,
@@ -127,6 +129,7 @@ export async function POST(request: Request) {
 
         if (!createUserResponse.ok) {
           const errorData = await createUserResponse.json();
+          console.error('User creation failed:', errorData);
           return NextResponse.json(
             { error: errorData.error || 'Failed to create user account' },
             { status: createUserResponse.status }
@@ -134,7 +137,9 @@ export async function POST(request: Request) {
         }
 
         const userData = await createUserResponse.json();
+        console.log('User created successfully, data:', userData);
         userId = userData.user?.id || null;
+        console.log('Extracted userId:', userId);
       } catch (error) {
         console.error('Error creating user account:', error);
         return NextResponse.json(
@@ -142,8 +147,15 @@ export async function POST(request: Request) {
           { status: 500 }
         );
       }
+    } else {
+      console.log('Skipping user creation - createAccount is false or missing required fields');
+      console.log('  createAccount:', body.createAccount);
+      console.log('  email:', body.email);
+      console.log('  password:', body.password ? '[HIDDEN]' : 'missing');
+      console.log('  role:', body.role);
     }
 
+    console.log('Creating staff record with userId:', userId);
     const newStaff = await db
       .insert(staff)
       .values({
@@ -159,6 +171,7 @@ export async function POST(request: Request) {
       })
       .returning();
 
+    console.log('Staff member created:', newStaff[0]);
     return NextResponse.json(newStaff[0], { status: 201 });
   } catch (error) {
     console.error('Error creating staff member:', error);

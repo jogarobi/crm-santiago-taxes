@@ -1,7 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { staff } from '@/db/migrations/schema';
+import {
+  staff,
+  user,
+  session as sessionTable,
+  account as accountTable,
+  member as memberTable,
+  invitation as invitationTable,
+} from '@/db/migrations/schema';
 import { eq } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
@@ -71,6 +78,8 @@ export async function DELETE(
     const { id: idString } = await params;
     const id = parseInt(idString);
 
+    console.log(`Received request to delete staff member with ID: ${id}`);
+
     if (isNaN(id)) {
       return NextResponse.json({ error: 'Invalid staff ID' }, { status: 400 });
     }
@@ -109,7 +118,7 @@ export async function DELETE(
 
     const staffData = staffMember[0];
 
-    // If the staff member has a linked user account, remove them from the organization
+    let removedFromOrg = false;
     if (staffData.userId) {
       try {
         await auth.api.removeMember({
@@ -119,9 +128,66 @@ export async function DELETE(
           },
           headers: await headers(),
         });
+        removedFromOrg = true;
+        console.log(`Removed user ${staffData.userId} from organization`);
+      } catch (error: any) {
+        // If member not found, that's ok - they may have never been added to org
+        if (
+          error?.body?.message?.includes('Member not found') ||
+          error?.statusCode === 400
+        ) {
+          console.log(
+            `User ${staffData.userId} was not a member of organization, continuing with deletion`
+          );
+        } else {
+          console.error('Error removing member from organization:', error);
+          // For other errors, we still continue to delete the user
+        }
+      }
+
+      // Always delete the user account and related records, even if organization removal failed
+      try {
+        // Delete user-related records in correct order to avoid foreign key constraints
+        console.log(`Deleting all records for user ${staffData.userId}`);
+
+        // 1. Delete sessions
+        await db
+          .delete(sessionTable)
+          .where(eq(sessionTable.userId, staffData.userId));
+        console.log('- Deleted sessions');
+
+        // 2. Delete accounts
+        await db
+          .delete(accountTable)
+          .where(eq(accountTable.userId, staffData.userId));
+        console.log('- Deleted accounts');
+
+        // 3. Delete invitations (as inviter)
+        await db
+          .delete(invitationTable)
+          .where(eq(invitationTable.inviterId, staffData.userId));
+        console.log('- Deleted invitations');
+
+        // 4. Delete member records (in case removeMember didn't catch all)
+        await db
+          .delete(memberTable)
+          .where(eq(memberTable.userId, staffData.userId));
+        console.log('- Deleted member records');
+
+        // 5. Finally delete the user
+        await db.delete(user).where(eq(user.id, staffData.userId));
+        console.log(
+          `✓ Deleted user account ${staffData.userId} for staff member ${id}`
+        );
       } catch (error) {
-        console.error('Error removing member from organization:', error);
-        // Continue with staff deletion even if organization removal fails
+        console.error('Error deleting user account:', error);
+        return NextResponse.json(
+          {
+            error:
+              'Failed to delete user account. Staff member deletion aborted.',
+          },
+          { status: 500 }
+        );
       }
     }
 
@@ -130,7 +196,8 @@ export async function DELETE(
 
     return NextResponse.json({
       message: 'Staff member deleted successfully',
-      removedFromOrganization: !!staffData.userId,
+      userDeleted: !!staffData.userId,
+      removedFromOrganization: removedFromOrg,
     });
   } catch (error) {
     console.error('Error deleting staff member:', error);

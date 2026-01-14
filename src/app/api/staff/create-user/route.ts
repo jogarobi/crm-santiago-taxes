@@ -38,29 +38,40 @@ export async function POST(request: Request) {
     }
 
     // Step 1: Create the user account
+    console.log('Creating user account for:', body.email);
     const signUpResult = await auth.api.signUpEmail({
       body: {
         email: body.email,
         password: body.password,
         name: body.name,
       },
+      headers: await headers(),
     });
 
+    console.log('Sign up result:', signUpResult);
+
     if (!signUpResult || !signUpResult.user) {
+      console.error('Sign up failed - no user returned');
       return NextResponse.json(
         { error: 'Failed to create user account' },
         { status: 500 }
       );
     }
 
+    console.log('User created successfully:', signUpResult.user.id);
+
     // Step 2: Add the user to the organization with the specified role
-    await auth.api.addMember({
+    console.log('Adding user to organization:', activeOrg, 'with role:', body.role);
+    const addMemberResult = await auth.api.addMember({
       body: {
         userId: signUpResult.user.id,
         organizationId: activeOrg,
         role: body.role,
       },
+      headers: await headers(),
     });
+
+    console.log('Add member result:', addMemberResult);
 
     return NextResponse.json(
       {

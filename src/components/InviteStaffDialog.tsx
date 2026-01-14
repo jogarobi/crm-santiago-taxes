@@ -31,7 +31,7 @@ export function InviteStaffDialog({
   const [name, setName] = useState('');
   const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('member');
+  const [role, setRole] = useState('staff');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -88,7 +88,7 @@ export function InviteStaffDialog({
       setName('');
       setEmail('');
       setPassword('');
-      setRole('member');
+      setRole('staff');
 
       // Show success message briefly before closing
       setTimeout(() => {
@@ -108,7 +108,7 @@ export function InviteStaffDialog({
       setName('');
       setEmail('');
       setPassword('');
-      setRole('member');
+      setRole('staff');
       setError(null);
       setSuccess(false);
     }
@@ -213,7 +213,7 @@ export function InviteStaffDialog({
                 <SelectValue placeholder='Select a role' />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value='member'>Member</SelectItem>
+                <SelectItem value='staff'>Staff</SelectItem>
                 <SelectItem value='admin'>Admin</SelectItem>
                 <SelectItem value='owner'>Owner</SelectItem>
               </SelectContent>
