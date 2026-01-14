@@ -19,7 +19,10 @@ import { useCreateStaff } from '@/hooks/use-staff';
 interface CreateStaffDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateSuccess?: (staffMember: { id: number; email?: string | null }) => void;
+  onCreateSuccess?: (staffMember: {
+    id: number;
+    email?: string | null;
+  }) => void;
 }
 
 export function CreateStaffDialog({
@@ -167,39 +170,42 @@ export function CreateStaffDialog({
             </div>
           </div>
 
-          <div className='flex flex-col gap-2'>
-            <Label
-              htmlFor='title'
-              className='text-sm font-medium text-neutral-700'
-            >
-              Title <span className='text-red-500'>*</span>
-            </Label>
-            <Input
-              id='title'
-              value={formData.title}
-              className='p-2'
-              onChange={(e) => handleChange('title', e.target.value)}
-              required
-              placeholder='Tax Consultant'
-            />
-          </div>
+          <div className='flex items-center gap-4'>
+            <div className='flex flex-col gap-2 w-full'>
+              <Label
+                htmlFor='title'
+                className='text-sm font-medium text-neutral-700'
+              >
+                Title <span className='text-red-500'>*</span>
+              </Label>
+              <Input
+                id='title'
+                value={formData.title}
+                className='p-2'
+                onChange={(e) => handleChange('title', e.target.value)}
+                required
+                placeholder='Tax Consultant'
+              />
+            </div>
 
-          <div className='flex flex-col gap-2'>
-            <Label
-              htmlFor='email'
-              className='text-sm font-medium text-neutral-700'
-            >
-              Email Address {createAccount && <span className='text-red-500'>*</span>}
-            </Label>
-            <Input
-              id='email'
-              type='email'
-              value={formData.email}
-              className='p-2'
-              onChange={(e) => handleChange('email', e.target.value)}
-              placeholder='john.doe@example.com'
-              required={createAccount}
-            />
+            <div className='flex flex-col gap-2 w-full'>
+              <Label
+                htmlFor='email'
+                className='text-sm font-medium text-neutral-700'
+              >
+                Email Address{' '}
+                {createAccount && <span className='text-red-500'>*</span>}
+              </Label>
+              <Input
+                id='email'
+                type='email'
+                value={formData.email}
+                className='p-2'
+                onChange={(e) => handleChange('email', e.target.value)}
+                placeholder='john.doe@example.com'
+                required={createAccount}
+              />
+            </div>
           </div>
 
           <div className='flex items-center space-x-2 p-4 bg-neutral-50 rounded-lg border'>
@@ -259,49 +265,48 @@ export function CreateStaffDialog({
                     <SelectItem value='owner'>Owner</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className='text-xs text-neutral-500'>
-                  Role determines permissions within the organization
-                </p>
               </div>
             </>
           )}
 
-          <div className='flex flex-col gap-2'>
-            <Label
-              htmlFor='status'
-              className='text-sm font-medium text-neutral-700'
-            >
-              Status <span className='text-red-500'>*</span>
-            </Label>
-            <Select
-              value={formData.status}
-              onValueChange={(value) => handleChange('status', value)}
-            >
-              <SelectTrigger id='status' className='w-full'>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='active'>Active</SelectItem>
-                <SelectItem value='inactive'>Inactive</SelectItem>
-                <SelectItem value='on-leave'>On Leave</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <div className='flex items-center gap-4'>
+            <div className='flex flex-col gap-2 w-full'>
+              <Label
+                htmlFor='status'
+                className='text-sm font-medium text-neutral-700'
+              >
+                Status <span className='text-red-500'>*</span>
+              </Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => handleChange('status', value)}
+              >
+                <SelectTrigger id='status' className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='active'>Active</SelectItem>
+                  <SelectItem value='inactive'>Inactive</SelectItem>
+                  <SelectItem value='on-leave'>On Leave</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className='flex flex-col gap-2'>
-            <Label
-              htmlFor='squareId'
-              className='text-sm font-medium text-neutral-700'
-            >
-              Square ID
-            </Label>
-            <Input
-              id='squareId'
-              value={formData.squareId}
-              className='p-2'
-              onChange={(e) => handleChange('squareId', e.target.value)}
-              placeholder='Optional Square ID'
-            />
+            <div className='flex flex-col gap-2 w-full'>
+              <Label
+                htmlFor='squareId'
+                className='text-sm font-medium text-neutral-700'
+              >
+                Square ID
+              </Label>
+              <Input
+                id='squareId'
+                value={formData.squareId}
+                className='p-2'
+                onChange={(e) => handleChange('squareId', e.target.value)}
+                placeholder='Optional Square ID'
+              />
+            </div>
           </div>
 
           <div className='flex gap-3 justify-end mt-4 pt-4 border-t'>
