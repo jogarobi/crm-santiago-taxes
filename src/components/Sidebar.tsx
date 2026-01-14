@@ -26,6 +26,7 @@ import {
   UserIcon,
   UserCog,
   BarChartIcon,
+  Settings,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -70,6 +71,11 @@ const managementItems = [
     title: 'Reports',
     url: '#',
     icon: BarChartIcon,
+  },
+  {
+    title: 'Settings',
+    url: '/settings',
+    icon: Settings,
   },
 ];
 
