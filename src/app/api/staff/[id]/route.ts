@@ -71,7 +71,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -118,18 +118,27 @@ export async function DELETE(
 
     const staffData = staffMember[0];
 
+    // STEP 1: Delete the staff record FIRST (before user deletion to avoid FK constraint)
+    console.log(`Deleting staff record for ID: ${id}`);
+    await db.delete(staff).where(eq(staff.id, id));
+    console.log('✓ Staff record deleted');
+
+    // STEP 2: If staff had a linked user account, delete the user and all related records
     let removedFromOrg = false;
     if (staffData.userId) {
+      console.log(`Staff member had linked user account: ${staffData.userId}`);
+
+      // Try to remove from organization first
       try {
         await auth.api.removeMember({
           body: {
-            memberIdOrEmail: staffData.userId,
+            memberIdOrEmail: staffData.email!,
             organizationId: activeOrg,
           },
           headers: await headers(),
         });
         removedFromOrg = true;
-        console.log(`Removed user ${staffData.userId} from organization`);
+        console.log(`✓ Removed user ${staffData.userId} from organization`);
       } catch (error: any) {
         // If member not found, that's ok - they may have never been added to org
         if (
@@ -137,62 +146,59 @@ export async function DELETE(
           error?.statusCode === 400
         ) {
           console.log(
-            `User ${staffData.userId} was not a member of organization, continuing with deletion`
+            `  User ${staffData.userId} was not a member of organization, continuing with deletion`
           );
         } else {
-          console.error('Error removing member from organization:', error);
+          console.error('  Error removing member from organization:', error);
           // For other errors, we still continue to delete the user
         }
       }
 
-      // Always delete the user account and related records, even if organization removal failed
+      // Delete the user account and all related records
       try {
-        // Delete user-related records in correct order to avoid foreign key constraints
         console.log(`Deleting all records for user ${staffData.userId}`);
 
         // 1. Delete sessions
         await db
           .delete(sessionTable)
           .where(eq(sessionTable.userId, staffData.userId));
-        console.log('- Deleted sessions');
+        console.log('  ✓ Deleted sessions');
 
         // 2. Delete accounts
         await db
           .delete(accountTable)
           .where(eq(accountTable.userId, staffData.userId));
-        console.log('- Deleted accounts');
+        console.log('  ✓ Deleted accounts');
 
         // 3. Delete invitations (as inviter)
         await db
           .delete(invitationTable)
           .where(eq(invitationTable.inviterId, staffData.userId));
-        console.log('- Deleted invitations');
+        console.log('  ✓ Deleted invitations');
 
         // 4. Delete member records (in case removeMember didn't catch all)
         await db
           .delete(memberTable)
           .where(eq(memberTable.userId, staffData.userId));
-        console.log('- Deleted member records');
+        console.log('  ✓ Deleted member records');
 
         // 5. Finally delete the user
         await db.delete(user).where(eq(user.id, staffData.userId));
         console.log(
-          `✓ Deleted user account ${staffData.userId} for staff member ${id}`
+          `✓ Deleted user account ${staffData.userId}`
         );
       } catch (error) {
         console.error('Error deleting user account:', error);
+        // Note: Staff is already deleted at this point
         return NextResponse.json(
           {
             error:
-              'Failed to delete user account. Staff member deletion aborted.',
+              'Staff deleted but failed to delete associated user account.',
           },
           { status: 500 }
         );
       }
     }
-
-    // Delete the staff record
-    await db.delete(staff).where(eq(staff.id, id)).returning();
 
     return NextResponse.json({
       message: 'Staff member deleted successfully',
