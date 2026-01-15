@@ -16,6 +16,7 @@ export interface FetchNotesParams {
   search?: string;
   limit?: number;
   offset?: number;
+  businessId?: number;
 }
 
 export interface NotesResponse {
@@ -42,6 +43,9 @@ async function fetchNotes(
   if (params?.offset !== undefined) {
     urlParams.append('offset', params.offset.toString());
   }
+  if (params?.businessId !== undefined) {
+    urlParams.append('businessId', params.businessId.toString());
+  }
 
   const response = await fetch(`/api/notes?${urlParams.toString()}`);
   if (!response.ok) {
@@ -67,6 +71,7 @@ async function createNote(accountId: number, data: CreateNoteInput): Promise<Not
     body: JSON.stringify({
       ...data,
       accountId,
+      businessId: data.businessId,
     }),
   });
   if (!response.ok) {

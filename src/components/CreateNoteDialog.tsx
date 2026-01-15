@@ -14,12 +14,14 @@ interface CreateNoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   accountId?: number;
+  businessId?: number;
 }
 
 export function CreateNoteDialog({
   open,
   onOpenChange,
   accountId,
+  businessId,
 }: CreateNoteDialogProps) {
   const createNote = useCreateNote();
   const [content, setContent] = useState('');
@@ -91,6 +93,7 @@ export function CreateNoteDialog({
         data: {
           content: content.trim(),
           createdBy: 'system', // TODO: Replace with actual user
+          businessId: businessId,
         },
       });
 

@@ -19,6 +19,19 @@ async function fetchBusinesses(accountId: number): Promise<Business[]> {
   return response.json();
 }
 
+async function fetchBusiness(
+  accountId: number,
+  businessId: number
+): Promise<Business> {
+  const response = await fetch(
+    `/api/accounts/${accountId}/businesses/${businessId}`
+  );
+  if (!response.ok) {
+    throw new Error('Failed to fetch business');
+  }
+  return response.json();
+}
+
 async function createBusiness(
   accountId: number,
   data: CreateBusinessInput
@@ -79,6 +92,14 @@ export function useBusinesses(accountId: number) {
     queryKey: businessKeys.list(accountId),
     queryFn: () => fetchBusinesses(accountId),
     enabled: !!accountId,
+  });
+}
+
+export function useBusiness(accountId: number, businessId: number) {
+  return useQuery({
+    queryKey: businessKeys.detail(businessId),
+    queryFn: () => fetchBusiness(accountId, businessId),
+    enabled: !!accountId && !!businessId,
   });
 }
 

@@ -1,6 +1,7 @@
 export type Note = {
   id: number;
-  accountId: number | null;
+  accountId: number;
+  businessId: number | null;
   content: string | null;
   createdBy: string;
   createdAt: string;
@@ -11,6 +12,7 @@ export type Note = {
 export type CreateNoteInput = {
   content: string;
   createdBy: string;
+  businessId?: number;
 };
 
 export type UpdateNoteInput = {

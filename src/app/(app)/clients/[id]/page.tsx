@@ -599,7 +599,10 @@ export default function AccountDetailPage({ params }: Props) {
                 {businesses.map((business) => (
                   <div
                     key={business.id}
-                    className='border w-full p-5 pr-6 rounded-lg flex flex-col gap-3.5'
+                    className='border w-full p-5 pr-6 rounded-lg flex flex-col gap-3.5 cursor-pointer hover:border-purple/50 transition-colors'
+                    onClick={() => {
+                      window.location.href = `/clients/${accountId}/businesses/${business.id}`;
+                    }}
                   >
                     <div className='mb-1 flex items-center justify-between'>
                       {business.entity?.name && (
@@ -611,7 +614,8 @@ export default function AccountDetailPage({ params }: Props) {
                       <div className='ml-auto flex items-center gap-5'>
                         <div
                           className='flex items-center gap-2 text-purple cursor-pointer'
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedBusiness(business);
                             setEditBusinessDialogOpen(true);
                           }}
@@ -622,7 +626,8 @@ export default function AccountDetailPage({ params }: Props) {
 
                         <div
                           className='text-red-700 flex items-center gap-2 cursor-pointer'
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedBusiness(business);
                             setDeleteBusinessDialogOpen(true);
                           }}

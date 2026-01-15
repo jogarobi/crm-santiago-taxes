@@ -1,7 +1,69 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { business } from '@/db/migrations/schema';
+import { business, businessEntity } from '@/db/migrations/schema';
 import { eq, and } from 'drizzle-orm';
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string; businessId: string }> }
+) {
+  try {
+    const { id, businessId } = await params;
+    const accountId = parseInt(id);
+    const businessIdInt = parseInt(businessId);
+
+    if (isNaN(accountId) || isNaN(businessIdInt)) {
+      return NextResponse.json(
+        { error: 'Invalid account ID or business ID' },
+        { status: 400 }
+      );
+    }
+
+    // Fetch business with entity information
+    const result = await db
+      .select({
+        id: business.id,
+        accountId: business.accountId,
+        registeredName: business.registeredName,
+        establishedDate: business.establishedDate,
+        ein: business.ein,
+        address: business.address,
+        createdAt: business.createdAt,
+        createdBy: business.createdBy,
+        updatedAt: business.updatedAt,
+        updatedBy: business.updatedBy,
+        entityId: business.entityId,
+        entity: {
+          id: businessEntity.id,
+          name: businessEntity.name,
+        },
+      })
+      .from(business)
+      .leftJoin(businessEntity, eq(business.entityId, businessEntity.id))
+      .where(
+        and(
+          eq(business.id, businessIdInt),
+          eq(business.accountId, accountId.toString())
+        )
+      )
+      .limit(1);
+
+    if (result.length === 0) {
+      return NextResponse.json(
+        { error: 'Business not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(result[0]);
+  } catch (error) {
+    console.error('Error fetching business:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch business' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function PUT(
   request: Request,

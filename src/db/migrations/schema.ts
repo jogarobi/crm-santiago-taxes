@@ -139,7 +139,10 @@ export const appointment = sqliteTable('Appointment', {
 
 export const note = sqliteTable('Note', {
   id: integer().primaryKey(),
-  accountId: integer().references(() => clientAccount.id),
+  accountId: integer()
+    .references(() => clientAccount.id)
+    .notNull(),
+  businessId: integer().references(() => business.id),
   content: text(),
   createdBy: text().notNull(),
   createdAt: text().notNull(),

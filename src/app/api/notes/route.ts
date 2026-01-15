@@ -7,6 +7,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('accountId');
+    const businessId = searchParams.get('businessId');
     const search = searchParams.get('search');
     const limit = parseInt(searchParams.get('limit') || '10');
     const offset = parseInt(searchParams.get('offset') || '0');
@@ -29,6 +30,13 @@ export async function GET(request: Request) {
 
     // Build where conditions
     const conditions = [eq(note.accountId, accountIdInt)];
+
+    if (businessId) {
+      const businessIdInt = parseInt(businessId);
+      if (!isNaN(businessIdInt)) {
+        conditions.push(eq(note.businessId, businessIdInt));
+      }
+    }
 
     if (search && search.trim()) {
       conditions.push(like(note.content, `%${search.trim()}%`));
@@ -90,10 +98,13 @@ export async function POST(request: Request) {
       );
     }
 
+    const businessIdInt = body.businessId ? parseInt(body.businessId) : null;
+
     const newNote = await db
       .insert(note)
       .values({
         accountId: accountIdInt,
+        businessId: businessIdInt,
         content: body.content,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
