@@ -61,7 +61,7 @@ const items = [
   },
   {
     title: 'Payments',
-    url: '#',
+    url: '/payments',
     icon: DollarSignIcon,
   },
   {

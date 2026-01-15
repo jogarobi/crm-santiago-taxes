@@ -109,6 +109,16 @@ export function useBreadcrumbs(): PageInfo {
       };
     }
 
+    if (pathname === '/payments') {
+      return {
+        title: 'Payments',
+        breadcrumbs: [
+          { label: 'Home', href: '/' },
+          { label: 'Payments', href: '/payments' },
+        ],
+      };
+    }
+
     if (pathname === '/tasks') {
       return {
         title: 'Tasks',
