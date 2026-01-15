@@ -56,6 +56,9 @@ export function CreateBusinessDialog({
     }
 
     try {
+      // Strip hyphens from EIN before submitting
+      const cleanedEin = formData.ein ? formData.ein.replace(/-/g, '') : undefined;
+
       await createBusiness.mutateAsync({
         accountId,
         data: {
@@ -63,7 +66,7 @@ export function CreateBusinessDialog({
           establishedDate: establishedDate
             ? establishedDate.toISOString().split('T')[0]
             : undefined,
-          ein: formData.ein || undefined,
+          ein: cleanedEin,
           address: formData.address || undefined,
           entityId: formData.entityId ? parseInt(formData.entityId) : undefined,
           createdBy: 'system', // TODO: Replace with actual user
@@ -215,7 +218,7 @@ export function CreateBusinessDialog({
               value={formData.ein}
               className='p-2'
               onChange={(e) => handleChange('ein', e.target.value)}
-              placeholder='XX-XXXXXXX'
+              placeholder='XXXXXXXXX (no hyphens)'
               maxLength={10}
             />
           </div>
