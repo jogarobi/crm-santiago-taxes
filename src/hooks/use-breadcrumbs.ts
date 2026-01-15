@@ -70,7 +70,25 @@ export function useBreadcrumbs(): PageInfo {
     }
 
     if (pathname.startsWith('/clients/')) {
-      const id = pathname.split('/').pop();
+      const segments = pathname.split('/').filter(Boolean);
+
+      // Check if it's a business detail page: /clients/[id]/businesses/[businessId]
+      if (segments.length === 4 && segments[2] === 'businesses') {
+        const clientId = segments[1];
+        const businessId = segments[3];
+        return {
+          title: 'Business Details',
+          breadcrumbs: [
+            { label: 'Home', href: '/' },
+            { label: 'Clients', href: '/clients' },
+            { label: `Client #${clientId}`, href: `/clients/${clientId}` },
+            { label: `Business #${businessId}`, href: pathname },
+          ],
+        };
+      }
+
+      // Client detail page: /clients/[id]
+      const id = segments[1];
       return {
         title: 'Client Details',
         breadcrumbs: [

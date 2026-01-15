@@ -11,7 +11,6 @@ import {
   PlusIcon,
   SearchIcon,
   TrashIcon,
-  ChevronLeftIcon,
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,6 @@ import { NoteDetailDialog } from '@/components/NoteDetailDialog';
 import { EditBusinessDialog } from '@/components/EditBusinessDialog';
 import { DeleteBusinessDialog } from '@/components/DeleteBusinessDialog';
 import type { Note } from '@/lib/types/note';
-import { useRouter } from 'next/navigation';
 
 function formatEIN(ein: string): string {
   const cleaned = ein.replace(/\D/g, '');
@@ -88,7 +86,6 @@ export default function BusinessDetailPage({ params }: Props) {
   const { id, businessId } = use(params);
   const accountId = parseInt(id);
   const businessIdInt = parseInt(businessId);
-  const router = useRouter();
 
   const {
     data: business,
@@ -132,10 +129,6 @@ export default function BusinessDetailPage({ params }: Props) {
     setNotesLimit(4);
   };
 
-  const handleBackClick = () => {
-    router.push(`/clients/${accountId}`);
-  };
-
   if (isLoading) {
     return (
       <div className='flex items-center justify-center p-8'>
@@ -169,15 +162,6 @@ export default function BusinessDetailPage({ params }: Props) {
 
   return (
     <div className='flex flex-col gap-8 pt-3'>
-      <Button
-        variant='ghost'
-        className='self-start -ml-3 text-neutral-600 hover:text-neutral-900'
-        onClick={handleBackClick}
-      >
-        <ChevronLeftIcon size={18} />
-        <span>Back to Account</span>
-      </Button>
-
       <div className='flex items-center gap-8 bg-white border rounded-xl p-8'>
         <div className='text-3xl font-semibold h-20 w-20 rounded-full bg-purple text-white flex items-center justify-center'>
           <Building2Icon strokeWidth={1.4} size={36} />
