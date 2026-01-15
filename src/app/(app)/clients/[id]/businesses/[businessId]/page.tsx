@@ -23,6 +23,16 @@ import { DeleteBusinessDialog } from '@/components/DeleteBusinessDialog';
 import type { Note } from '@/lib/types/note';
 import { useRouter } from 'next/navigation';
 
+function formatEIN(ein: string): string {
+  const cleaned = ein.replace(/\D/g, '');
+
+  if (cleaned.length === 9) {
+    return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+  }
+
+  return ein;
+}
+
 function getTimeUntilAnniversary(establishedDate: string): string {
   const established = new Date(establishedDate);
   const today = new Date();
@@ -49,9 +59,11 @@ function getTimeUntilAnniversary(establishedDate: string): string {
     (nextAnniversary.getMonth() - today.getMonth());
 
   // Calculate days remaining after full months
-  const daysDiff = Math.floor(
-    (nextAnniversary.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-  ) - (monthsDiff * 30);
+  const daysDiff =
+    Math.floor(
+      (nextAnniversary.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    ) -
+    monthsDiff * 30;
 
   if (monthsDiff === 0) {
     if (daysDiff <= 0) {
@@ -78,10 +90,15 @@ export default function BusinessDetailPage({ params }: Props) {
   const businessIdInt = parseInt(businessId);
   const router = useRouter();
 
-  const { data: business, isLoading, error } = useBusiness(accountId, businessIdInt);
+  const {
+    data: business,
+    isLoading,
+    error,
+  } = useBusiness(accountId, businessIdInt);
   const [createNoteDialogOpen, setCreateNoteDialogOpen] = useState(false);
   const [editBusinessDialogOpen, setEditBusinessDialogOpen] = useState(false);
-  const [deleteBusinessDialogOpen, setDeleteBusinessDialogOpen] = useState(false);
+  const [deleteBusinessDialogOpen, setDeleteBusinessDialogOpen] =
+    useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [noteDetailDialogOpen, setNoteDetailDialogOpen] = useState(false);
   const [notesSearchQuery, setNotesSearchQuery] = useState('');
@@ -132,7 +149,9 @@ export default function BusinessDetailPage({ params }: Props) {
     return (
       <div className='p-8'>
         <div className='bg-red-50 border border-red-200 rounded-xl p-4'>
-          <p className='text-red-800'>Error loading business: {error.message}</p>
+          <p className='text-red-800'>
+            Error loading business: {error.message}
+          </p>
         </div>
       </div>
     );
@@ -161,13 +180,13 @@ export default function BusinessDetailPage({ params }: Props) {
 
       <div className='flex items-center gap-8 bg-white border rounded-xl p-8'>
         <div className='text-3xl font-semibold h-20 w-20 rounded-full bg-purple text-white flex items-center justify-center'>
-          <Building2Icon size={36} />
+          <Building2Icon strokeWidth={1.4} size={36} />
         </div>
 
         <div className='flex flex-col gap-3'>
           <h1 className='text-2xl font-bold'>{business.registeredName}</h1>
 
-          <div className='flex items-center gap-8'>
+          <div className='flex items-center gap-3'>
             {business.entity?.name && (
               <div className='flex gap-2 items-center'>
                 <span className='text-sm font-medium bg-neutral-100 rounded-full px-3 py-1 capitalize'>
@@ -178,20 +197,28 @@ export default function BusinessDetailPage({ params }: Props) {
 
             {business.ein && (
               <div className='flex gap-2 items-center'>
-                <span className='text-[16px]'>EIN: {business.ein}</span>
+                <span className='text-[16px]'>
+                  EIN: {formatEIN(business.ein)}
+                </span>
               </div>
             )}
 
             {business.establishedDate && (
               <div className='flex gap-2 items-center'>
-                <Building2Icon size={18} className='inline-block text-neutral-500' />
+                <Building2Icon
+                  size={18}
+                  className='inline-block text-neutral-500'
+                />
                 <span className='text-[16px] text-neutral-600'>
                   Incorporated{' '}
-                  {new Date(business.establishedDate).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
+                  {new Date(business.establishedDate).toLocaleDateString(
+                    'en-US',
+                    {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    }
+                  )}
                 </span>
               </div>
             )}
@@ -361,7 +388,9 @@ export default function BusinessDetailPage({ params }: Props) {
 
               {business.entity?.name && (
                 <div>
-                  <label className='text-sm text-neutral-500'>Entity Type</label>
+                  <label className='text-sm text-neutral-500'>
+                    Entity Type
+                  </label>
                   <p className='font-medium text-[15px] capitalize'>
                     {business.entity.name}
                   </p>
@@ -371,7 +400,9 @@ export default function BusinessDetailPage({ params }: Props) {
               {business.ein && (
                 <div>
                   <label className='text-sm text-neutral-500'>EIN</label>
-                  <p className='font-medium text-[15px]'>{business.ein}</p>
+                  <p className='font-medium text-[15px]'>
+                    {formatEIN(business.ein)}
+                  </p>
                 </div>
               )}
 
@@ -424,7 +455,9 @@ export default function BusinessDetailPage({ params }: Props) {
               {business.updatedBy && (
                 <div>
                   <label className='text-sm text-neutral-500'>Updated By</label>
-                  <p className='font-medium text-[15px]'>{business.updatedBy}</p>
+                  <p className='font-medium text-[15px]'>
+                    {business.updatedBy}
+                  </p>
                 </div>
               )}
             </div>
