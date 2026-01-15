@@ -68,6 +68,9 @@ export const business = sqliteTable('Business', {
   updatedAt: text(),
   updatedBy: text(),
   address: text(),
+  city: text(),
+  state: text(),
+  zipCode: text(),
   entityId: integer().references(() => businessEntity.id),
 });
 
@@ -139,9 +142,7 @@ export const appointment = sqliteTable('Appointment', {
 
 export const note = sqliteTable('Note', {
   id: integer().primaryKey(),
-  accountId: integer()
-    .references(() => clientAccount.id)
-    .notNull(),
+  accountId: integer().references(() => clientAccount.id),
   businessId: integer().references(() => business.id),
   content: text(),
   createdBy: text().notNull(),

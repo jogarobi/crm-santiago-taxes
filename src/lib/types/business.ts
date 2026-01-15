@@ -18,6 +18,9 @@ export interface Business {
   updatedAt: string | null;
   updatedBy: string | null;
   address: string | null;
+  city: string | null;
+  state: string | null;
+  zipCode: string | null;
   entityId: number | null;
   entity?: {
     id: number;
@@ -30,6 +33,9 @@ export interface CreateBusinessInput {
   establishedDate?: string;
   ein?: string;
   address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
   entityId?: number;
   createdBy: string;
 }
@@ -39,6 +45,9 @@ export interface UpdateBusinessInput {
   establishedDate?: string;
   ein?: string;
   address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
   entityId?: number;
   updatedBy: string;
 }

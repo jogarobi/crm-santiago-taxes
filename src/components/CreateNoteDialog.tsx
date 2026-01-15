@@ -75,9 +75,10 @@ export function CreateNoteDialog({
     e.preventDefault();
     setError(null);
 
-    const targetAccountId = accountId || selectedAccount?.id;
+    const targetAccountId = accountId || selectedAccount?.id || null;
 
-    if (!targetAccountId) {
+    // If businessId is provided, we don't need accountId
+    if (!targetAccountId && !businessId) {
       setError('Please select a client');
       return;
     }

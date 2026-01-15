@@ -5,7 +5,7 @@ import type { Note, CreateNoteInput, UpdateNoteInput } from '@/lib/types/note';
 export const noteKeys = {
   all: ['notes'] as const,
   lists: () => [...noteKeys.all, 'list'] as const,
-  list: (accountId: number, params?: FetchNotesParams) =>
+  list: (accountId: number | null, params?: FetchNotesParams) =>
     [...noteKeys.lists(), accountId, params] as const,
   details: () => [...noteKeys.all, 'detail'] as const,
   detail: (noteId: number) => [...noteKeys.details(), noteId] as const,
@@ -29,10 +29,14 @@ export interface NotesResponse {
 
 // API Functions
 async function fetchNotes(
-  accountId: number,
+  accountId: number | null,
   params?: FetchNotesParams
 ): Promise<NotesResponse> {
-  const urlParams = new URLSearchParams({ accountId: accountId.toString() });
+  const urlParams = new URLSearchParams();
+
+  if (accountId) {
+    urlParams.append('accountId', accountId.toString());
+  }
 
   if (params?.search) {
     urlParams.append('search', params.search);
@@ -62,17 +66,26 @@ async function fetchNote(noteId: number): Promise<Note> {
   return response.json();
 }
 
-async function createNote(accountId: number, data: CreateNoteInput): Promise<Note> {
+async function createNote(accountId: number | null, data: CreateNoteInput): Promise<Note> {
+  const payload: any = {
+    content: data.content,
+    createdBy: data.createdBy,
+  };
+
+  if (accountId) {
+    payload.accountId = accountId;
+  }
+
+  if (data.businessId) {
+    payload.businessId = data.businessId;
+  }
+
   const response = await fetch('/api/notes', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      ...data,
-      accountId,
-      businessId: data.businessId,
-    }),
+    body: JSON.stringify(payload),
   });
   if (!response.ok) {
     throw new Error('Failed to create note');
@@ -108,11 +121,11 @@ async function deleteNote(noteId: number): Promise<{ message: string }> {
 }
 
 // Hooks
-export function useNotes(accountId: number, params?: FetchNotesParams) {
+export function useNotes(accountId: number | null, params?: FetchNotesParams) {
   return useQuery({
     queryKey: noteKeys.list(accountId, params),
     queryFn: () => fetchNotes(accountId, params),
-    enabled: !!accountId,
+    enabled: !!accountId || !!params?.businessId,
   });
 }
 
@@ -128,16 +141,25 @@ export function useCreateNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ accountId, data }: { accountId: number; data: CreateNoteInput }) =>
+    mutationFn: ({ accountId, data }: { accountId: number | null; data: CreateNoteInput }) =>
       createNote(accountId, data),
     onSuccess: (_, variables) => {
-      // Invalidate all list queries for this account, regardless of params
-      queryClient.invalidateQueries({
-        predicate: (query) =>
-          query.queryKey[0] === 'notes' &&
-          query.queryKey[1] === 'list' &&
-          query.queryKey[2] === variables.accountId,
-      });
+      // Invalidate all list queries for this account or business, regardless of params
+      if (variables.accountId) {
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            query.queryKey[0] === 'notes' &&
+            query.queryKey[1] === 'list' &&
+            query.queryKey[2] === variables.accountId,
+        });
+      }
+      if (variables.data.businessId) {
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            query.queryKey[0] === 'notes' &&
+            query.queryKey[1] === 'list',
+        });
+      }
     },
   });
 }

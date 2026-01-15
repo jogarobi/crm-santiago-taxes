@@ -101,7 +101,7 @@ export default function BusinessDetailPage({ params }: Props) {
   const [notesSearchQuery, setNotesSearchQuery] = useState('');
   const [notesLimit, setNotesLimit] = useState(4);
 
-  const { data: notesData, isLoading: notesLoading } = useNotes(accountId, {
+  const { data: notesData, isLoading: notesLoading } = useNotes(null, {
     search: notesSearchQuery || undefined,
     limit: notesLimit,
     offset: 0,
@@ -240,7 +240,6 @@ export default function BusinessDetailPage({ params }: Props) {
       <CreateNoteDialog
         open={createNoteDialogOpen}
         onOpenChange={setCreateNoteDialogOpen}
-        accountId={accountId}
         businessId={businessIdInt}
       />
       <NoteDetailDialog
@@ -392,8 +391,31 @@ export default function BusinessDetailPage({ params }: Props) {
 
               {business.address && (
                 <div>
-                  <label className='text-sm text-neutral-500'>Address</label>
+                  <label className='text-sm text-neutral-500'>
+                    Address Line
+                  </label>
                   <p className='font-medium text-[15px]'>{business.address}</p>
+                </div>
+              )}
+
+              {business.city && (
+                <div>
+                  <label className='text-sm text-neutral-500'>City</label>
+                  <p className='font-medium text-[15px]'>{business.city}</p>
+                </div>
+              )}
+
+              {business.state && (
+                <div>
+                  <label className='text-sm text-neutral-500'>State</label>
+                  <p className='font-medium text-[15px]'>{business.state}</p>
+                </div>
+              )}
+
+              {business.zipCode && (
+                <div>
+                  <label className='text-sm text-neutral-500'>Zip Code</label>
+                  <p className='font-medium text-[15px]'>{business.zipCode}</p>
                 </div>
               )}
 

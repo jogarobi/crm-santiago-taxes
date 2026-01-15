@@ -12,30 +12,36 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    if (!accountId) {
+    if (!accountId && !businessId) {
       return NextResponse.json(
-        { error: 'accountId query parameter is required' },
-        { status: 400 }
-      );
-    }
-
-    const accountIdInt = parseInt(accountId);
-
-    if (isNaN(accountIdInt)) {
-      return NextResponse.json(
-        { error: 'Invalid account ID' },
+        { error: 'Either accountId or businessId query parameter is required' },
         { status: 400 }
       );
     }
 
     // Build where conditions
-    const conditions = [eq(note.accountId, accountIdInt)];
+    const conditions = [];
+
+    if (accountId) {
+      const accountIdInt = parseInt(accountId);
+      if (isNaN(accountIdInt)) {
+        return NextResponse.json(
+          { error: 'Invalid account ID' },
+          { status: 400 }
+        );
+      }
+      conditions.push(eq(note.accountId, accountIdInt));
+    }
 
     if (businessId) {
       const businessIdInt = parseInt(businessId);
-      if (!isNaN(businessIdInt)) {
-        conditions.push(eq(note.businessId, businessIdInt));
+      if (isNaN(businessIdInt)) {
+        return NextResponse.json(
+          { error: 'Invalid business ID' },
+          { status: 400 }
+        );
       }
+      conditions.push(eq(note.businessId, businessIdInt));
     }
 
     if (search && search.trim()) {
@@ -82,23 +88,36 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    if (!body.accountId || !body.content || !body.createdBy) {
+    if (!body.content || !body.createdBy) {
       return NextResponse.json(
-        { error: 'Missing required fields: accountId, content, createdBy' },
+        { error: 'Missing required fields: content, createdBy' },
         { status: 400 }
       );
     }
 
-    const accountIdInt = parseInt(body.accountId);
+    if (!body.accountId && !body.businessId) {
+      return NextResponse.json(
+        { error: 'Either accountId or businessId is required' },
+        { status: 400 }
+      );
+    }
 
-    if (isNaN(accountIdInt)) {
+    const accountIdInt = body.accountId ? parseInt(body.accountId) : null;
+    const businessIdInt = body.businessId ? parseInt(body.businessId) : null;
+
+    if (body.accountId && isNaN(accountIdInt)) {
       return NextResponse.json(
         { error: 'Invalid account ID' },
         { status: 400 }
       );
     }
 
-    const businessIdInt = body.businessId ? parseInt(body.businessId) : null;
+    if (body.businessId && isNaN(businessIdInt)) {
+      return NextResponse.json(
+        { error: 'Invalid business ID' },
+        { status: 400 }
+      );
+    }
 
     const newNote = await db
       .insert(note)

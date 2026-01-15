@@ -1,6 +1,6 @@
 export type Note = {
   id: number;
-  accountId: number;
+  accountId: number | null;
   businessId: number | null;
   content: string | null;
   createdBy: string;
