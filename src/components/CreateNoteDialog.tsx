@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Input } from './ui/input';
-import { Loader2, SearchIcon, XIcon, UserIcon } from 'lucide-react';
+import { Loader2, SearchIcon, UserIcon } from 'lucide-react';
 import { useCreateNote } from '@/hooks/use-notes';
 import { useAccounts } from '@/hooks/use-accounts';
 import type { Account } from '@/lib/types/account';
@@ -33,11 +33,11 @@ export function CreateNoteDialog({
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [pageSize, setPageSize] = useState(10);
 
-  // If we have a prop accountId, we can skip search.
+  // If we have a prop accountId or businessId, we can skip search.
   // But we might not have the account details to show title easily unless we fetch it,
   // or we just assume the user knows context.
   // For the global case, we need search.
-  const isGlobalMode = !accountId;
+  const isGlobalMode = !accountId && !businessId;
 
   useEffect(() => {
     const timer = setTimeout(() => {
