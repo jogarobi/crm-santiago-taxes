@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePayments } from '@/hooks/use-payments';
+import { useCustomer } from '@/hooks/use-customer';
 import {
   Table,
   TableBody,
@@ -52,6 +53,34 @@ function getStatusColor(status: string): string {
     default:
       return 'bg-neutral-100 text-neutral-800';
   }
+}
+
+function PaymentCustomerCell({ customerId }: { customerId?: string }) {
+  const { data: customer, isLoading } = useCustomer(customerId);
+
+  if (!customerId) {
+    return <span className='text-neutral-400'>—</span>;
+  }
+
+  if (isLoading) {
+    return (
+      <span className='text-sm text-neutral-500'>Loading...</span>
+    );
+  }
+
+  if (!customer) {
+    return <span className='text-sm text-neutral-400'>Not Available</span>;
+  }
+
+  const customerName = [customer.givenName, customer.familyName]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <span className='text-sm text-neutral-600'>
+      {customerName || customer.emailAddress || 'Not Available'}
+    </span>
+  );
 }
 
 export default function PaymentsPage() {
@@ -138,7 +167,7 @@ export default function PaymentsPage() {
                 <TableHead className='p-4'>Status</TableHead>
                 <TableHead className='p-4'>Payment Method</TableHead>
                 <TableHead className='p-4'>Receipt</TableHead>
-                <TableHead className='p-4'>Customer ID</TableHead>
+                <TableHead className='p-4'>Customer</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -214,8 +243,8 @@ export default function PaymentsPage() {
                       <span className='text-neutral-400'>—</span>
                     )}
                   </TableCell>
-                  <TableCell className='p-4 text-sm text-neutral-600'>
-                    {payment.customerId || '—'}
+                  <TableCell className='p-4'>
+                    <PaymentCustomerCell customerId={payment.customerId} />
                   </TableCell>
                 </TableRow>
               ))}

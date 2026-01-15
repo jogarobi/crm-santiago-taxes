@@ -57,6 +57,13 @@
       "when": 1768439556963,
       "tag": "0007_cuddly_blacklash",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1768516287723,
+      "tag": "0008_black_rick_jones",
+      "breakpoints": true
     }
   ]
 }

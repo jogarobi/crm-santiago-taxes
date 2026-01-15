@@ -23,11 +23,13 @@ import Link from 'next/link';
 import { AppointmentDialog } from './AppointmentDialog';
 import { CreateNoteDialog } from './CreateNoteDialog';
 import { CreateClientDialog } from './CreateClientDialog';
+import { CreateTaskDialog } from './CreateTaskDialog';
 
 export function AppHeader() {
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [createNoteDialogOpen, setCreateNoteDialogOpen] = useState(false);
   const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false);
+  const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false);
 
   return (
     <>
@@ -45,7 +47,7 @@ export function AppHeader() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant='outline'>
-                <span>New activity</span>
+                <span>New</span>
                 <PlusIcon />
               </Button>
             </DropdownMenuTrigger>
@@ -75,7 +77,10 @@ export function AppHeader() {
                 <CircleDollarSignIcon className='stroke-neutral-500' />
                 <span className=' font-normal'>Take payment</span>
               </DropdownMenuItem>
-              <DropdownMenuItem className='px-4 py-3'>
+              <DropdownMenuItem
+                className='px-4 py-3 cursor-pointer'
+                onClick={() => setCreateTaskDialogOpen(true)}
+              >
                 <CheckCheckIcon className='stroke-neutral-500' />
                 <span className=' font-normal'>Create task</span>
               </DropdownMenuItem>
@@ -95,6 +100,10 @@ export function AppHeader() {
       <CreateClientDialog
         open={createClientDialogOpen}
         onOpenChange={setCreateClientDialogOpen}
+      />
+      <CreateTaskDialog
+        open={createTaskDialogOpen}
+        onOpenChange={setCreateTaskDialogOpen}
       />
     </>
   );

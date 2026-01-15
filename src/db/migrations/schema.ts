@@ -363,3 +363,18 @@ export const rolePermission = sqliteTable('RolePermission', {
   updatedAt: text(),
   updatedBy: text(),
 });
+
+export const task = sqliteTable('Task', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  accountId: integer().references(() => clientAccount.id),
+  businessId: integer().references(() => business.id),
+  content: text().notNull(),
+  status: text().notNull().default('todo'), // todo, in_progress, done
+  assignedTo: text(), // user id of assigned staff member
+  createdAt: text()
+    .default("DATETIME('NOW')")
+    .notNull(),
+  createdBy: text().notNull(),
+  updatedAt: text(),
+  updatedBy: text(),
+});
