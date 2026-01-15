@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccounts } from '@/hooks/use-accounts';
+import { useAllBusinesses } from '@/hooks/use-businesses';
 import {
   Table,
   TableBody,
@@ -13,8 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import {
   Loader2,
-  PlusIcon,
-  UsersIcon,
+  Building2Icon,
   ChevronLeft,
   ChevronRight,
   Search,
@@ -31,20 +30,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CreateClientDialog } from '@/components/CreateClientDialog';
 import { Checkbox } from '@/components/ui/checkbox';
 
-export default function ClientsPage() {
+function formatEIN(ein: string): string {
+  const cleaned = ein.replace(/\D/g, '');
+
+  if (cleaned.length === 9) {
+    return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+  }
+
+  return ein;
+}
+
+export default function BusinessesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   // Set document title
   useEffect(() => {
-    document.title = 'Clients | Santiago Taxes CRM';
+    document.title = 'Businesses | Santiago Taxes CRM';
   }, []);
 
   // Debounce search input
@@ -61,14 +68,13 @@ export default function ClientsPage() {
     data: response,
     isLoading,
     error,
-  } = useAccounts({
+  } = useAllBusinesses({
     search: debouncedSearch || undefined,
     pageSize,
     pageIndex,
-    accountType: 'clients',
   });
 
-  const accounts = response?.data || [];
+  const businesses = response?.data || [];
   const meta = response?.meta;
 
   // Clear selection when page changes
@@ -87,45 +93,37 @@ export default function ClientsPage() {
   };
 
   // Selection handlers
-  const toggleRowSelection = (accountId: number) => {
+  const toggleRowSelection = (businessId: number) => {
     const newSelection = new Set(selectedRows);
-    if (newSelection.has(accountId)) {
-      newSelection.delete(accountId);
+    if (newSelection.has(businessId)) {
+      newSelection.delete(businessId);
     } else {
-      newSelection.add(accountId);
+      newSelection.add(businessId);
     }
     setSelectedRows(newSelection);
   };
 
   const toggleSelectAll = () => {
-    if (selectedRows.size === accounts.length) {
+    if (selectedRows.size === businesses.length) {
       setSelectedRows(new Set());
     } else {
-      setSelectedRows(new Set(accounts.map((account) => account.id)));
+      setSelectedRows(new Set(businesses.map((business) => business.id)));
     }
   };
 
   const isAllSelected =
-    accounts.length > 0 && selectedRows.size === accounts.length;
+    businesses.length > 0 && selectedRows.size === businesses.length;
   const isSomeSelected = selectedRows.size > 0 && !isAllSelected;
 
   return (
     <div className='flex flex-col gap-6'>
       <div className='flex items-center justify-between'>
-        <h1 className='text-2xl font-semibold'>Clients</h1>
-
-        <Button
-          className='bg-purple'
-          onClick={() => setIsCreateDialogOpen(true)}
-        >
-          <PlusIcon className='w-4 h-4' />
-          <span>New Client</span>
-        </Button>
+        <h1 className='text-2xl font-semibold'>Businesses</h1>
       </div>
 
       <InputGroup className='py-6 bg-white'>
         <InputGroupInput
-          placeholder='Search by name, SSN last 4 digits, or ID...'
+          placeholder='Search by business name, EIN, or account holder name...'
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -138,7 +136,7 @@ export default function ClientsPage() {
         <div className='flex items-center justify-center py-12'>
           <Loader2 className='w-6 h-6 animate-spin text-purple' />
           <span className='ml-3 text-[15px] text-neutral-600'>
-            Loading clients...
+            Loading businesses...
           </span>
         </div>
       )}
@@ -146,40 +144,31 @@ export default function ClientsPage() {
       {error && (
         <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
           <p className='text-red-800'>
-            Failed to load clients. Please try again later.
+            Failed to load businesses. Please try again later.
           </p>
         </div>
       )}
 
-      {!isLoading && !error && (!accounts || accounts.length === 0) && (
+      {!isLoading && !error && (!businesses || businesses.length === 0) && (
         <div className='bg-white border rounded-lg p-12 text-center'>
-          <UsersIcon
+          <Building2Icon
             className='w-8 h-8 text-neutral-400 mx-auto mb-4'
             strokeWidth={1.8}
           />
           <h3 className='text-[15px]  text-neutral-500 mb-2'>
             {searchQuery
-              ? `No clients found for "${searchQuery}"`
-              : 'No clients yet'}
+              ? `No businesses found for "${searchQuery}"`
+              : 'No businesses yet'}
           </h3>
-          {!searchQuery && (
-            <Button
-              className='bg-purple'
-              onClick={() => setIsCreateDialogOpen(true)}
-            >
-              <PlusIcon className='w-4 h-4' />
-              <span>Add Client</span>
-            </Button>
-          )}
         </div>
       )}
 
-      {!isLoading && !error && accounts && accounts.length > 0 && (
+      {!isLoading && !error && businesses && businesses.length > 0 && (
         <div className='bg-white border rounded-lg overflow-hidden'>
           {selectedRows.size > 0 && (
             <div className='flex items-center justify-between px-4 py-3 bg-purple/10 border-b'>
               <p className='text-sm font-medium text-purple'>
-                {selectedRows.size} client{selectedRows.size !== 1 ? 's' : ''}{' '}
+                {selectedRows.size} business{selectedRows.size !== 1 ? 'es' : ''}{' '}
                 selected
               </p>
               <Button
@@ -208,24 +197,25 @@ export default function ClientsPage() {
                     aria-label='Select all'
                   />
                 </TableHead>
-                <TableHead className='p-4'>Name</TableHead>
-                <TableHead className='p-4'>Date of Birth</TableHead>
-                <TableHead className='p-4'>SSN (Last 4)</TableHead>
+                <TableHead className='p-4'>Business Name</TableHead>
+                <TableHead className='p-4'>Account Holder</TableHead>
+                <TableHead className='p-4'>Entity Type</TableHead>
+                <TableHead className='p-4'>EIN</TableHead>
                 <TableHead className='p-4'>Address</TableHead>
                 <TableHead className='p-4'>Created</TableHead>
                 <TableHead className='p-4'>Created By</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {accounts.map((account) => (
+              {businesses.map((business) => (
                 <TableRow
-                  key={account.id}
+                  key={business.id}
                   className='cursor-pointer'
                   onClick={() => {
-                    window.location.href = `/clients/${account.id}`;
+                    window.location.href = `/clients/${business.accountId}/businesses/${business.id}`;
                   }}
                   data-state={
-                    selectedRows.has(account.id) ? 'selected' : undefined
+                    selectedRows.has(business.id) ? 'selected' : undefined
                   }
                 >
                   <TableCell
@@ -233,45 +223,57 @@ export default function ClientsPage() {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Checkbox
-                      checked={selectedRows.has(account.id)}
-                      onCheckedChange={() => toggleRowSelection(account.id)}
-                      aria-label={`Select ${account.firstName} ${account.lastName}`}
+                      checked={selectedRows.has(business.id)}
+                      onCheckedChange={() => toggleRowSelection(business.id)}
+                      aria-label={`Select ${business.registeredName}`}
                     />
                   </TableCell>
                   <TableCell className='font-medium p-4'>
                     <div className='flex items-center gap-3'>
-                      <span>
-                        {account.firstName} {account.lastName}
-                      </span>
+                      <span>{business.registeredName}</span>
                     </div>
                   </TableCell>
                   <TableCell className='p-4'>
-                    {new Date(account.dateOfBirth).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </TableCell>
-                  <TableCell className='p-4'>
-                    {account.ssnLastFour ? (
-                      <span className='font-mono'>{account.ssnLastFour}</span>
+                    {business.account ? (
+                      <span>
+                        {business.account.firstName} {business.account.lastName}
+                      </span>
                     ) : (
                       <span className='text-neutral-400'>—</span>
                     )}
                   </TableCell>
-
                   <TableCell className='p-4'>
-                    {account.city && account.state && (
-                      <span>
-                        {account.address} {account.city}, {account.state}
+                    {business.entity?.name ? (
+                      <span className='text-sm font-medium bg-neutral-100 rounded-full px-3 py-1 capitalize'>
+                        {business.entity.name}
                       </span>
+                    ) : (
+                      <span className='text-neutral-400'>—</span>
                     )}
                   </TableCell>
                   <TableCell className='p-4'>
-                    {formatDate(account.createdAt)}
+                    {business.ein ? (
+                      <span className='font-mono'>{formatEIN(business.ein)}</span>
+                    ) : (
+                      <span className='text-neutral-400'>—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className='p-4'>
+                    {business.city && business.state ? (
+                      <span>
+                        {business.city}, {business.state}
+                      </span>
+                    ) : business.address ? (
+                      <span>{business.address}</span>
+                    ) : (
+                      <span className='text-neutral-400'>—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className='p-4'>
+                    {formatDate(business.createdAt)}
                   </TableCell>
                   <TableCell className='p-4 text-neutral-600'>
-                    {account.createdBy}
+                    {business.createdBy}
                   </TableCell>
                 </TableRow>
               ))}
@@ -282,7 +284,7 @@ export default function ClientsPage() {
             <div className='flex items-center gap-4'>
               <p className='text-sm text-neutral-600'>
                 {Math.min((pageIndex + 1) * pageSize, meta?.total || 0)} of{' '}
-                {meta?.total || 0} client{meta?.total !== 1 ? 's' : ''}
+                {meta?.total || 0} business{meta?.total !== 1 ? 'es' : ''}
               </p>
               {meta && meta.totalPages > 1 && (
                 <div className='flex items-center gap-2'>
@@ -364,10 +366,6 @@ export default function ClientsPage() {
           </div>
         </div>
       )}
-      <CreateClientDialog
-        open={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-      />
     </div>
   );
 }

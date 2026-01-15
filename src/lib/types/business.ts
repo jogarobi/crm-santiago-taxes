@@ -26,6 +26,11 @@ export interface Business {
     id: number;
     name: string;
   };
+  account?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
 }
 
 export interface CreateBusinessInput {

@@ -89,6 +89,9 @@ import { NoteDetailDialog } from '@/components/NoteDetailDialog';
 import { CreateBusinessDialog } from '@/components/CreateBusinessDialog';
 import { EditBusinessDialog } from '@/components/EditBusinessDialog';
 import { DeleteBusinessDialog } from '@/components/DeleteBusinessDialog';
+import { EditClientDialog } from '@/components/EditClientDialog';
+import { DeleteClientDialog } from '@/components/DeleteClientDialog';
+import { ManageContactsDialog } from '@/components/ManageContactsDialog';
 import clsx from 'clsx';
 import type { Note } from '@/lib/types/note';
 import type { Business } from '@/lib/types/business';
@@ -118,6 +121,9 @@ export default function AccountDetailPage({ params }: Props) {
   const [noteDetailDialogOpen, setNoteDetailDialogOpen] = useState(false);
   const [notesSearchQuery, setNotesSearchQuery] = useState('');
   const [notesLimit, setNotesLimit] = useState(4);
+  const [editClientDialogOpen, setEditClientDialogOpen] = useState(false);
+  const [deleteClientDialogOpen, setDeleteClientDialogOpen] = useState(false);
+  const [manageContactsDialogOpen, setManageContactsDialogOpen] = useState(false);
 
   const { data: notesData, isLoading: notesLoading } = useNotes(accountId, {
     search: notesSearchQuery || undefined,
@@ -146,9 +152,15 @@ export default function AccountDetailPage({ params }: Props) {
     setNotesLimit(4);
   };
 
-  const primaryContact = contacts?.[0];
-  const hasPhone = primaryContact?.phoneNumber;
-  const hasEmail = primaryContact?.email;
+  // Get the most recent phone and email from contacts
+  const hasPhone = contacts
+    ?.filter((c) => c.phoneNumber)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+    ?.phoneNumber;
+  const hasEmail = contacts
+    ?.filter((c) => c.email)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+    ?.email;
 
   if (isLoading) {
     return (
@@ -238,12 +250,26 @@ export default function AccountDetailPage({ params }: Props) {
         </div>
 
         <div className='ml-auto flex flex-col gap-3'>
-          <div className='flex items-center gap-2 text-purple'>
+          <div
+            className='flex items-center gap-2 text-purple cursor-pointer'
+            onClick={() => setEditClientDialogOpen(true)}
+          >
             <Edit2Icon size={15} strokeWidth={2.4} />
             <span className='text-[15px] font-medium'>Edit</span>
           </div>
 
-          <div className='text-red-700 flex items-center gap-2'>
+          <div
+            className='flex items-center gap-2 text-purple cursor-pointer'
+            onClick={() => setManageContactsDialogOpen(true)}
+          >
+            <PhoneIcon size={15} strokeWidth={2.4} />
+            <span className='text-[15px] font-medium'>Manage Contacts</span>
+          </div>
+
+          <div
+            className='text-red-700 flex items-center gap-2 cursor-pointer'
+            onClick={() => setDeleteClientDialogOpen(true)}
+          >
             <TrashIcon size={15} strokeWidth={2.4} />
             <span className='text-[15px] font-medium'>Delete</span>
           </div>
@@ -276,6 +302,21 @@ export default function AccountDetailPage({ params }: Props) {
         onOpenChange={setDeleteBusinessDialogOpen}
         accountId={accountId}
         business={selectedBusiness}
+      />
+      <EditClientDialog
+        open={editClientDialogOpen}
+        onOpenChange={setEditClientDialogOpen}
+        account={account}
+      />
+      <DeleteClientDialog
+        open={deleteClientDialogOpen}
+        onOpenChange={setDeleteClientDialogOpen}
+        account={account}
+      />
+      <ManageContactsDialog
+        open={manageContactsDialogOpen}
+        onOpenChange={setManageContactsDialogOpen}
+        accountId={accountId}
       />
 
       <Tabs defaultValue='notes' className='w-full'>

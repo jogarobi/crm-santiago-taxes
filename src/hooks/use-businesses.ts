@@ -1,11 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Business, CreateBusinessInput, UpdateBusinessInput } from '@/lib/types/business';
 
+// Types
+export interface FetchAllBusinessesParams {
+  search?: string;
+  pageSize?: number;
+  pageIndex?: number;
+}
+
+export interface AllBusinessesResponse {
+  data: Business[];
+  meta: {
+    total: number;
+    pageIndex: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}
+
 // Query Keys
 export const businessKeys = {
   all: ['businesses'] as const,
   lists: () => [...businessKeys.all, 'list'] as const,
   list: (accountId: number) => [...businessKeys.lists(), accountId] as const,
+  allBusinesses: (params?: FetchAllBusinessesParams) =>
+    [...businessKeys.all, 'all-businesses', params] as const,
   details: () => [...businessKeys.all, 'detail'] as const,
   detail: (businessId: number) => [...businessKeys.details(), businessId] as const,
 };
@@ -15,6 +34,28 @@ async function fetchBusinesses(accountId: number): Promise<Business[]> {
   const response = await fetch(`/api/accounts/${accountId}/businesses`);
   if (!response.ok) {
     throw new Error('Failed to fetch businesses');
+  }
+  return response.json();
+}
+
+async function fetchAllBusinesses(
+  params?: FetchAllBusinessesParams
+): Promise<AllBusinessesResponse> {
+  const urlParams = new URLSearchParams();
+
+  if (params?.search) {
+    urlParams.append('search', params.search);
+  }
+  if (params?.pageSize !== undefined) {
+    urlParams.append('pageSize', params.pageSize.toString());
+  }
+  if (params?.pageIndex !== undefined) {
+    urlParams.append('pageIndex', params.pageIndex.toString());
+  }
+
+  const response = await fetch(`/api/businesses?${urlParams.toString()}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch all businesses');
   }
   return response.json();
 }
@@ -92,6 +133,13 @@ export function useBusinesses(accountId: number) {
     queryKey: businessKeys.list(accountId),
     queryFn: () => fetchBusinesses(accountId),
     enabled: !!accountId,
+  });
+}
+
+export function useAllBusinesses(params?: FetchAllBusinessesParams) {
+  return useQuery({
+    queryKey: businessKeys.allBusinesses(params),
+    queryFn: () => fetchAllBusinesses(params),
   });
 }
 

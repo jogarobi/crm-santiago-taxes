@@ -69,6 +69,16 @@ export function useBreadcrumbs(): PageInfo {
       };
     }
 
+    if (pathname === '/businesses') {
+      return {
+        title: 'Businesses',
+        breadcrumbs: [
+          { label: 'Home', href: '/' },
+          { label: 'Businesses', href: '/businesses' },
+        ],
+      };
+    }
+
     if (pathname.startsWith('/clients/')) {
       const segments = pathname.split('/').filter(Boolean);
 

@@ -16,6 +16,7 @@ import {
   SidebarMenuItem,
 } from './ui/sidebar';
 import {
+  Building2Icon,
   CalendarIcon,
   CheckCheckIcon,
   ChevronUp,
@@ -47,6 +48,11 @@ const items = [
     title: 'Clients',
     url: '/clients',
     icon: UserIcon,
+  },
+  {
+    title: 'Businesses',
+    url: '/businesses',
+    icon: Building2Icon,
   },
   {
     title: 'Appointments',
