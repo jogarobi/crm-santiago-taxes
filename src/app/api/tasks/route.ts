@@ -2,9 +2,13 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { task } from '@/db/migrations/schema';
 import { eq, desc, like, and, count, or } from 'drizzle-orm';
+import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
   try {
+    // Check if user has permission to read tasks
+    await requirePermission({ task: ['read'] });
+
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('accountId');
     const businessId = searchParams.get('businessId');
@@ -89,6 +93,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    // Check if user has permission to create tasks
+    await requirePermission({ task: ['create'] });
+
     const body = await request.json();
 
     if (!body.content || !body.createdBy) {

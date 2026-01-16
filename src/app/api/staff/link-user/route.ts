@@ -2,9 +2,12 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { staff } from '@/db/migrations/schema';
 import { eq } from 'drizzle-orm';
+import { requirePermission } from '@/lib/auth-utils';
 
 export async function POST(request: Request) {
   try {
+    await requirePermission({ staff: ['update'] });
+
     const body = await request.json();
 
     if (!body.email || !body.userId) {

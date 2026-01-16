@@ -1,9 +1,11 @@
 import { square } from '@/app/api/clients';
 import { NextResponse } from 'next/server';
 import type { Payment } from '@/lib/types/payment';
+import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
   try {
+    await requirePermission({ payment: ['read'] });
     const { searchParams } = new URL(request.url);
     const pageSize = Math.min(
       parseInt(searchParams.get('pageSize') || '50'),

@@ -371,9 +371,7 @@ export const task = sqliteTable('Task', {
   content: text().notNull(),
   status: text().notNull().default('todo'), // todo, in_progress, done, delayed, abandoned
   assignedTo: text(), // user id of assigned staff member
-  createdAt: text()
-    .default("DATETIME('NOW')")
-    .notNull(),
+  createdAt: text().default("DATETIME('NOW')").notNull(),
   createdBy: text().notNull(),
   updatedAt: text(),
   updatedBy: text(),

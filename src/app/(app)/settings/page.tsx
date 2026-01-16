@@ -11,16 +11,15 @@ import {
 } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
+import type { Resource, Action, Role } from '@/lib/auth-utils';
 
 type PermissionAction = {
   id: string;
-  resource: string;
-  action: string;
+  resource: Resource;
+  action: Action;
   description: string;
   enabled: boolean;
 };
-
-type Role = 'owner' | 'admin' | 'staff';
 
 type RolePermissions = {
   [key in Role]: PermissionAction[];
@@ -31,6 +30,40 @@ const roles: { id: Role; label: string }[] = [
   { id: 'admin', label: 'Admin' },
   { id: 'staff', label: 'Staff' },
 ];
+
+// Define all permission descriptions
+const PERMISSION_DESCRIPTIONS: Record<string, string> = {
+  'client:create': 'Create new clients',
+  'client:read': 'View client information',
+  'client:update': 'Edit client details',
+  'client:delete': 'Delete clients',
+  'appointment:create': 'Schedule new appointments',
+  'appointment:read': 'View appointments',
+  'appointment:update': 'Modify appointments',
+  'appointment:delete': 'Delete appointments',
+  'appointment:cancel': 'Cancel appointments',
+  'payment:create': 'Process new payments',
+  'payment:read': 'View payment records',
+  'payment:refund': 'Issue payment refunds',
+  'task:create': 'Create new tasks',
+  'task:read': 'View tasks',
+  'task:update': 'Edit tasks',
+  'task:delete': 'Delete tasks',
+  'business:create': 'Create business entities',
+  'business:read': 'View business information',
+  'business:update': 'Edit business details',
+  'business:delete': 'Delete businesses',
+  'note:create': 'Create notes',
+  'note:read': 'View notes',
+  'note:update': 'Edit notes',
+  'note:delete': 'Delete notes',
+  'staff:create': 'Create staff members',
+  'staff:read': 'View staff information',
+  'staff:update': 'Edit staff details',
+  'staff:delete': 'Delete staff members',
+  'report:read': 'View reports',
+  'report:export': 'Export report data',
+};
 
 export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -44,30 +77,88 @@ export default function SettingsPage() {
     new Set()
   );
 
-  // Fetch permissions on mount
   useEffect(() => {
-    async function fetchPermissions() {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const response = await fetch('/api/permissions');
-        if (!response.ok) {
-          throw new Error('Failed to fetch permissions');
-        }
-
-        const data = await response.json();
-        setRolePermissions(data);
-      } catch (err) {
-        console.error('Error fetching permissions:', err);
-        setError('Failed to load permissions. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
+    document.title = 'Settings | Santiago Taxes CRM';
     fetchPermissions();
   }, []);
+
+  async function fetchPermissions() {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Fetch permissions for all roles
+      const responses = await Promise.all(
+        roles.map((role) =>
+          fetch(`/api/permissions?role=${role.id}`).then((res) => res.json())
+        )
+      );
+
+      // Convert the permissions format to our UI format
+      const newRolePermissions: RolePermissions = {
+        owner: [],
+        admin: [],
+        staff: [],
+      };
+
+      roles.forEach((role, index) => {
+        const permissions = responses[index].permissions || {};
+        const permissionList: PermissionAction[] = [];
+
+        Object.entries(permissions).forEach(([resource, actions]) => {
+          (actions as Action[]).forEach((action) => {
+            const id = `${resource}:${action}`;
+            permissionList.push({
+              id,
+              resource: resource as Resource,
+              action: action as Action,
+              description:
+                PERMISSION_DESCRIPTIONS[id] || `${resource} ${action}`,
+              enabled: true,
+            });
+          });
+        });
+
+        newRolePermissions[role.id] = permissionList;
+      });
+
+      // Create a master list of all possible permissions
+      const allPermissionIds = new Set<string>();
+      Object.entries(PERMISSION_DESCRIPTIONS).forEach(([id]) => {
+        allPermissionIds.add(id);
+      });
+
+      // Ensure all roles have all permissions (with enabled/disabled state)
+      const masterPermissions = Array.from(allPermissionIds)
+        .map((id) => {
+          const [resource, action] = id.split(':');
+          return {
+            id,
+            resource: resource as Resource,
+            action: action as Action,
+            description: PERMISSION_DESCRIPTIONS[id],
+          };
+        })
+        .sort((a, b) => a.description.localeCompare(b.description));
+
+      roles.forEach((role) => {
+        const enabledIds = new Set(
+          newRolePermissions[role.id].map((p) => p.id)
+        );
+        newRolePermissions[role.id] = masterPermissions.map((p) => ({
+          ...p,
+          enabled: enabledIds.has(p.id),
+        }));
+      });
+
+      setRolePermissions(newRolePermissions);
+    } catch (err) {
+      console.error('Error fetching permissions:', err);
+      setError('Failed to load permissions. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   const handlePermissionToggle = async (
     role: Role,
@@ -89,7 +180,7 @@ export default function SettingsPage() {
 
       // Save to API
       const response = await fetch('/api/permissions', {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -123,7 +214,7 @@ export default function SettingsPage() {
     }
   };
 
-  // Get all unique permissions (they're the same across roles, just with different enabled states)
+  // Get all unique permissions
   const allPermissions =
     rolePermissions.owner.length > 0
       ? rolePermissions.owner
@@ -193,10 +284,7 @@ export default function SettingsPage() {
                               <Switch
                                 checked={rolePermission?.enabled || false}
                                 onCheckedChange={() =>
-                                  handlePermissionToggle(
-                                    role.id,
-                                    rolePermission
-                                  )
+                                  handlePermissionToggle(role.id, rolePermission)
                                 }
                               />
                             )}

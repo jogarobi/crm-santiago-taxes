@@ -12,12 +12,15 @@ import {
 import { eq } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
+import { requirePermission } from '@/lib/auth-utils';
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission({ staff: ['update'] });
+
     const { id: idString } = await params;
     const id = parseInt(idString);
     const body = await request.json();
@@ -75,6 +78,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission({ staff: ['delete'] });
+
     const { id: idString } = await params;
     const id = parseInt(idString);
 

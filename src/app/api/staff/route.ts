@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { staff } from '@/db/migrations/schema';
 import { like, or, desc, sql } from 'drizzle-orm';
+import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
   try {
+    await requirePermission({ staff: ['read'] });
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const pageIndex = parseInt(searchParams.get('pageIndex') || '0');
@@ -63,6 +65,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await requirePermission({ staff: ['create'] });
+
     const body = await request.json();
 
     if (

@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { clientAccountRelation, clientAccount } from '@/db/migrations/schema';
 import { eq } from 'drizzle-orm';
+import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string; relationshipId: string }> }
 ) {
   try {
+    await requirePermission({ client: ['read'] });
+
     const { id, relationshipId } = await params;
     const accountId = parseInt(id);
     const relationshipIdInt = parseInt(relationshipId);
@@ -66,6 +69,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string; relationshipId: string }> }
 ) {
   try {
+    await requirePermission({ client: ['update'] });
+
     const { id, relationshipId } = await params;
     const accountId = parseInt(id);
     const relationshipIdInt = parseInt(relationshipId);
@@ -143,6 +148,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; relationshipId: string }> }
 ) {
   try {
+    await requirePermission({ client: ['delete'] });
+
     const { id, relationshipId } = await params;
     const accountId = parseInt(id);
     const relationshipIdInt = parseInt(relationshipId);

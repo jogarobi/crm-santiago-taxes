@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
+import { requirePermission } from '@/lib/auth-utils';
 
 export async function POST(request: Request) {
   try {
+    await requirePermission({ staff: ['create'] });
+
     const body = await request.json();
 
     // Validate required fields

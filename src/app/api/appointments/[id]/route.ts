@@ -4,12 +4,15 @@ import { Appointment, AppointmentErrorResponse } from '@/lib/types/appointment';
 import { db } from '@/lib/db';
 import { appointment } from '@/db/migrations/schema';
 import { eq, or } from 'drizzle-orm';
+import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission({ appointment: ['read'] });
+
     const { id } = await params;
 
     const dbAppointment = await db
@@ -90,6 +93,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission({ appointment: ['update'] });
+
     const { id } = await params;
     const body = await request.json();
 
@@ -138,6 +143,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission({ appointment: ['cancel'] });
+
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const bookingVersion = searchParams.get('booking_version');

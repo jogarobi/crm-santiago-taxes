@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { business, businessEntity, clientAccount } from '@/db/migrations/schema';
 import { eq, desc, like, or, and, count } from 'drizzle-orm';
+import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
   try {
+    await requirePermission({ business: ['read'] });
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');

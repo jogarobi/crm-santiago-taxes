@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { clientAccount, business } from '@/db/migrations/schema';
 import { or, like, eq, count, sql } from 'drizzle-orm';
+import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
   try {
+    await requirePermission({ client: ['read'] });
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const onlyWithSquareId = searchParams.get('onlyWithSquareId') === 'true';
@@ -107,6 +109,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await requirePermission({ client: ['create'] });
+
     const body = await request.json();
 
     if (

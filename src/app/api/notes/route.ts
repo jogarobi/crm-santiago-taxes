@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { note } from '@/db/migrations/schema';
 import { eq, desc, like, and, count } from 'drizzle-orm';
+import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
   try {
+    await requirePermission({ note: ['read'] });
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('accountId');
     const businessId = searchParams.get('businessId');
@@ -86,6 +88,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await requirePermission({ note: ['create'] });
+
     const body = await request.json();
 
     if (!body.content || !body.createdBy) {

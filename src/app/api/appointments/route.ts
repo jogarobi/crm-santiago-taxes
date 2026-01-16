@@ -9,9 +9,11 @@ import {
 import { and, asc, eq, gte, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { AppointmentSegment } from 'square';
+import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
   try {
+    await requirePermission({ appointment: ['read'] });
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
     const startAtMin = searchParams.get('start_at_min') || undefined;
@@ -76,6 +78,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await requirePermission({ appointment: ['create'] });
+
     const locationId = process.env.SQUARE_LOCATION_ID!;
     const body = await request.json();
 

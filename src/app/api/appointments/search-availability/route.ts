@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { square } from '@/app/api/clients';
 import { AppointmentErrorResponse } from '@/lib/types/appointment';
+import { requirePermission } from '@/lib/auth-utils';
 
 export async function POST(request: Request) {
   try {
+    await requirePermission({ appointment: ['read'] });
+
     const locationId = process.env.SQUARE_LOCATION_ID!;
     const body = await request.json();
 

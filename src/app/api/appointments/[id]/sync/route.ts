@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { appointment, clientAccount } from '@/db/migrations/schema';
 import { eq, or } from 'drizzle-orm';
+import { requirePermission } from '@/lib/auth-utils';
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission({ appointment: ['update'] });
+
     const { id } = await params;
     const body = await request.json();
 
