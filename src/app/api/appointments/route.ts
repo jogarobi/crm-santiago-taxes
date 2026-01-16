@@ -18,6 +18,7 @@ export async function GET(request: Request) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
     const startAtMin = searchParams.get('start_at_min') || undefined;
     const startAtMax = searchParams.get('start_at_max') || undefined;
+    const accountId = searchParams.get('account_id') || undefined;
 
     const conditions = [];
 
@@ -27,6 +28,10 @@ export async function GET(request: Request) {
 
     if (startAtMax) {
       conditions.push(lte(appointment.startAt, startAtMax));
+    }
+
+    if (accountId) {
+      conditions.push(eq(appointment.accountId, parseInt(accountId)));
     }
 
     const dbAppointments = await db

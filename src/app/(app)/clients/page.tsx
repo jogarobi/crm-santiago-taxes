@@ -42,16 +42,14 @@ export default function ClientsPage() {
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  // Set document title
   useEffect(() => {
     document.title = 'Clients | Santiago Taxes CRM';
   }, []);
 
-  // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
-      setPageIndex(0); // Reset to first page on search
+      setPageIndex(0);
     }, 300);
 
     return () => clearTimeout(timer);

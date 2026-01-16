@@ -41,7 +41,7 @@ export function LinkClientDialog({
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchInput);
-      setPageSize(10); // Reset page size when search changes
+      setPageSize(10);
     }, 500);
 
     return () => clearTimeout(timer);

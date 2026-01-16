@@ -69,8 +69,10 @@ import { useAccountContacts } from '@/hooks/use-account-contact';
 import { useAccountRelationships } from '@/hooks/use-account-relationships';
 import { useNotes } from '@/hooks/use-notes';
 import { useBusinesses } from '@/hooks/use-businesses';
+import { useAppointments } from '@/hooks/use-appointments';
 import {
   Building2Icon,
+  CalendarIcon,
   ClockIcon,
   Edit2Icon,
   IdCardIcon,
@@ -81,6 +83,9 @@ import {
   SearchIcon,
   TrashIcon,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
+import { format } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { NotesGrid } from '@/components/NotesGrid';
@@ -123,13 +128,19 @@ export default function AccountDetailPage({ params }: Props) {
   const [notesLimit, setNotesLimit] = useState(4);
   const [editClientDialogOpen, setEditClientDialogOpen] = useState(false);
   const [deleteClientDialogOpen, setDeleteClientDialogOpen] = useState(false);
-  const [manageContactsDialogOpen, setManageContactsDialogOpen] = useState(false);
+  const [manageContactsDialogOpen, setManageContactsDialogOpen] =
+    useState(false);
 
   const { data: notesData, isLoading: notesLoading } = useNotes(accountId, {
     search: notesSearchQuery || undefined,
     limit: notesLimit,
     offset: 0,
   });
+
+  const { data: appointments, isLoading: appointmentsLoading } =
+    useAppointments({
+      accountId: accountId,
+    });
 
   const handleNoteClick = (note: Note) => {
     setSelectedNote(note);
@@ -155,12 +166,16 @@ export default function AccountDetailPage({ params }: Props) {
   // Get the most recent phone and email from contacts
   const hasPhone = contacts
     ?.filter((c) => c.phoneNumber)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
-    ?.phoneNumber;
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )[0]?.phoneNumber;
   const hasEmail = contacts
     ?.filter((c) => c.email)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
-    ?.email;
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )[0]?.email;
 
   if (isLoading) {
     return (
@@ -510,17 +525,138 @@ export default function AccountDetailPage({ params }: Props) {
           </div>
         </TabsContent>
 
-        <TabsContent value='documents'>
-          <div className='bg-white border rounded-xl p-6'>
-            <p className='text-neutral-500'>Documents content coming soon...</p>
-          </div>
-        </TabsContent>
-
         <TabsContent value='appointments'>
           <div className='bg-white border rounded-xl p-6'>
-            <p className='text-neutral-500'>
-              Appointments content coming soon...
-            </p>
+            <h3 className='text-lg font-semibold mb-6'>Appointments</h3>
+            {appointmentsLoading ? (
+              <div className='flex items-center justify-center py-12'>
+                <Loader2 className='w-5 h-5 animate-spin text-purple' />
+                <span className='ml-2 text-neutral-600 text-sm'>
+                  Loading appointments...
+                </span>
+              </div>
+            ) : appointments && appointments.length > 0 ? (
+              <div className='flex flex-col gap-4'>
+                {appointments.map((appointment) => {
+                  const startDate = appointment.startAt
+                    ? new Date(appointment.startAt)
+                    : null;
+                  const endDate = appointment.endAt
+                    ? new Date(appointment.endAt)
+                    : null;
+                  const relativeDate = appointment.startAt
+                    ? getRelativeDate(appointment.startAt)
+                    : '';
+
+                  return (
+                    <div
+                      key={appointment.id}
+                      className='border rounded-lg p-5 flex flex-col gap-5 hover:border-purple/50 transition-colors'
+                    >
+                      <div className='flex items-start justify-between'>
+                        <div className='flex items-center gap-3'>
+                          {appointment.status && (
+                            <Badge
+                              variant='secondary'
+                              className={clsx(
+                                'text-[13px] font-medium w-fit',
+                                {
+                                  'bg-green-100 text-green-700':
+                                    appointment.status === 'ACCEPTED',
+                                  'bg-yellow-100 text-yellow-700':
+                                    appointment.status === 'PENDING',
+                                  'bg-red-100 text-red-700':
+                                    appointment.status ===
+                                      'CANCELLED_BY_CUSTOMER' ||
+                                    appointment.status ===
+                                      'CANCELLED_BY_SELLER' ||
+                                    appointment.status === 'DECLINED',
+                                  'bg-gray-100 text-gray-700':
+                                    appointment.status === 'NO_SHOW',
+                                  'bg-blue-100 text-blue-700':
+                                    appointment.status !== 'ACCEPTED' &&
+                                    appointment.status !== 'PENDING' &&
+                                    appointment.status !==
+                                      'CANCELLED_BY_CUSTOMER' &&
+                                    appointment.status !==
+                                      'CANCELLED_BY_SELLER' &&
+                                    appointment.status !== 'DECLINED' &&
+                                    appointment.status !== 'NO_SHOW',
+                                }
+                              )}
+                            >
+                              {capitalizeFirst(
+                                appointment.status.replace(/_/g, ' ')
+                              )}
+                            </Badge>
+                          )}
+                          {appointment.service && (
+                            <h4 className='font-semibold text-[16px]'>
+                              {appointment.service}
+                            </h4>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className='flex items-center gap-4'>
+                        <div className='flex items-center gap-3'>
+                          <CalendarIcon className='w-5 h-5 text-neutral-500' />
+                          <div className='flex flex-col'>
+                            <span className='text-sm font-medium text-neutral-600'>
+                              Date
+                            </span>
+                            <span className='text-[15px] text-neutral-900'>
+                              {startDate
+                                ? `${relativeDate}${
+                                    relativeDate !== 'Today'
+                                      ? `, ${format(
+                                          startDate,
+                                          'EEEE, MMMM d, yyyy'
+                                        )}`
+                                      : ''
+                                  }`
+                                : 'N/A'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className='flex items-center gap-3'>
+                          <ClockIcon className='w-5 h-5 text-neutral-500' />
+                          <div className='flex flex-col'>
+                            <span className='text-sm font-medium text-neutral-600'>
+                              Time
+                            </span>
+                            <span className='text-[15px] text-neutral-900'>
+                              {startDate && endDate
+                                ? `${format(
+                                    startDate,
+                                    'h:mm a'
+                                  )} - ${format(endDate, 'h:mm a')}`
+                                : startDate
+                                ? format(startDate, 'h:mm a')
+                                : 'N/A'}
+                              {appointment.durationMinutes && (
+                                <span className='text-neutral-500'>
+                                  {' '}
+                                  ({appointment.durationMinutes} minutes)
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className='text-center py-12 text-neutral-500'>
+                <p>No appointments found</p>
+                <p className='text-sm mt-2'>
+                  This client has no appointments scheduled
+                </p>
+              </div>
+            )}
           </div>
         </TabsContent>
 

@@ -63,6 +63,7 @@ export type ListAppointmentsParams = {
   locationId?: string;
   startAtMin?: string;
   startAtMax?: string;
+  accountId?: number;
 };
 
 export type CreateAppointmentInput = {

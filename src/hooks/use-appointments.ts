@@ -41,6 +41,7 @@ async function fetchAppointments(
   if (params?.locationId) queryParams.append('location_id', params.locationId);
   if (params?.startAtMin) queryParams.append('start_at_min', params.startAtMin);
   if (params?.startAtMax) queryParams.append('start_at_max', params.startAtMax);
+  if (params?.accountId) queryParams.append('account_id', params.accountId.toString());
 
   const url = `/api/appointments${
     queryParams.toString() ? `?${queryParams.toString()}` : ''
