@@ -75,7 +75,7 @@ const managementItems = [
   { title: 'Staff', url: '/staff', icon: UserCog },
   {
     title: 'Reports',
-    url: '#',
+    url: '/reports',
     icon: BarChartIcon,
   },
   {
