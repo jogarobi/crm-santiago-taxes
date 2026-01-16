@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import Calendar from '@/components/Calendar';
 import { CalendarEvent, CalendarView } from '@/components/Calendar/types';
 import {
@@ -58,6 +58,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useStaff } from '@/hooks/use-staff';
+import { useCurrentUser } from '@/hooks/use-current-user';
 
 export default function Appointments() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -74,22 +75,55 @@ export default function Appointments() {
   const [isLinkClientDialogOpen, setIsLinkClientDialogOpen] = useState(false);
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<Date | null>(null);
-  const [selectedStaffId, setSelectedStaffId] = useState<string>('all');
   const syncAppointment = useSyncAppointment();
   const today = useMemo(() => new Date(), []);
 
+  const { data: currentUser } = useCurrentUser();
   const { data: staffData } = useStaff({ pageSize: 100 });
+
+  const isOwner = useMemo(() => {
+    return currentUser?.role === 'owner';
+  }, [currentUser]);
 
   const staffWithSquareId = useMemo(() => {
     if (!staffData?.data) return [];
     return staffData.data.filter((staff) => staff.squareId);
   }, [staffData]);
 
+  // Find the current user's staff record by matching email
+  const currentUserStaff = useMemo(() => {
+    if (!currentUser?.email || !staffWithSquareId.length) return null;
+    return staffWithSquareId.find(
+      (staff) => staff.email?.toLowerCase() === currentUser.email.toLowerCase()
+    );
+  }, [currentUser, staffWithSquareId]);
+
+  // Compute the default selected staff ID based on role
+  const defaultStaffId = useMemo(() => {
+    if (!currentUser) return 'all';
+    if (isOwner) return 'all';
+    return currentUserStaff?.squareId || 'all';
+  }, [currentUser, isOwner, currentUserStaff]);
+
+  const [selectedStaffId, setSelectedStaffId] =
+    useState<string>(defaultStaffId);
+
+  // Update selectedStaffId when defaultStaffId changes
+  useEffect(() => {
+    setSelectedStaffId(defaultStaffId);
+  }, [defaultStaffId]);
+
   const allStaffSquareIds = useMemo(() => {
+    // If not owner, only include the current user's squareId
+    if (!isOwner && currentUserStaff?.squareId) {
+      return [currentUserStaff.squareId];
+    }
+
+    // Owners can see all staff
     return staffWithSquareId
       .map((staff) => staff.squareId)
       .filter((id): id is string => !!id);
-  }, [staffWithSquareId]);
+  }, [staffWithSquareId, isOwner, currentUserStaff]);
 
   const dateRange = useMemo(() => {
     let start: Date;
@@ -366,6 +400,7 @@ export default function Appointments() {
             onDateChange={handleDateChange}
             onViewChange={handleViewChange}
             headerActions={
+              isOwner &&
               staffWithSquareId.length > 0 && (
                 <Select
                   value={selectedStaffId}
