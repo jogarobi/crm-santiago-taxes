@@ -115,13 +115,15 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
           }
         }
 
-        // Get service name from booking
+        let appointmentTeamMemberId: string | null = null;
         if (
           booking.appointmentSegments &&
           booking.appointmentSegments.length > 0
         ) {
           const serviceVariationId =
             booking.appointmentSegments[0].serviceVariationId;
+          appointmentTeamMemberId =
+            booking.appointmentSegments[0].teamMemberId || null;
 
           if (serviceVariationId) {
             try {
@@ -156,15 +158,15 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
         let createdBy: string | null = null;
         let staffId: number | null = null;
 
-        if (booking.creatorDetails?.teamMemberId) {
+        if (appointmentTeamMemberId) {
           const result = await square.teamMembers.get({
-            teamMemberId: booking.creatorDetails.teamMemberId,
+            teamMemberId: appointmentTeamMemberId,
           });
 
           const staffMember = await db
             .select()
             .from(staff)
-            .where(eq(staff.squareId, booking.creatorDetails.teamMemberId))
+            .where(eq(staff.squareId, appointmentTeamMemberId))
             .limit(1);
 
           if (staffMember.length === 0) {
@@ -186,9 +188,14 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
                 : null;
             }
           } else {
-            // Staff member already exists, use their ID
             staffId = staffMember[0].id;
           }
+        }
+
+        if (booking.creatorDetails?.teamMemberId) {
+          const result = await square.teamMembers.get({
+            teamMemberId: booking.creatorDetails.teamMemberId,
+          });
 
           createdBy =
             `${result.teamMember?.givenName} ${result.teamMember?.familyName}` ||
@@ -333,13 +340,16 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
           }
         }
 
-        // Get service name from booking
+        // Get service name and staff member from booking
+        let appointmentTeamMemberId: string | null = null;
         if (
           booking.appointmentSegments &&
           booking.appointmentSegments.length > 0
         ) {
           const serviceVariationId =
             booking.appointmentSegments[0].serviceVariationId;
+          appointmentTeamMemberId =
+            booking.appointmentSegments[0].teamMemberId || null;
 
           if (serviceVariationId) {
             try {
@@ -373,15 +383,16 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
         let createdBy: string | null = null;
         let staffId: number | null = null;
 
-        if (booking.creatorDetails?.teamMemberId) {
+        // Get the staff member the appointment is WITH (from appointmentSegments)
+        if (appointmentTeamMemberId) {
           const result = await square.teamMembers.get({
-            teamMemberId: booking.creatorDetails.teamMemberId,
+            teamMemberId: appointmentTeamMemberId,
           });
 
           const staffMember = await db
             .select()
             .from(staff)
-            .where(eq(staff.squareId, booking.creatorDetails.teamMemberId))
+            .where(eq(staff.squareId, appointmentTeamMemberId))
             .limit(1);
 
           if (staffMember.length === 0) {
@@ -405,6 +416,13 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
           } else {
             staffId = staffMember[0].id;
           }
+        }
+
+        // Get who created the booking for tracking purposes
+        if (booking.creatorDetails?.teamMemberId) {
+          const result = await square.teamMembers.get({
+            teamMemberId: booking.creatorDetails.teamMemberId,
+          });
 
           createdBy =
             `${result.teamMember?.givenName} ${result.teamMember?.familyName}` ||
@@ -512,6 +530,7 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
             accountId: dbAccount?.id || null,
             accountName,
             service: serviceName,
+            staffId,
             updatedBy: createdBy,
             updatedAt: new Date().toISOString(),
           })
