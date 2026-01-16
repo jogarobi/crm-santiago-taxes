@@ -54,6 +54,10 @@ function getStatusColor(status: TaskStatus): string {
       return 'bg-blue-100 text-blue-700 border-blue-200';
     case 'done':
       return 'bg-green-100 text-green-700 border-green-200';
+    case 'delayed':
+      return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+    case 'abandoned':
+      return 'bg-red-100 text-red-700 border-red-200';
     default:
       return 'bg-neutral-100 text-neutral-700 border-neutral-200';
   }
@@ -67,6 +71,10 @@ function getStatusLabel(status: TaskStatus): string {
       return 'In Progress';
     case 'done':
       return 'Done';
+    case 'delayed':
+      return 'Delayed';
+    case 'abandoned':
+      return 'Abandoned';
     default:
       return status;
   }
@@ -91,6 +99,16 @@ const TASK_COLUMNS: {
     status: 'done',
     title: 'Done',
     colorClass: 'bg-green-100 text-green-700 border-green-200',
+  },
+  {
+    status: 'delayed',
+    title: 'Delayed',
+    colorClass: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  },
+  {
+    status: 'abandoned',
+    title: 'Abandoned',
+    colorClass: 'bg-red-100 text-red-700 border-red-200',
   },
 ];
 
@@ -349,6 +367,8 @@ export default function TasksPage() {
     todo: tasks.filter((t) => t.status === 'todo'),
     in_progress: tasks.filter((t) => t.status === 'in_progress'),
     done: tasks.filter((t) => t.status === 'done'),
+    delayed: tasks.filter((t) => t.status === 'delayed'),
+    abandoned: tasks.filter((t) => t.status === 'abandoned'),
   };
 
   return (
@@ -381,7 +401,7 @@ export default function TasksPage() {
       )}
 
       {!isLoading && !error && (
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6'>
           {TASK_COLUMNS.map((column) => (
             <TaskColumn
               key={column.status}
@@ -506,6 +526,8 @@ export default function TasksPage() {
                     <SelectItem value='todo'>To Do</SelectItem>
                     <SelectItem value='in_progress'>In Progress</SelectItem>
                     <SelectItem value='done'>Done</SelectItem>
+                    <SelectItem value='delayed'>Delayed</SelectItem>
+                    <SelectItem value='abandoned'>Abandoned</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

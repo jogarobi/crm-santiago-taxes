@@ -369,7 +369,7 @@ export const task = sqliteTable('Task', {
   accountId: integer().references(() => clientAccount.id),
   businessId: integer().references(() => business.id),
   content: text().notNull(),
-  status: text().notNull().default('todo'), // todo, in_progress, done
+  status: text().notNull().default('todo'), // todo, in_progress, done, delayed, abandoned
   assignedTo: text(), // user id of assigned staff member
   createdAt: text()
     .default("DATETIME('NOW')")
