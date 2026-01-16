@@ -371,13 +371,19 @@ export default function Appointments() {
                   value={selectedStaffId}
                   onValueChange={setSelectedStaffId}
                 >
-                  <SelectTrigger className='w-[200px]'>
+                  <SelectTrigger className='mr-4 h-10 data-[size=default]:h-9'>
                     <SelectValue placeholder='Select staff member' />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='all'>All Staff</SelectItem>
+                    <SelectItem value='all' className='h-10'>
+                      All Staff
+                    </SelectItem>
                     {staffWithSquareId.map((staff) => (
-                      <SelectItem key={staff.id} value={staff.squareId!}>
+                      <SelectItem
+                        className='h-10'
+                        key={staff.id}
+                        value={staff.squareId!}
+                      >
                         {staff.firstName} {staff.lastName}
                       </SelectItem>
                     ))}
