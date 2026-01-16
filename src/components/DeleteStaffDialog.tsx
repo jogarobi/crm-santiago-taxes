@@ -16,7 +16,6 @@ interface DeleteStaffDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   staffName: string;
-  hasLinkedAccount: boolean;
   onConfirm: () => void;
   isDeleting: boolean;
 }
@@ -25,7 +24,6 @@ export function DeleteStaffDialog({
   open,
   onOpenChange,
   staffName,
-  hasLinkedAccount,
   onConfirm,
   isDeleting,
 }: DeleteStaffDialogProps) {
@@ -39,12 +37,10 @@ export function DeleteStaffDialog({
               <p>
                 Are you sure you want to delete <strong>{staffName}</strong>?
               </p>
-              {hasLinkedAccount && (
-                <p className='text-yellow-700 bg-yellow-50 p-2 rounded border border-yellow-200'>
-                  This staff member has a linked user account. They will be
-                  removed from the organization and lose access to the system.
-                </p>
-              )}
+              <p className='text-yellow-700 bg-yellow-50 p-2 rounded border border-yellow-200'>
+                This staff member will be removed from the organization and lose
+                access to the system.
+              </p>
               <p className='text-red-600 font-medium'>
                 This action cannot be undone.
               </p>

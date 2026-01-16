@@ -63,6 +63,14 @@ export async function PUT(
       );
     }
 
+    // Update role in member table if role is provided and staff has a userId
+    if (body.role !== undefined && result[0].userId) {
+      await db
+        .update(memberTable)
+        .set({ role: body.role })
+        .where(eq(memberTable.userId, result[0].userId));
+    }
+
     return NextResponse.json(result[0]);
   } catch (error) {
     console.error('Error updating staff member:', error);

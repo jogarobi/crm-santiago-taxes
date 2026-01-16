@@ -42,9 +42,7 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   'appointment:update': 'Modify appointments',
   'appointment:delete': 'Delete appointments',
   'appointment:cancel': 'Cancel appointments',
-  'payment:create': 'Process new payments',
   'payment:read': 'View payment records',
-  'payment:refund': 'Issue payment refunds',
   'task:create': 'Create new tasks',
   'task:read': 'View tasks',
   'task:update': 'Edit tasks',
@@ -230,7 +228,7 @@ export default function SettingsPage() {
 
       <div className='bg-white border rounded-lg overflow-hidden'>
         <div className='p-6 border-b'>
-          <h2 className='text-xl font-semibold'>Employee Permissions</h2>
+          <h2 className='text-xl font-semibold'>User Permissions</h2>
           <p className='text-sm text-neutral-600 mt-1'>
             Manage role-based permissions for system features
           </p>
@@ -284,7 +282,10 @@ export default function SettingsPage() {
                               <Switch
                                 checked={rolePermission?.enabled || false}
                                 onCheckedChange={() =>
-                                  handlePermissionToggle(role.id, rolePermission)
+                                  handlePermissionToggle(
+                                    role.id,
+                                    rolePermission
+                                  )
                                 }
                               />
                             )}

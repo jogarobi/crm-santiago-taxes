@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { Checkbox } from './ui/checkbox';
 import { Loader2 } from 'lucide-react';
 import { useCreateStaff } from '@/hooks/use-staff';
 
@@ -32,7 +31,6 @@ export function CreateStaffDialog({
 }: CreateStaffDialogProps) {
   const createStaff = useCreateStaff();
   const [error, setError] = useState<string | null>(null);
-  const [createAccount, setCreateAccount] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -54,15 +52,14 @@ export function CreateStaffDialog({
       return;
     }
 
-    if (createAccount) {
-      if (!formData.email) {
-        setError('Email is required to create an account');
-        return;
-      }
-      if (!formData.password || formData.password.length < 8) {
-        setError('Password must be at least 8 characters');
-        return;
-      }
+    if (!formData.email) {
+      setError('Email is required');
+      return;
+    }
+
+    if (!formData.password || formData.password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
     }
 
     try {
@@ -71,12 +68,12 @@ export function CreateStaffDialog({
         lastName: formData.lastName,
         title: formData.title,
         status: formData.status,
-        email: formData.email || undefined,
+        email: formData.email,
         squareId: formData.squareId || undefined,
         createdBy: 'system', // TODO: Replace with actual user
-        createAccount,
-        password: createAccount ? formData.password : undefined,
-        role: createAccount ? formData.role : undefined,
+        createAccount: true,
+        password: formData.password,
+        role: formData.role,
       });
 
       onOpenChange(false);
@@ -90,7 +87,6 @@ export function CreateStaffDialog({
         password: '',
         role: 'staff',
       });
-      setCreateAccount(false);
 
       onCreateSuccess?.(newStaff);
     } catch (err) {
@@ -114,7 +110,6 @@ export function CreateStaffDialog({
         password: '',
         role: 'staff',
       });
-      setCreateAccount(false);
       setError(null);
     }
     onOpenChange(newOpen);
@@ -193,8 +188,7 @@ export function CreateStaffDialog({
                 htmlFor='email'
                 className='text-sm font-medium text-neutral-700'
               >
-                Email Address{' '}
-                {createAccount && <span className='text-red-500'>*</span>}
+                Email Address <span className='text-red-500'>*</span>
               </Label>
               <Input
                 id='email'
@@ -203,71 +197,55 @@ export function CreateStaffDialog({
                 className='p-2'
                 onChange={(e) => handleChange('email', e.target.value)}
                 placeholder='john.doe@example.com'
-                required={createAccount}
+                required
               />
             </div>
           </div>
 
-          <div className='flex items-center space-x-2 p-4 bg-neutral-50 rounded-lg border'>
-            <Checkbox
-              id='createAccount'
-              checked={createAccount}
-              onCheckedChange={(checked) => setCreateAccount(checked === true)}
-            />
-            <Label
-              htmlFor='createAccount'
-              className='text-sm font-medium leading-none cursor-pointer'
-            >
-              Create login account for this staff member
-            </Label>
+          <div className='grid grid-cols-2 gap-4'>
+            <div className='flex flex-col gap-2'>
+              <Label
+                htmlFor='password'
+                className='text-sm font-medium text-neutral-700'
+              >
+                Password <span className='text-red-500'>*</span>
+              </Label>
+              <Input
+                id='password'
+                type='password'
+                value={formData.password}
+                className='p-2'
+                onChange={(e) => handleChange('password', e.target.value)}
+                placeholder='Minimum 8 characters'
+                required
+              />
+              <p className='text-xs text-neutral-500'>
+                Must be at least 8 characters
+              </p>
+            </div>
+
+            <div className='flex flex-col gap-2'>
+              <Label
+                htmlFor='role'
+                className='text-sm font-medium text-neutral-700'
+              >
+                Account Role <span className='text-red-500'>*</span>
+              </Label>
+              <Select
+                value={formData.role}
+                onValueChange={(value) => handleChange('role', value)}
+              >
+                <SelectTrigger id='role' className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='staff'>Staff</SelectItem>
+                  <SelectItem value='admin'>Admin</SelectItem>
+                  <SelectItem value='owner'>Owner</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-
-          {createAccount && (
-            <>
-              <div className='flex flex-col gap-2'>
-                <Label
-                  htmlFor='password'
-                  className='text-sm font-medium text-neutral-700'
-                >
-                  Password <span className='text-red-500'>*</span>
-                </Label>
-                <Input
-                  id='password'
-                  type='password'
-                  value={formData.password}
-                  className='p-2'
-                  onChange={(e) => handleChange('password', e.target.value)}
-                  placeholder='Minimum 8 characters'
-                  required={createAccount}
-                />
-                <p className='text-xs text-neutral-500'>
-                  Must be at least 8 characters
-                </p>
-              </div>
-
-              <div className='flex flex-col gap-2'>
-                <Label
-                  htmlFor='role'
-                  className='text-sm font-medium text-neutral-700'
-                >
-                  Account Role <span className='text-red-500'>*</span>
-                </Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value) => handleChange('role', value)}
-                >
-                  <SelectTrigger id='role' className='w-full'>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='staff'>Staff</SelectItem>
-                    <SelectItem value='admin'>Admin</SelectItem>
-                    <SelectItem value='owner'>Owner</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </>
-          )}
 
           <div className='flex items-center gap-4'>
             <div className='flex flex-col gap-2 w-full'>

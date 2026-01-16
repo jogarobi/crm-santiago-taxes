@@ -34,7 +34,7 @@ export function EditStaffDialog({
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    title: '',
+    role: 'staff',
     status: 'active',
     email: '',
     squareId: '',
@@ -46,7 +46,7 @@ export function EditStaffDialog({
       setFormData({
         firstName: staffMember.firstName,
         lastName: staffMember.lastName,
-        title: staffMember.title,
+        role: staffMember.role || 'staff',
         status: staffMember.status,
         email: staffMember.email || '',
         squareId: staffMember.squareId || '',
@@ -63,7 +63,7 @@ export function EditStaffDialog({
       return;
     }
 
-    if (!formData.firstName || !formData.lastName || !formData.title) {
+    if (!formData.firstName || !formData.lastName || !formData.role) {
       setError('Please fill in all required fields');
       return;
     }
@@ -74,7 +74,7 @@ export function EditStaffDialog({
         data: {
           firstName: formData.firstName,
           lastName: formData.lastName,
-          title: formData.title,
+          role: formData.role,
           status: formData.status,
           email: formData.email || undefined,
           squareId: formData.squareId || undefined,
@@ -152,19 +152,24 @@ export function EditStaffDialog({
 
           <div className='flex flex-col gap-2'>
             <Label
-              htmlFor='title'
+              htmlFor='role'
               className='text-sm font-medium text-neutral-700'
             >
-              Title <span className='text-red-500'>*</span>
+              Role <span className='text-red-500'>*</span>
             </Label>
-            <Input
-              id='title'
-              value={formData.title}
-              className='p-2'
-              onChange={(e) => handleChange('title', e.target.value)}
-              required
-              placeholder='Tax Consultant'
-            />
+            <Select
+              value={formData.role}
+              onValueChange={(value) => handleChange('role', value)}
+            >
+              <SelectTrigger id='role' className='w-full'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='staff'>Staff</SelectItem>
+                <SelectItem value='admin'>Admin</SelectItem>
+                <SelectItem value='owner'>Owner</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className='flex flex-col gap-2'>

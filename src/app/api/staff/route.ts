@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { staff } from '@/db/migrations/schema';
-import { like, or, desc, sql } from 'drizzle-orm';
+import { staff, member, user } from '@/db/migrations/schema';
+import { like, or, desc, sql, eq } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
@@ -34,10 +34,26 @@ export async function GET(request: Request) {
 
     const total = Number(countResult[0]?.count || 0);
 
-    // Get paginated staff
+    // Get paginated staff with role from member table
     const staffMembers = await db
-      .select()
+      .select({
+        id: staff.id,
+        userId: staff.userId,
+        squareId: staff.squareId,
+        title: staff.title,
+        status: staff.status,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        email: staff.email,
+        createdAt: staff.createdAt,
+        createdBy: staff.createdBy,
+        updatedAt: staff.updatedAt,
+        updatedBy: staff.updatedBy,
+        role: member.role,
+      })
       .from(staff)
+      .leftJoin(user, eq(staff.userId, user.id))
+      .leftJoin(member, eq(user.id, member.userId))
       .where(whereConditions.length > 0 ? or(...whereConditions) : undefined)
       .orderBy(desc(staff.createdAt))
       .limit(pageSize)
@@ -85,78 +101,67 @@ export async function POST(request: Request) {
       );
     }
 
-    // If creating user account, validate those fields
-    if (body.createAccount) {
-      if (!body.email) {
-        return NextResponse.json(
-          { error: 'Email is required to create an account' },
-          { status: 400 }
-        );
-      }
-      if (!body.password || body.password.length < 8) {
-        return NextResponse.json(
-          { error: 'Password must be at least 8 characters' },
-          { status: 400 }
-        );
-      }
-      if (!body.role) {
-        return NextResponse.json(
-          { error: 'Role is required to create an account' },
-          { status: 400 }
-        );
-      }
+    // Email, password, and role are now required for all staff members
+    if (!body.email) {
+      return NextResponse.json(
+        { error: 'Email is required' },
+        { status: 400 }
+      );
+    }
+    if (!body.password || body.password.length < 8) {
+      return NextResponse.json(
+        { error: 'Password must be at least 8 characters' },
+        { status: 400 }
+      );
+    }
+    if (!body.role) {
+      return NextResponse.json(
+        { error: 'Role is required' },
+        { status: 400 }
+      );
     }
 
     let userId = null;
 
-    // Create user account if requested
-    console.log('Staff creation - createAccount:', body.createAccount);
-    if (body.createAccount && body.email && body.password && body.role) {
-      console.log('Creating user account for staff member:', body.email, 'with role:', body.role);
-      try {
-        const createUserResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/staff/create-user`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              cookie: request.headers.get('cookie') || '',
-            },
-            body: JSON.stringify({
-              name: `${body.firstName} ${body.lastName}`,
-              email: body.email,
-              password: body.password,
-              role: body.role,
-            }),
-          }
-        );
-
-        if (!createUserResponse.ok) {
-          const errorData = await createUserResponse.json();
-          console.error('User creation failed:', errorData);
-          return NextResponse.json(
-            { error: errorData.error || 'Failed to create user account' },
-            { status: createUserResponse.status }
-          );
+    // Create user account (always required)
+    console.log('Creating user account for staff member:', body.email, 'with role:', body.role);
+    try {
+      const createUserResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/staff/create-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            cookie: request.headers.get('cookie') || '',
+          },
+          body: JSON.stringify({
+            name: `${body.firstName} ${body.lastName}`,
+            email: body.email,
+            password: body.password,
+            role: body.role,
+          }),
         }
+      );
 
-        const userData = await createUserResponse.json();
-        console.log('User created successfully, data:', userData);
-        userId = userData.user?.id || null;
-        console.log('Extracted userId:', userId);
-      } catch (error) {
-        console.error('Error creating user account:', error);
+      if (!createUserResponse.ok) {
+        const errorData = await createUserResponse.json();
+        console.error('User creation failed:', errorData);
         return NextResponse.json(
-          { error: 'Failed to create user account' },
-          { status: 500 }
+          { error: errorData.error || 'Failed to create user account' },
+          { status: createUserResponse.status }
         );
       }
-    } else {
-      console.log('Skipping user creation - createAccount is false or missing required fields');
-      console.log('  createAccount:', body.createAccount);
-      console.log('  email:', body.email);
-      console.log('  password:', body.password ? '[HIDDEN]' : 'missing');
-      console.log('  role:', body.role);
+
+      const userData = await createUserResponse.json();
+      console.log('User created successfully, data:', userData);
+      userId = userData.user?.id || null;
+      console.log('Extracted userId:', userId);
+    } catch (error) {
+      console.error('Error creating user account:', error);
+      return NextResponse.json(
+        { error: 'Failed to create user account' },
+        { status: 500 }
+      );
     }
 
     console.log('Creating staff record with userId:', userId);

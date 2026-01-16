@@ -266,9 +266,9 @@ export default function StaffPage() {
                   />
                 </TableHead>
                 <TableHead className='p-4'>Name</TableHead>
-                <TableHead className='p-4'>Title</TableHead>
+                <TableHead className='p-4'>Role</TableHead>
+                <TableHead className='p-4'>Email</TableHead>
                 <TableHead className='p-4'>Status</TableHead>
-                <TableHead className='p-4'>Account</TableHead>
                 <TableHead className='p-4'>Square ID</TableHead>
                 <TableHead className='p-4'>Created</TableHead>
                 <TableHead className='p-4'>Created By</TableHead>
@@ -300,26 +300,32 @@ export default function StaffPage() {
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className='p-4'>{member.title}</TableCell>
                   <TableCell className='p-4'>
-                    {getStatusBadge(member.status)}
-                  </TableCell>
-                  <TableCell className='p-4'>
-                    {member.userId ? (
-                      <Badge
-                        variant='default'
-                        className='bg-green-100 text-green-800'
-                      >
-                        Linked
-                      </Badge>
-                    ) : (
+                    {member.role ? (
                       <Badge
                         variant='secondary'
-                        className='bg-yellow-100 text-yellow-800'
+                        className={
+                          member.role === 'owner'
+                            ? 'bg-purple-100 text-purple-800'
+                            : member.role === 'admin'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }
                       >
-                        Pending
+                        {member.role.charAt(0).toUpperCase() +
+                          member.role.slice(1)}
                       </Badge>
+                    ) : (
+                      <span className='text-neutral-400'>—</span>
                     )}
+                  </TableCell>
+                  <TableCell className='p-4'>
+                    {member.email || (
+                      <span className='text-neutral-400'>—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className='p-4'>
+                    {getStatusBadge(member.status)}
                   </TableCell>
                   <TableCell className='p-4'>
                     {member.squareId ? (
@@ -474,7 +480,6 @@ export default function StaffPage() {
             ? `${selectedStaff.firstName} ${selectedStaff.lastName}`
             : ''
         }
-        hasLinkedAccount={!!selectedStaff?.userId}
         onConfirm={handleDeleteConfirm}
         isDeleting={deleteStaff.isPending}
       />

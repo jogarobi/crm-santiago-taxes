@@ -9,6 +9,7 @@ export interface Staff {
   firstName: string;
   lastName: string;
   email?: string | null;
+  role?: string | null;
   createdAt: string;
   createdBy: string;
   updatedAt: string | null;
@@ -32,6 +33,7 @@ export interface UpdateStaffInput {
   firstName?: string;
   lastName?: string;
   title?: string;
+  role?: string;
   status?: string;
   email?: string;
   squareId?: string;
