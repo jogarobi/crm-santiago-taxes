@@ -18,6 +18,7 @@ const Calendar: React.FC<CalendarProps> = ({
   onDateChange,
   onViewChange,
   className,
+  headerActions,
 }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -550,6 +551,7 @@ const Calendar: React.FC<CalendarProps> = ({
         </div>
 
         <div className='flex items-center space-x-2'>
+          {headerActions}
           <Button
             variant={view === 'day' ? 'default' : 'outline'}
             size='sm'

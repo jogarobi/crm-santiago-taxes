@@ -50,8 +50,14 @@ import { LinkClientDialog } from '@/components/LinkClientDialog';
 import { AppointmentDialog } from '@/components/AppointmentDialog';
 import Link from 'next/link';
 import clsx from 'clsx';
-
-const TEAM_MEMBER_ID = 'YG3C3GKYDQ23T'; // Hardcoded until authentication is implemented
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useStaff } from '@/hooks/use-staff';
 
 export default function Appointments() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -68,8 +74,22 @@ export default function Appointments() {
   const [isLinkClientDialogOpen, setIsLinkClientDialogOpen] = useState(false);
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<Date | null>(null);
+  const [selectedStaffId, setSelectedStaffId] = useState<string>('all');
   const syncAppointment = useSyncAppointment();
   const today = useMemo(() => new Date(), []);
+
+  const { data: staffData } = useStaff({ pageSize: 100 });
+
+  const staffWithSquareId = useMemo(() => {
+    if (!staffData?.data) return [];
+    return staffData.data.filter((staff) => staff.squareId);
+  }, [staffData]);
+
+  const allStaffSquareIds = useMemo(() => {
+    return staffWithSquareId
+      .map((staff) => staff.squareId)
+      .filter((id): id is string => !!id);
+  }, [staffWithSquareId]);
 
   const dateRange = useMemo(() => {
     let start: Date;
@@ -132,16 +152,37 @@ export default function Appointments() {
       .filter((id): id is string => !!id);
   }, [catalogItems]);
 
-  const { data: availableSlots = [] } = useDateRangeAvailability(
-    serviceVariationIds.length > 0
+  const { data: allAvailableSlots = [] } = useDateRangeAvailability(
+    serviceVariationIds.length > 0 && allStaffSquareIds.length > 0
       ? {
           startDate: `${today.toISOString().split('T')[0]}T00:00:00.00Z`,
           endDate: `${dateRange.startAtMax.split('T')[0]}T23:59:00.00Z`,
-          teamMemberId: TEAM_MEMBER_ID,
+          teamMemberIds: allStaffSquareIds,
           serviceVariationIds,
         }
       : null
   );
+
+  const availableSlots = useMemo(() => {
+    if (!allAvailableSlots) return [];
+
+    // If "All" is selected, return all slots
+    if (selectedStaffId === 'all') {
+      return allAvailableSlots.map((slot) => slot.startAt);
+    }
+
+    // Filter by selected staff member
+    if (!selectedStaffId) return [];
+
+    return allAvailableSlots
+      .filter((slot) => {
+        const hasMatchingTeamMember = slot.appointmentSegments?.some(
+          (segment) => segment.teamMemberId === selectedStaffId
+        );
+        return hasMatchingTeamMember;
+      })
+      .map((slot) => slot.startAt);
+  }, [allAvailableSlots, selectedStaffId]);
 
   const formatDateTime = (
     startAt: string,
@@ -324,6 +365,26 @@ export default function Appointments() {
             onTimeSlotClick={handleTimeSlotClick}
             onDateChange={handleDateChange}
             onViewChange={handleViewChange}
+            headerActions={
+              staffWithSquareId.length > 0 && (
+                <Select
+                  value={selectedStaffId}
+                  onValueChange={setSelectedStaffId}
+                >
+                  <SelectTrigger className='w-[200px]'>
+                    <SelectValue placeholder='Select staff member' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='all'>All Staff</SelectItem>
+                    {staffWithSquareId.map((staff) => (
+                      <SelectItem key={staff.id} value={staff.squareId!}>
+                        {staff.firstName} {staff.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )
+            }
           />
         </div>
       </div>

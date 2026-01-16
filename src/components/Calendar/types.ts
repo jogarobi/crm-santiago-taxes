@@ -23,4 +23,5 @@ export interface CalendarProps {
   onDateChange: (date: Date) => void;
   onViewChange: (view: CalendarView) => void;
   className?: string;
+  headerActions?: React.ReactNode;
 }

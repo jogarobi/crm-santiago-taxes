@@ -301,27 +301,34 @@ export function useAvailability(params: AvailabilityParams | null) {
 type DateRangeAvailabilityParams = {
   startDate: string;
   endDate: string;
-  teamMemberId: string;
+  teamMemberIds: string[];
   serviceVariationIds?: string[];
+};
+
+export type AvailabilitySlot = {
+  startAt: string;
+  appointmentSegments?: Array<{
+    teamMemberId?: string;
+  }>;
 };
 
 async function fetchDateRangeAvailability(
   params: DateRangeAvailabilityParams
-): Promise<string[]> {
-  const { startDate, endDate, teamMemberId, serviceVariationIds } = params;
+): Promise<AvailabilitySlot[]> {
+  const { startDate, endDate, teamMemberIds, serviceVariationIds } = params;
 
   const segmentFilters =
     serviceVariationIds && serviceVariationIds.length > 0
       ? serviceVariationIds.map((serviceVariationId) => ({
           serviceVariationId,
           teamMemberIdFilter: {
-            any: [teamMemberId],
+            any: teamMemberIds,
           },
         }))
       : [
           {
             teamMemberIdFilter: {
-              any: [teamMemberId],
+              any: teamMemberIds,
             },
           },
         ];
@@ -342,12 +349,16 @@ async function fetchDateRangeAvailability(
     }),
   });
 
+  console.log(segmentFilters);
+
   if (!response.ok) return [];
 
   const data = await response.json();
+  console.log('DATA');
+  console.log(data);
   const availabilities = data.availabilities || [];
 
-  return availabilities.map((avail: { startAt: string }) => avail.startAt);
+  return availabilities;
 }
 
 export function useDateRangeAvailability(
@@ -360,7 +371,7 @@ export function useDateRangeAvailability(
       params,
     ] as const,
     queryFn: () => fetchDateRangeAvailability(params!),
-    enabled: !!params?.startDate && !!params?.endDate && !!params?.teamMemberId,
+    enabled: !!params?.startDate && !!params?.endDate && !!params?.teamMemberIds && params.teamMemberIds.length > 0,
     staleTime: 1000 * 60 * 5,
   });
 }
