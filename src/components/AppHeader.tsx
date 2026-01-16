@@ -7,7 +7,6 @@ import {
   ArrowUpRightIcon,
   CalendarIcon,
   CheckCheckIcon,
-  CircleDollarSignIcon,
   PlusIcon,
   StickyNoteIcon,
   UserPlusIcon,
@@ -72,10 +71,6 @@ export function AppHeader() {
               >
                 <UserPlusIcon className='stroke-neutral-500' />
                 <span className=' font-normal'>Create client</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className='px-4 py-3'>
-                <CircleDollarSignIcon className='stroke-neutral-500' />
-                <span className=' font-normal'>Take payment</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 className='px-4 py-3 cursor-pointer'
