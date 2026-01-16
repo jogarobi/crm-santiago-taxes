@@ -97,9 +97,13 @@ import { DeleteBusinessDialog } from '@/components/DeleteBusinessDialog';
 import { EditClientDialog } from '@/components/EditClientDialog';
 import { DeleteClientDialog } from '@/components/DeleteClientDialog';
 import { ManageContactsDialog } from '@/components/ManageContactsDialog';
+import { AddRelationshipDialog } from '@/components/AddRelationshipDialog';
+import { EditRelationshipDialog } from '@/components/EditRelationshipDialog';
+import { DeleteRelationshipDialog } from '@/components/DeleteRelationshipDialog';
 import clsx from 'clsx';
 import type { Note } from '@/lib/types/note';
 import type { Business } from '@/lib/types/business';
+import type { AccountRelationship } from '@/lib/types/account-relationship';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -130,6 +134,14 @@ export default function AccountDetailPage({ params }: Props) {
   const [deleteClientDialogOpen, setDeleteClientDialogOpen] = useState(false);
   const [manageContactsDialogOpen, setManageContactsDialogOpen] =
     useState(false);
+  const [addRelationshipDialogOpen, setAddRelationshipDialogOpen] =
+    useState(false);
+  const [editRelationshipDialogOpen, setEditRelationshipDialogOpen] =
+    useState(false);
+  const [deleteRelationshipDialogOpen, setDeleteRelationshipDialogOpen] =
+    useState(false);
+  const [selectedRelationship, setSelectedRelationship] =
+    useState<AccountRelationship | null>(null);
 
   const { data: notesData, isLoading: notesLoading } = useNotes(accountId, {
     search: notesSearchQuery || undefined,
@@ -332,6 +344,23 @@ export default function AccountDetailPage({ params }: Props) {
         open={manageContactsDialogOpen}
         onOpenChange={setManageContactsDialogOpen}
         accountId={accountId}
+      />
+      <AddRelationshipDialog
+        open={addRelationshipDialogOpen}
+        onOpenChange={setAddRelationshipDialogOpen}
+        accountId={accountId}
+      />
+      <EditRelationshipDialog
+        open={editRelationshipDialogOpen}
+        onOpenChange={setEditRelationshipDialogOpen}
+        accountId={accountId}
+        relationship={selectedRelationship}
+      />
+      <DeleteRelationshipDialog
+        open={deleteRelationshipDialogOpen}
+        onOpenChange={setDeleteRelationshipDialogOpen}
+        accountId={accountId}
+        relationship={selectedRelationship}
       />
 
       <Tabs defaultValue='notes' className='w-full'>
@@ -779,7 +808,10 @@ export default function AccountDetailPage({ params }: Props) {
           <div className='bg-white border rounded-xl p-6'>
             <div className='flex items-center justify-between mb-6'>
               <h3 className='text-lg font-semibold'>Relationships</h3>
-              <Button className='bg-purple'>
+              <Button
+                className='bg-purple cursor-pointer'
+                onClick={() => setAddRelationshipDialogOpen(true)}
+              >
                 <span>Add Relationship</span>
                 <PlusIcon />
               </Button>
@@ -810,13 +842,25 @@ export default function AccountDetailPage({ params }: Props) {
                       </div>
                     </div>
                     <div className='flex items-center gap-2'>
-                      <Button variant='outline' size='sm'>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        className='cursor-pointer'
+                        onClick={() => {
+                          setSelectedRelationship(relationship);
+                          setEditRelationshipDialogOpen(true);
+                        }}
+                      >
                         <Edit2Icon size={14} />
                       </Button>
                       <Button
                         variant='outline'
                         size='sm'
-                        className='text-red-600 hover:text-red-700'
+                        className='text-red-600 hover:text-red-700 cursor-pointer'
+                        onClick={() => {
+                          setSelectedRelationship(relationship);
+                          setDeleteRelationshipDialogOpen(true);
+                        }}
                       >
                         <TrashIcon size={14} />
                       </Button>
