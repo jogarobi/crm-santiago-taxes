@@ -100,10 +100,12 @@ import { ManageContactsDialog } from '@/components/ManageContactsDialog';
 import { AddRelationshipDialog } from '@/components/AddRelationshipDialog';
 import { EditRelationshipDialog } from '@/components/EditRelationshipDialog';
 import { DeleteRelationshipDialog } from '@/components/DeleteRelationshipDialog';
+import { CancelAppointmentDialog } from '@/components/CancelAppointmentDialog';
 import clsx from 'clsx';
 import type { Note } from '@/lib/types/note';
 import type { Business } from '@/lib/types/business';
 import type { AccountRelationship } from '@/lib/types/account-relationship';
+import type { Appointment } from '@/lib/types/appointment';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -142,6 +144,10 @@ export default function AccountDetailPage({ params }: Props) {
     useState(false);
   const [selectedRelationship, setSelectedRelationship] =
     useState<AccountRelationship | null>(null);
+  const [cancelAppointmentDialogOpen, setCancelAppointmentDialogOpen] =
+    useState(false);
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<Appointment | null>(null);
 
   const { data: notesData, isLoading: notesLoading } = useNotes(accountId, {
     search: notesSearchQuery || undefined,
@@ -361,6 +367,11 @@ export default function AccountDetailPage({ params }: Props) {
         onOpenChange={setDeleteRelationshipDialogOpen}
         accountId={accountId}
         relationship={selectedRelationship}
+      />
+      <CancelAppointmentDialog
+        open={cancelAppointmentDialogOpen}
+        onOpenChange={setCancelAppointmentDialogOpen}
+        appointment={selectedAppointment}
       />
 
       <Tabs defaultValue='notes' className='w-full'>
@@ -625,6 +636,20 @@ export default function AccountDetailPage({ params }: Props) {
                             </h4>
                           )}
                         </div>
+                        {appointment.status !== 'CANCELLED_BY_CUSTOMER' &&
+                          appointment.status !== 'CANCELLED_BY_SELLER' && (
+                            <Button
+                              variant='outline'
+                              size='sm'
+                              className='text-red-600 hover:text-red-700 cursor-pointer'
+                              onClick={() => {
+                                setSelectedAppointment(appointment);
+                                setCancelAppointmentDialogOpen(true);
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          )}
                       </div>
 
                       <div className='flex items-center gap-4'>

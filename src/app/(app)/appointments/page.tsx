@@ -48,6 +48,7 @@ import { useSyncAppointment } from '@/hooks/use-appointments';
 import { CreateClientDialog } from '@/components/CreateClientDialog';
 import { LinkClientDialog } from '@/components/LinkClientDialog';
 import { AppointmentDialog } from '@/components/AppointmentDialog';
+import { CancelAppointmentDialog } from '@/components/CancelAppointmentDialog';
 import Link from 'next/link';
 import clsx from 'clsx';
 import {
@@ -74,6 +75,7 @@ export default function Appointments() {
     useState(false);
   const [isLinkClientDialogOpen, setIsLinkClientDialogOpen] = useState(false);
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<Date | null>(null);
   const syncAppointment = useSyncAppointment();
   const today = useMemo(() => new Date(), []);
@@ -560,6 +562,22 @@ export default function Appointments() {
                   </p>
                 )}
               </div>
+
+              {selectedAppointment.status !== 'CANCELLED_BY_CUSTOMER' &&
+                selectedAppointment.status !== 'CANCELLED_BY_SELLER' && (
+                  <div className='flex justify-end mt-4 pt-4 border-t'>
+                    <Button
+                      variant='outline'
+                      className='text-red-600 hover:text-red-700 cursor-pointer'
+                      onClick={() => {
+                        setIsDialogOpen(false);
+                        setIsCancelDialogOpen(true);
+                      }}
+                    >
+                      Cancel Appointment
+                    </Button>
+                  </div>
+                )}
             </div>
           )}
         </DialogContent>
@@ -793,6 +811,22 @@ export default function Appointments() {
                       </p>
                     )}
                   </div>
+
+                  {selectedAppointment.status !== 'CANCELLED_BY_CUSTOMER' &&
+                    selectedAppointment.status !== 'CANCELLED_BY_SELLER' && (
+                      <div className='flex justify-end mt-4 pt-4 border-t'>
+                        <Button
+                          variant='outline'
+                          className='text-red-600 hover:text-red-700 cursor-pointer'
+                          onClick={() => {
+                            setIsDateDialogOpen(false);
+                            setIsCancelDialogOpen(true);
+                          }}
+                        >
+                          Cancel Appointment
+                        </Button>
+                      </div>
+                    )}
                 </div>
               )}
             </>
@@ -820,6 +854,12 @@ export default function Appointments() {
         open={isBookingDialogOpen}
         onOpenChange={setIsBookingDialogOpen}
         selectedDateTime={selectedTimeSlot || undefined}
+      />
+
+      <CancelAppointmentDialog
+        open={isCancelDialogOpen}
+        onOpenChange={setIsCancelDialogOpen}
+        appointment={selectedAppointment}
       />
     </>
   );
