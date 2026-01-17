@@ -36,9 +36,9 @@ export default function Home() {
         </div>
         <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
           <div className='flex items-center justify-between'>
-            <p className='text-[15px] text-neutral-600'>Revenue</p>
+            <p className='text-[15px] text-neutral-600'>Businesses</p>
           </div>
-          <p className='font-bold text-[22px] text-purple'>$14,450.25</p>
+          <p className='font-bold text-[22px] text-purple'>1</p>
         </div>
         <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
           <div className='flex items-center justify-between'>
