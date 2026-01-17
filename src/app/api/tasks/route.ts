@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { task } from '@/db/migrations/schema';
-import { eq, desc, like, and, count, or } from 'drizzle-orm';
+import { eq, desc, like, and, count } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
   try {
-    // Check if user has permission to read tasks
     await requirePermission({ task: ['read'] });
 
     const { searchParams } = new URL(request.url);
@@ -26,7 +25,7 @@ export async function GET(request: Request) {
       if (isNaN(accountIdInt)) {
         return NextResponse.json(
           { error: 'Invalid account ID' },
-          { status: 400 }
+          { status: 400 },
         );
       }
       conditions.push(eq(task.accountId, accountIdInt));
@@ -37,7 +36,7 @@ export async function GET(request: Request) {
       if (isNaN(businessIdInt)) {
         return NextResponse.json(
           { error: 'Invalid business ID' },
-          { status: 400 }
+          { status: 400 },
         );
       }
       conditions.push(eq(task.businessId, businessIdInt));
@@ -56,7 +55,11 @@ export async function GET(request: Request) {
     }
 
     const whereClause =
-      conditions.length > 1 ? and(...conditions) : conditions.length === 1 ? conditions[0] : undefined;
+      conditions.length > 1
+        ? and(...conditions)
+        : conditions.length === 1
+          ? conditions[0]
+          : undefined;
 
     // Get total count
     const totalResult = await db
@@ -86,7 +89,7 @@ export async function GET(request: Request) {
     console.error('Error fetching tasks:', error);
     return NextResponse.json(
       { error: 'Failed to fetch tasks' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -101,24 +104,24 @@ export async function POST(request: Request) {
     if (!body.content || !body.createdBy) {
       return NextResponse.json(
         { error: 'Missing required fields: content, createdBy' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const accountIdInt = body.accountId ? parseInt(body.accountId) : null;
     const businessIdInt = body.businessId ? parseInt(body.businessId) : null;
 
-    if (body.accountId && isNaN(accountIdInt)) {
+    if (body.accountId && isNaN(Number(accountIdInt))) {
       return NextResponse.json(
         { error: 'Invalid account ID' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    if (body.businessId && isNaN(businessIdInt)) {
+    if (body.businessId && isNaN(Number(businessIdInt))) {
       return NextResponse.json(
         { error: 'Invalid business ID' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -140,13 +143,13 @@ export async function POST(request: Request) {
         success: true,
         task: newTask[0],
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error('Error creating task:', error);
     return NextResponse.json(
       { error: 'Failed to create task' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

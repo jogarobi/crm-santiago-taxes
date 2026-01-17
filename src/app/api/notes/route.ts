@@ -103,17 +103,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const accountIdInt = body.accountId ? parseInt(body.accountId) : null;
-    const businessIdInt = body.businessId ? parseInt(body.businessId) : null;
-
-    if (body.accountId && isNaN(Number(accountIdInt))) {
+    if (body.accountId && isNaN(Number(body.accountId))) {
       return NextResponse.json(
         { error: 'Invalid account ID' },
         { status: 400 },
       );
     }
 
-    if (body.businessId && isNaN(Number(businessIdInt))) {
+    if (body.businessId && isNaN(Number(body.businessId))) {
       return NextResponse.json(
         { error: 'Invalid business ID' },
         { status: 400 },
@@ -123,8 +120,8 @@ export async function POST(request: Request) {
     const newNote = await db
       .insert(note)
       .values({
-        accountId: accountIdInt,
-        businessId: businessIdInt,
+        accountId: body.accountId ? parseInt(body.accountId) : null,
+        businessId: body.businessId ? parseInt(body.businessId) : null,
         content: body.content,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
