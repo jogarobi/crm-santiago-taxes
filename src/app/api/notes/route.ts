@@ -17,11 +17,10 @@ export async function GET(request: Request) {
     if (!accountId && !businessId) {
       return NextResponse.json(
         { error: 'Either accountId or businessId query parameter is required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // Build where conditions
     const conditions = [];
 
     if (accountId) {
@@ -29,7 +28,7 @@ export async function GET(request: Request) {
       if (isNaN(accountIdInt)) {
         return NextResponse.json(
           { error: 'Invalid account ID' },
-          { status: 400 }
+          { status: 400 },
         );
       }
       conditions.push(eq(note.accountId, accountIdInt));
@@ -40,7 +39,7 @@ export async function GET(request: Request) {
       if (isNaN(businessIdInt)) {
         return NextResponse.json(
           { error: 'Invalid business ID' },
-          { status: 400 }
+          { status: 400 },
         );
       }
       conditions.push(eq(note.businessId, businessIdInt));
@@ -53,7 +52,6 @@ export async function GET(request: Request) {
     const whereClause =
       conditions.length > 1 ? and(...conditions) : conditions[0];
 
-    // Get total count
     const totalResult = await db
       .select({ count: count() })
       .from(note)
@@ -61,7 +59,6 @@ export async function GET(request: Request) {
 
     const total = totalResult[0]?.count || 0;
 
-    // Get paginated notes
     const notes = await db
       .select()
       .from(note)
@@ -81,7 +78,7 @@ export async function GET(request: Request) {
     console.error('Error fetching notes:', error);
     return NextResponse.json(
       { error: 'Failed to fetch notes' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -95,31 +92,31 @@ export async function POST(request: Request) {
     if (!body.content || !body.createdBy) {
       return NextResponse.json(
         { error: 'Missing required fields: content, createdBy' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!body.accountId && !body.businessId) {
       return NextResponse.json(
         { error: 'Either accountId or businessId is required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const accountIdInt = body.accountId ? parseInt(body.accountId) : null;
     const businessIdInt = body.businessId ? parseInt(body.businessId) : null;
 
-    if (body.accountId && isNaN(accountIdInt)) {
+    if (body.accountId && isNaN(Number(accountIdInt))) {
       return NextResponse.json(
         { error: 'Invalid account ID' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    if (body.businessId && isNaN(businessIdInt)) {
+    if (body.businessId && isNaN(Number(businessIdInt))) {
       return NextResponse.json(
         { error: 'Invalid business ID' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -139,7 +136,7 @@ export async function POST(request: Request) {
     console.error('Error creating note:', error);
     return NextResponse.json(
       { error: 'Failed to create note' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
