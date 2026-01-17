@@ -203,6 +203,21 @@ export default function AccountDetailPage({ params }: Props) {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     )[0]?.email;
 
+  const lastTouchpointDate = touchpointsLoading
+    ? '...'
+    : touchpoints?.touchpoints?.[0]?.createdAt
+      ? new Date(touchpoints.touchpoints[0].createdAt).toLocaleDateString(
+          'en-US',
+          {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          },
+        )
+      : 'Never';
+
   if (isLoading) {
     return (
       <div className='flex items-center justify-center p-8'>
@@ -289,9 +304,15 @@ export default function AccountDetailPage({ params }: Props) {
             </div>
           </div>
 
-          <div>
+          <div className='flex items-center'>
             <ClockIcon size={16} className='inline-block mr-1' />
-            <p>Last touchpoint on {lastTouchpointDate}</p>
+            <p>
+              {lastTouchpointDate === '...'
+                ? 'Loading touchpoint...'
+                : lastTouchpointDate === 'Never'
+                  ? 'No touchpoints recorded'
+                  : `Last touchpoint on ${lastTouchpointDate}`}
+            </p>
           </div>
         </div>
 
