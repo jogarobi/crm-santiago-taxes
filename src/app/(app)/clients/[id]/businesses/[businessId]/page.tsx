@@ -3,6 +3,7 @@
 import { use, useState } from 'react';
 import { useBusiness } from '@/hooks/use-businesses';
 import { useNotes } from '@/hooks/use-notes';
+import { useTouchpoints } from '@/hooks/use-touchpoints';
 import {
   Building2Icon,
   ClockIcon,
@@ -11,6 +12,10 @@ import {
   PlusIcon,
   SearchIcon,
   TrashIcon,
+  PhoneIcon,
+  UserIcon,
+  CalendarIcon,
+  MailIcon,
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -19,6 +24,7 @@ import { CreateNoteDialog } from '@/components/CreateNoteDialog';
 import { NoteDetailDialog } from '@/components/NoteDetailDialog';
 import { EditBusinessDialog } from '@/components/EditBusinessDialog';
 import { DeleteBusinessDialog } from '@/components/DeleteBusinessDialog';
+import { LogTouchpointDialog } from '@/components/LogTouchpointDialog';
 import type { Note } from '@/lib/types/note';
 
 function formatEIN(ein: string): string {
@@ -100,6 +106,7 @@ export default function BusinessDetailPage({ params }: Props) {
   const [noteDetailDialogOpen, setNoteDetailDialogOpen] = useState(false);
   const [notesSearchQuery, setNotesSearchQuery] = useState('');
   const [notesLimit, setNotesLimit] = useState(4);
+  const [logTouchpointDialogOpen, setLogTouchpointDialogOpen] = useState(false);
 
   const { data: notesData, isLoading: notesLoading } = useNotes(null, {
     search: notesSearchQuery || undefined,
@@ -107,6 +114,8 @@ export default function BusinessDetailPage({ params }: Props) {
     offset: 0,
     businessId: businessIdInt,
   });
+
+  const { data: touchpoints, isLoading: touchpointsLoading } = useTouchpoints({ accountId, businessId: businessIdInt });
 
   const handleNoteClick = (note: Note) => {
     setSelectedNote(note);
@@ -259,6 +268,12 @@ export default function BusinessDetailPage({ params }: Props) {
         accountId={accountId}
         business={business}
       />
+      <LogTouchpointDialog
+        open={logTouchpointDialogOpen}
+        onOpenChange={setLogTouchpointDialogOpen}
+        accountId={accountId}
+        businessId={businessIdInt}
+      />
 
       <Tabs defaultValue='notes' className='w-full'>
         <TabsList className='mb-5 py-7 px-2 gap-2 w-full'>
@@ -267,6 +282,9 @@ export default function BusinessDetailPage({ params }: Props) {
           </TabsTrigger>
           <TabsTrigger className='py-5 cursor-pointer' value='tasks'>
             Tasks
+          </TabsTrigger>
+          <TabsTrigger className='py-5 cursor-pointer' value='touchpoints'>
+            Touchpoints
           </TabsTrigger>
           <TabsTrigger className='py-5 cursor-pointer' value='overview'>
             Overview
@@ -353,6 +371,79 @@ export default function BusinessDetailPage({ params }: Props) {
                 Click &quot;New Task&quot; to add a task
               </p>
             </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value='touchpoints'>
+          <div className='bg-white border rounded-xl p-6'>
+            <div className='flex items-center justify-between mb-6'>
+              <h3 className='text-lg font-semibold'>Touchpoints</h3>
+              <Button
+                className='bg-purple cursor-pointer'
+                onClick={() => setLogTouchpointDialogOpen(true)}
+              >
+                <span>Log Touchpoint</span>
+                <PlusIcon />
+              </Button>
+            </div>
+
+            {touchpointsLoading ? (
+              <div className='flex items-center justify-center py-12'>
+                <Loader2 className='w-5 h-5 animate-spin text-purple' />
+                <span className='ml-2 text-neutral-600 text-sm'>
+                  Loading touchpoints...
+                </span>
+              </div>
+            ) : touchpoints && touchpoints.touchpoints.length > 0 ? (
+              <div className='flex flex-col gap-4'>
+                {touchpoints.touchpoints.map((touchpoint) => (
+                  <div
+                    key={touchpoint.id}
+                    className='border rounded-lg p-5 flex flex-col gap-3 hover:border-purple/50 transition-colors'
+                  >
+                    <div className='flex items-start justify-between'>
+                      <div className='flex items-center gap-3'>
+                        <div className='w-10 h-10 rounded-full bg-purple/10 flex items-center justify-center text-purple'>
+                          {touchpoint.typeIcon === 'Phone' && <PhoneIcon size={18} />}
+                          {touchpoint.typeIcon === 'User' && <UserIcon size={18} />}
+                          {touchpoint.typeIcon === 'Calendar' && <CalendarIcon size={18} />}
+                          {touchpoint.typeIcon === 'Mail' && <MailIcon size={18} />}
+                        </div>
+                        <div>
+                          <h4 className='font-semibold text-[16px]'>{touchpoint.typeName}</h4>
+                          {touchpoint.serviceName && (
+                            <p className='text-sm text-neutral-500'>
+                              Service: {touchpoint.serviceName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <span className='text-sm text-neutral-500'>
+                        {new Date(touchpoint.createdAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <p className='text-[15px] text-neutral-700'>{touchpoint.title}</p>
+                    <div className='flex items-center gap-2 text-xs text-neutral-500'>
+                      <UserIcon size={12} />
+                      <span>Logged by {touchpoint.createdBy}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className='text-center py-12 text-neutral-500'>
+                <p>No touchpoints recorded</p>
+                <p className='text-sm mt-2'>
+                  Click &quot;Log Touchpoint&quot; to add the first interaction
+                </p>
+              </div>
+            )}
           </div>
         </TabsContent>
 

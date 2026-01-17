@@ -64,6 +64,13 @@
       "when": 1768516287723,
       "tag": "0008_black_rick_jones",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1768655340080,
+      "tag": "0009_sad_maggott",
+      "breakpoints": true
     }
   ]
 }

@@ -14,7 +14,8 @@ export type Resource =
   | 'staff'
   | 'task'
   | 'business'
-  | 'note';
+  | 'note'
+  | 'service';
 
 export type Action =
   | 'create'
@@ -40,6 +41,7 @@ const DEFAULT_PERMISSIONS: Record<Role, PermissionCheck> = {
     task: ['create', 'read', 'update', 'delete'],
     business: ['create', 'read', 'update', 'delete'],
     note: ['create', 'read', 'update', 'delete'],
+    service: ['create', 'read', 'update', 'delete'],
   },
   admin: {
     client: ['create', 'read', 'update', 'delete'],
@@ -50,6 +52,7 @@ const DEFAULT_PERMISSIONS: Record<Role, PermissionCheck> = {
     task: ['create', 'read', 'update', 'delete'],
     business: ['create', 'read', 'update', 'delete'],
     note: ['create', 'read', 'update', 'delete'],
+    service: ['create', 'read', 'update', 'delete'],
   },
   staff: {
     client: ['read'],
@@ -60,6 +63,7 @@ const DEFAULT_PERMISSIONS: Record<Role, PermissionCheck> = {
     task: ['create', 'read', 'update'],
     business: ['read'],
     note: ['create', 'read', 'update'],
+    service: ['read'],
   },
 };
 

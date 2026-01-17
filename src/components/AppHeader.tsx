@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { PageHeader } from '@/components/PageHeader';
 import {
@@ -25,10 +26,15 @@ import { CreateClientDialog } from './CreateClientDialog';
 import { CreateTaskDialog } from './CreateTaskDialog';
 
 export function AppHeader() {
+  const router = useRouter();
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [createNoteDialogOpen, setCreateNoteDialogOpen] = useState(false);
   const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false);
   const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false);
+
+  const handleClientCreated = (accountId: number) => {
+    router.push(`/clients/${accountId}`);
+  };
 
   return (
     <>
@@ -95,6 +101,7 @@ export function AppHeader() {
       <CreateClientDialog
         open={createClientDialogOpen}
         onOpenChange={setCreateClientDialogOpen}
+        onSuccess={handleClientCreated}
       />
       <CreateTaskDialog
         open={createTaskDialogOpen}

@@ -7,11 +7,11 @@ function formatPhoneNumber(phoneNumber: string): string {
 
   if (cleaned.length === 10) {
     return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
-      6
+      6,
     )}`;
   } else if (cleaned.length === 11 && cleaned[0] === '1') {
     return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(
-      7
+      7,
     )}`;
   }
 
@@ -26,7 +26,7 @@ function getTimeUntilAnniversary(establishedDate: string): string {
   let nextAnniversary = new Date(
     today.getFullYear(),
     established.getMonth(),
-    established.getDate()
+    established.getDate(),
   );
 
   // If this year's anniversary has passed, use next year's
@@ -34,7 +34,7 @@ function getTimeUntilAnniversary(establishedDate: string): string {
     nextAnniversary = new Date(
       today.getFullYear() + 1,
       established.getMonth(),
-      established.getDate()
+      established.getDate(),
     );
   }
 
@@ -46,7 +46,7 @@ function getTimeUntilAnniversary(establishedDate: string): string {
   // Calculate days remaining after full months
   const daysDiff =
     Math.floor(
-      (nextAnniversary.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      (nextAnniversary.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
     ) -
     monthsDiff * 30;
 
@@ -70,6 +70,7 @@ import { useAccountRelationships } from '@/hooks/use-account-relationships';
 import { useNotes } from '@/hooks/use-notes';
 import { useBusinesses } from '@/hooks/use-businesses';
 import { useAppointments } from '@/hooks/use-appointments';
+import { useTouchpoints } from '@/hooks/use-touchpoints';
 import {
   Building2Icon,
   CalendarIcon,
@@ -82,6 +83,7 @@ import {
   PlusIcon,
   SearchIcon,
   TrashIcon,
+  UserIcon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
@@ -101,6 +103,7 @@ import { AddRelationshipDialog } from '@/components/AddRelationshipDialog';
 import { EditRelationshipDialog } from '@/components/EditRelationshipDialog';
 import { DeleteRelationshipDialog } from '@/components/DeleteRelationshipDialog';
 import { CancelAppointmentDialog } from '@/components/CancelAppointmentDialog';
+import { LogTouchpointDialog } from '@/components/LogTouchpointDialog';
 import clsx from 'clsx';
 import type { Note } from '@/lib/types/note';
 import type { Business } from '@/lib/types/business';
@@ -126,7 +129,7 @@ export default function AccountDetailPage({ params }: Props) {
   const [deleteBusinessDialogOpen, setDeleteBusinessDialogOpen] =
     useState(false);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
-    null
+    null,
   );
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [noteDetailDialogOpen, setNoteDetailDialogOpen] = useState(false);
@@ -148,6 +151,7 @@ export default function AccountDetailPage({ params }: Props) {
     useState(false);
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
+  const [logTouchpointDialogOpen, setLogTouchpointDialogOpen] = useState(false);
 
   const { data: notesData, isLoading: notesLoading } = useNotes(accountId, {
     search: notesSearchQuery || undefined,
@@ -159,6 +163,10 @@ export default function AccountDetailPage({ params }: Props) {
     useAppointments({
       accountId: accountId,
     });
+
+  const { data: touchpoints, isLoading: touchpointsLoading } = useTouchpoints({
+    accountId,
+  });
 
   const handleNoteClick = (note: Note) => {
     setSelectedNote(note);
@@ -186,13 +194,13 @@ export default function AccountDetailPage({ params }: Props) {
     ?.filter((c) => c.phoneNumber)
     .sort(
       (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     )[0]?.phoneNumber;
   const hasEmail = contacts
     ?.filter((c) => c.email)
     .sort(
       (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     )[0]?.email;
 
   if (isLoading) {
@@ -279,6 +287,11 @@ export default function AccountDetailPage({ params }: Props) {
                   : 'No business associated'}
               </span>
             </div>
+          </div>
+
+          <div>
+            <ClockIcon size={16} className='inline-block mr-1' />
+            <p>Last touchpoint on {lastTouchpointDate}</p>
           </div>
         </div>
 
@@ -373,9 +386,17 @@ export default function AccountDetailPage({ params }: Props) {
         onOpenChange={setCancelAppointmentDialogOpen}
         appointment={selectedAppointment}
       />
+      <LogTouchpointDialog
+        open={logTouchpointDialogOpen}
+        onOpenChange={setLogTouchpointDialogOpen}
+        accountId={accountId}
+      />
 
       <Tabs defaultValue='notes' className='w-full'>
         <TabsList className='mb-5 py-7 px-2 gap-2 w-full'>
+          <TabsTrigger className='py-5 cursor-pointer' value='touchpoints'>
+            Touchpoints
+          </TabsTrigger>
           <TabsTrigger className='py-5 cursor-pointer' value='notes'>
             Notes
           </TabsTrigger>
@@ -394,6 +415,7 @@ export default function AccountDetailPage({ params }: Props) {
           <TabsTrigger className='py-5 cursor-pointer' value='appointments'>
             Appointments
           </TabsTrigger>
+
           <TabsTrigger className='py-5 cursor-pointer' value='relationships'>
             Relationships
           </TabsTrigger>
@@ -598,35 +620,32 @@ export default function AccountDetailPage({ params }: Props) {
                           {appointment.status && (
                             <Badge
                               variant='secondary'
-                              className={clsx(
-                                'text-[13px] font-medium w-fit',
-                                {
-                                  'bg-green-100 text-green-700':
-                                    appointment.status === 'ACCEPTED',
-                                  'bg-yellow-100 text-yellow-700':
-                                    appointment.status === 'PENDING',
-                                  'bg-red-100 text-red-700':
-                                    appointment.status ===
-                                      'CANCELLED_BY_CUSTOMER' ||
-                                    appointment.status ===
-                                      'CANCELLED_BY_SELLER' ||
-                                    appointment.status === 'DECLINED',
-                                  'bg-gray-100 text-gray-700':
-                                    appointment.status === 'NO_SHOW',
-                                  'bg-blue-100 text-blue-700':
-                                    appointment.status !== 'ACCEPTED' &&
-                                    appointment.status !== 'PENDING' &&
-                                    appointment.status !==
-                                      'CANCELLED_BY_CUSTOMER' &&
-                                    appointment.status !==
-                                      'CANCELLED_BY_SELLER' &&
-                                    appointment.status !== 'DECLINED' &&
-                                    appointment.status !== 'NO_SHOW',
-                                }
-                              )}
+                              className={clsx('text-[13px] font-medium w-fit', {
+                                'bg-green-100 text-green-700':
+                                  appointment.status === 'ACCEPTED',
+                                'bg-yellow-100 text-yellow-700':
+                                  appointment.status === 'PENDING',
+                                'bg-red-100 text-red-700':
+                                  appointment.status ===
+                                    'CANCELLED_BY_CUSTOMER' ||
+                                  appointment.status ===
+                                    'CANCELLED_BY_SELLER' ||
+                                  appointment.status === 'DECLINED',
+                                'bg-gray-100 text-gray-700':
+                                  appointment.status === 'NO_SHOW',
+                                'bg-blue-100 text-blue-700':
+                                  appointment.status !== 'ACCEPTED' &&
+                                  appointment.status !== 'PENDING' &&
+                                  appointment.status !==
+                                    'CANCELLED_BY_CUSTOMER' &&
+                                  appointment.status !==
+                                    'CANCELLED_BY_SELLER' &&
+                                  appointment.status !== 'DECLINED' &&
+                                  appointment.status !== 'NO_SHOW',
+                              })}
                             >
                               {capitalizeFirst(
-                                appointment.status.replace(/_/g, ' ')
+                                appointment.status.replace(/_/g, ' '),
                               )}
                             </Badge>
                           )}
@@ -665,7 +684,7 @@ export default function AccountDetailPage({ params }: Props) {
                                     relativeDate !== 'Today'
                                       ? `, ${format(
                                           startDate,
-                                          'EEEE, MMMM d, yyyy'
+                                          'EEEE, MMMM d, yyyy',
                                         )}`
                                       : ''
                                   }`
@@ -684,11 +703,11 @@ export default function AccountDetailPage({ params }: Props) {
                               {startDate && endDate
                                 ? `${format(
                                     startDate,
-                                    'h:mm a'
+                                    'h:mm a',
                                   )} - ${format(endDate, 'h:mm a')}`
                                 : startDate
-                                ? format(startDate, 'h:mm a')
-                                : 'N/A'}
+                                  ? format(startDate, 'h:mm a')
+                                  : 'N/A'}
                               {appointment.durationMinutes && (
                                 <span className='text-neutral-500'>
                                   {' '}
@@ -796,7 +815,7 @@ export default function AccountDetailPage({ params }: Props) {
                           <p className='text-start text-[15px]'>
                             Incorporated{' '}
                             {new Date(
-                              business.establishedDate
+                              business.establishedDate,
                             ).toLocaleDateString('en-US', {
                               year: 'numeric',
                               month: 'long',
@@ -823,6 +842,93 @@ export default function AccountDetailPage({ params }: Props) {
                 <p>No businesses found</p>
                 <p className='text-sm mt-2'>
                   Click &quot;New&quot; to add a business
+                </p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value='touchpoints'>
+          <div className='bg-white border rounded-xl p-6'>
+            <div className='flex items-center justify-between mb-6'>
+              <h3 className='text-lg font-semibold'>Touchpoints</h3>
+              <Button
+                className='bg-purple cursor-pointer'
+                onClick={() => setLogTouchpointDialogOpen(true)}
+              >
+                <span>Log Touchpoint</span>
+                <PlusIcon />
+              </Button>
+            </div>
+
+            {touchpointsLoading ? (
+              <div className='flex items-center justify-center py-12'>
+                <Loader2 className='w-5 h-5 animate-spin text-purple' />
+                <span className='ml-2 text-neutral-600 text-sm'>
+                  Loading touchpoints...
+                </span>
+              </div>
+            ) : touchpoints && touchpoints.touchpoints.length > 0 ? (
+              <div className='flex flex-col gap-4 mt-10'>
+                {touchpoints.touchpoints.map((touchpoint) => (
+                  <div
+                    key={touchpoint.id}
+                    className='rounded-lg flex flex-col gap-3 hover:border-purple/50 transition-colors'
+                  >
+                    <div className='flex items-start justify-between'>
+                      <div className='flex items-center gap-2'>
+                        <div className='rounded-full flex items-center justify-center text-purple'>
+                          {touchpoint.typeIcon === 'Phone' && (
+                            <PhoneIcon size={18} strokeWidth={2.5} />
+                          )}
+                          {touchpoint.typeIcon === 'User' && (
+                            <UserIcon size={18} strokeWidth={2.5} />
+                          )}
+                          {touchpoint.typeIcon === 'Calendar' && (
+                            <CalendarIcon size={18} strokeWidth={2.5} />
+                          )}
+                          {touchpoint.typeIcon === 'Mail' && (
+                            <MailIcon size={18} strokeWidth={2.5} />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className='font-semibold text-purple text-[16px]'>
+                            {touchpoint.typeName}
+                          </h4>
+                          {touchpoint.serviceName && (
+                            <p className='text-sm text-neutral-500'>
+                              Service: {touchpoint.serviceName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <span className='text-sm text-neutral-500'>
+                        {new Date(touchpoint.createdAt).toLocaleDateString(
+                          'en-US',
+                          {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          },
+                        )}
+                      </span>
+                    </div>
+                    <p className='text-[15px] text-neutral-700'>
+                      {touchpoint.title}
+                    </p>
+                    <div className='flex items-center gap-2 text-sm text-neutral-500'>
+                      <span>Created by {touchpoint.createdBy}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className='text-center py-12 text-neutral-500'>
+                <p>No touchpoints recorded</p>
+                <p className='text-sm mt-2'>
+                  Click &quot;Log Touchpoint&quot; to add the first interaction
                 </p>
               </div>
             )}

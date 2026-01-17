@@ -85,6 +85,7 @@ export const activityType = sqliteTable('ActivityType', {
 export const activity = sqliteTable('Activity', {
   id: integer().primaryKey({ autoIncrement: true }),
   accountId: integer().references(() => clientAccount.id),
+  businessId: integer().references(() => business.id),
   typeId: integer()
     .notNull()
     .references(() => activityType.id),
@@ -371,6 +372,16 @@ export const task = sqliteTable('Task', {
   content: text().notNull(),
   status: text().notNull().default('todo'), // todo, in_progress, done, delayed, abandoned
   assignedTo: text(), // user id of assigned staff member
+  createdAt: text().default("DATETIME('NOW')").notNull(),
+  createdBy: text().notNull(),
+  updatedAt: text(),
+  updatedBy: text(),
+});
+
+export const service = sqliteTable('Service', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  name: text().notNull(),
+  isActive: integer({ mode: 'boolean' }).default(true).notNull(),
   createdAt: text().default("DATETIME('NOW')").notNull(),
   createdBy: text().notNull(),
   updatedAt: text(),
