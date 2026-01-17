@@ -304,9 +304,9 @@ export default function AccountDetailPage({ params }: Props) {
             </div>
           </div>
 
-          <div className='flex items-center'>
+          <div className='flex items-center gap-1'>
             <ClockIcon size={16} className='inline-block mr-1' />
-            <p>
+            <p className='text-[16px]'>
               {lastTouchpointDate === '...'
                 ? 'Loading touchpoint...'
                 : lastTouchpointDate === 'Never'
@@ -413,7 +413,7 @@ export default function AccountDetailPage({ params }: Props) {
         accountId={accountId}
       />
 
-      <Tabs defaultValue='notes' className='w-full'>
+      <Tabs defaultValue='touchpoints' className='w-full'>
         <TabsList className='mb-5 py-7 px-2 gap-2 w-full'>
           <TabsTrigger className='py-5 cursor-pointer' value='touchpoints'>
             Touchpoints
@@ -890,11 +890,11 @@ export default function AccountDetailPage({ params }: Props) {
                 </span>
               </div>
             ) : touchpoints && touchpoints.touchpoints.length > 0 ? (
-              <div className='flex flex-col gap-4 mt-10'>
+              <div className='flex flex-col gap-6 mt-7'>
                 {touchpoints.touchpoints.map((touchpoint) => (
                   <div
                     key={touchpoint.id}
-                    className='rounded-lg flex flex-col gap-3 hover:border-purple/50 transition-colors'
+                    className='flex flex-col gap-3 border-b pb-5'
                   >
                     <div className='flex items-start justify-between'>
                       <div className='flex items-center gap-2'>
@@ -916,12 +916,12 @@ export default function AccountDetailPage({ params }: Props) {
                           <h4 className='font-semibold text-purple text-[16px]'>
                             {touchpoint.typeName}
                           </h4>
-                          {touchpoint.serviceName && (
-                            <p className='text-sm text-neutral-500'>
-                              Service: {touchpoint.serviceName}
-                            </p>
-                          )}
                         </div>
+                        {touchpoint.serviceName && (
+                          <p className='text-sm text-neutral-500'>
+                            Service: {touchpoint.serviceName}
+                          </p>
+                        )}
                       </div>
                       <span className='text-sm text-neutral-500'>
                         {new Date(touchpoint.createdAt).toLocaleDateString(

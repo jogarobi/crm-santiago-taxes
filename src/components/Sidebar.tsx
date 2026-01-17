@@ -28,6 +28,7 @@ import {
   UserCog,
   BarChartIcon,
   Settings,
+  FileTextIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -58,6 +59,11 @@ const items = [
     title: 'Appointments',
     url: '/appointments',
     icon: CalendarIcon,
+  },
+  {
+    title: 'Services',
+    url: '/services',
+    icon: FileTextIcon,
   },
   {
     title: 'Payments',
@@ -245,7 +251,7 @@ export default function Sidebar() {
                                 .map(
                                   (r: string) =>
                                     r.trim().charAt(0).toUpperCase() +
-                                    r.trim().slice(1).toLowerCase()
+                                    r.trim().slice(1).toLowerCase(),
                                 )
                                 .join(', ')}
                         </p>
