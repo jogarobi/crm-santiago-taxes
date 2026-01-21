@@ -1,12 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  useTasks,
-  useCreateTask,
-  useUpdateTask,
-  useDeleteTask,
-} from '@/hooks/use-tasks';
+import { useTasks, useUpdateTask, useDeleteTask } from '@/hooks/use-tasks';
 import { useStaff } from '@/hooks/use-staff';
 import { authClient } from '@/app/api/clients';
 import { Button } from '@/components/ui/button';
@@ -37,6 +32,7 @@ import {
   UserIcon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import type { Task, TaskStatus } from '@/lib/types/task';
 
 interface EditTaskData {
@@ -279,9 +275,6 @@ function TaskColumn({
 
 export default function TasksPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [newTaskContent, setNewTaskContent] = useState('');
-  const [newTaskAssignedTo, setNewTaskAssignedTo] = useState('');
-
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editTaskData, setEditTaskData] = useState<EditTaskData | null>(null);
 
@@ -295,32 +288,11 @@ export default function TasksPage() {
   const { data: staffResponse, isLoading: isLoadingStaff } = useStaff({
     pageSize: 100,
   });
-  const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
 
   const tasks = tasksResponse?.tasks || [];
   const staffMembers = staffResponse?.data || [];
-
-  const handleCreateTask = () => {
-    if (!newTaskContent.trim() || !session?.user?.id) return;
-
-    createTask.mutate(
-      {
-        content: newTaskContent,
-        status: 'todo',
-        assignedTo: newTaskAssignedTo || undefined,
-        createdBy: session.user.id,
-      },
-      {
-        onSuccess: () => {
-          setNewTaskContent('');
-          setNewTaskAssignedTo('');
-          setCreateDialogOpen(false);
-        },
-      }
-    );
-  };
 
   const handleDeleteTask = (taskId: number) => {
     deleteTask.mutate(taskId);
@@ -416,78 +388,10 @@ export default function TasksPage() {
         </div>
       )}
 
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Task</DialogTitle>
-            <DialogDescription>
-              Add a new task to your board. Tasks will start in the &ldquo;To
-              Do&rdquo; column.
-            </DialogDescription>
-          </DialogHeader>
-          <div className='space-y-7 py-4'>
-            <div className='space-y-4'>
-              <Label htmlFor='content'>Task Description</Label>
-              <Textarea
-                id='content'
-                placeholder='Enter task description...'
-                value={newTaskContent}
-                onChange={(e) => setNewTaskContent(e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div className='space-y-4 w-full'>
-              <Label htmlFor='assignedTo'>Assign To (Optional)</Label>
-              <Select
-                value={newTaskAssignedTo}
-                onValueChange={setNewTaskAssignedTo}
-              >
-                <SelectTrigger id='assignedTo' className='w-full'>
-                  <SelectValue placeholder='Select a staff member...' />
-                </SelectTrigger>
-                <SelectContent>
-                  {isLoadingStaff ? (
-                    <div className='flex items-center justify-center py-4'>
-                      <Loader2 className='h-4 w-4 animate-spin text-neutral-400' />
-                    </div>
-                  ) : staffMembers.length === 0 ? (
-                    <div className='text-center py-4 text-sm text-neutral-500'>
-                      No staff members found
-                    </div>
-                  ) : (
-                    staffMembers.map((staff) => (
-                      <SelectItem key={staff.id} value={staff.id.toString()}>
-                        {staff.firstName} {staff.lastName}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant='outline'
-              onClick={() => {
-                setCreateDialogOpen(false);
-                setNewTaskContent('');
-                setNewTaskAssignedTo('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateTask}
-              disabled={!newTaskContent.trim() || createTask.isPending}
-            >
-              {createTask.isPending && (
-                <Loader2 className='h-4 w-4 animate-spin' />
-              )}
-              Create Task
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateTaskDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+      />
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>

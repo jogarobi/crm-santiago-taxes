@@ -25,6 +25,8 @@ import { NoteDetailDialog } from '@/components/NoteDetailDialog';
 import { EditBusinessDialog } from '@/components/EditBusinessDialog';
 import { DeleteBusinessDialog } from '@/components/DeleteBusinessDialog';
 import { LogTouchpointDialog } from '@/components/LogTouchpointDialog';
+import { CreateTaskDialog } from '@/components/CreateTaskDialog';
+import { TasksList } from '@/components/TasksList';
 import type { Note } from '@/lib/types/note';
 
 function formatEIN(ein: string): string {
@@ -107,6 +109,7 @@ export default function BusinessDetailPage({ params }: Props) {
   const [notesSearchQuery, setNotesSearchQuery] = useState('');
   const [notesLimit, setNotesLimit] = useState(4);
   const [logTouchpointDialogOpen, setLogTouchpointDialogOpen] = useState(false);
+  const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false);
 
   const { data: notesData, isLoading: notesLoading } = useNotes(null, {
     search: notesSearchQuery || undefined,
@@ -274,6 +277,11 @@ export default function BusinessDetailPage({ params }: Props) {
         accountId={accountId}
         businessId={businessIdInt}
       />
+      <CreateTaskDialog
+        open={createTaskDialogOpen}
+        onOpenChange={setCreateTaskDialogOpen}
+        businessId={businessIdInt}
+      />
 
       <Tabs defaultValue='notes' className='w-full'>
         <TabsList className='mb-5 py-7 px-2 gap-2 w-full'>
@@ -360,17 +368,16 @@ export default function BusinessDetailPage({ params }: Props) {
           <div className='bg-white border rounded-xl p-6'>
             <div className='flex items-center justify-between mb-6'>
               <h3 className='text-lg font-semibold'>Tasks</h3>
-              <Button className='bg-purple cursor-pointer'>
+              <Button
+                className='bg-purple cursor-pointer'
+                onClick={() => setCreateTaskDialogOpen(true)}
+              >
                 <span>New Task</span>
                 <PlusIcon />
               </Button>
             </div>
-            <div className='text-center py-12 text-neutral-500'>
-              <p>No tasks yet</p>
-              <p className='text-sm mt-2'>
-                Click &quot;New Task&quot; to add a task
-              </p>
-            </div>
+
+            <TasksList businessId={businessIdInt} />
           </div>
         </TabsContent>
 

@@ -104,6 +104,8 @@ import { EditRelationshipDialog } from '@/components/EditRelationshipDialog';
 import { DeleteRelationshipDialog } from '@/components/DeleteRelationshipDialog';
 import { CancelAppointmentDialog } from '@/components/CancelAppointmentDialog';
 import { LogTouchpointDialog } from '@/components/LogTouchpointDialog';
+import { CreateTaskDialog } from '@/components/CreateTaskDialog';
+import { TasksList } from '@/components/TasksList';
 import clsx from 'clsx';
 import type { Note } from '@/lib/types/note';
 import type { Business } from '@/lib/types/business';
@@ -152,6 +154,7 @@ export default function AccountDetailPage({ params }: Props) {
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
   const [logTouchpointDialogOpen, setLogTouchpointDialogOpen] = useState(false);
+  const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false);
 
   const { data: notesData, isLoading: notesLoading } = useNotes(accountId, {
     search: notesSearchQuery || undefined,
@@ -410,6 +413,11 @@ export default function AccountDetailPage({ params }: Props) {
       <LogTouchpointDialog
         open={logTouchpointDialogOpen}
         onOpenChange={setLogTouchpointDialogOpen}
+        accountId={accountId}
+      />
+      <CreateTaskDialog
+        open={createTaskDialogOpen}
+        onOpenChange={setCreateTaskDialogOpen}
         accountId={accountId}
       />
 
@@ -953,6 +961,23 @@ export default function AccountDetailPage({ params }: Props) {
                 </p>
               </div>
             )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value='tasks'>
+          <div className='bg-white border rounded-xl p-6'>
+            <div className='flex items-center justify-between mb-6'>
+              <h3 className='text-lg font-semibold'>Tasks</h3>
+              <Button
+                className='bg-purple cursor-pointer'
+                onClick={() => setCreateTaskDialogOpen(true)}
+              >
+                <span>New Task</span>
+                <PlusIcon />
+              </Button>
+            </div>
+
+            <TasksList accountId={accountId} />
           </div>
         </TabsContent>
 
