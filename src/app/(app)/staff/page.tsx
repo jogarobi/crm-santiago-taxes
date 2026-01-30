@@ -31,7 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { CreateStaffDialog } from '@/components/CreateStaffDialog';
 import { EditStaffDialog } from '@/components/EditStaffDialog';
@@ -44,7 +43,6 @@ export default function StaffPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
-  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -113,13 +111,6 @@ export default function StaffPage() {
     refetch();
   };
 
-  // Clear selection when page changes
-  useEffect(() => {
-    // Intentionally clearing selection when pagination or search changes
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSelectedRows(new Set());
-  }, [pageIndex, pageSize, debouncedSearch]);
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -127,29 +118,6 @@ export default function StaffPage() {
       year: 'numeric',
     });
   };
-
-  // Selection handlers
-  const toggleRowSelection = (staffId: number) => {
-    const newSelection = new Set(selectedRows);
-    if (newSelection.has(staffId)) {
-      newSelection.delete(staffId);
-    } else {
-      newSelection.add(staffId);
-    }
-    setSelectedRows(newSelection);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedRows.size === staffMembers.length) {
-      setSelectedRows(new Set());
-    } else {
-      setSelectedRows(new Set(staffMembers.map((member) => member.id)));
-    }
-  };
-
-  const isAllSelected =
-    staffMembers.length > 0 && selectedRows.size === staffMembers.length;
-  const isSomeSelected = selectedRows.size > 0 && !isAllSelected;
 
   const getStatusBadge = (status: string) => {
     const statusLower = status.toLowerCase();
@@ -233,38 +201,9 @@ export default function StaffPage() {
 
       {!isLoading && !error && staffMembers && staffMembers.length > 0 && (
         <div className='bg-white border rounded-lg overflow-hidden'>
-          {selectedRows.size > 0 && (
-            <div className='flex items-center justify-between px-4 py-3 bg-purple/10 border-b'>
-              <p className='text-sm font-medium text-purple'>
-                {selectedRows.size} staff member
-                {selectedRows.size !== 1 ? 's' : ''} selected
-              </p>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => setSelectedRows(new Set())}
-                className='h-8'
-              >
-                Clear selection
-              </Button>
-            </div>
-          )}
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className='p-4 w-12'>
-                  <Checkbox
-                    checked={
-                      isAllSelected
-                        ? true
-                        : isSomeSelected
-                        ? 'indeterminate'
-                        : false
-                    }
-                    onCheckedChange={toggleSelectAll}
-                    aria-label='Select all'
-                  />
-                </TableHead>
                 <TableHead className='p-4'>Name</TableHead>
                 <TableHead className='p-4'>Role</TableHead>
                 <TableHead className='p-4'>Email</TableHead>
@@ -277,22 +216,7 @@ export default function StaffPage() {
             </TableHeader>
             <TableBody>
               {staffMembers.map((member) => (
-                <TableRow
-                  key={member.id}
-                  data-state={
-                    selectedRows.has(member.id) ? 'selected' : undefined
-                  }
-                >
-                  <TableCell
-                    className='p-4'
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Checkbox
-                      checked={selectedRows.has(member.id)}
-                      onCheckedChange={() => toggleRowSelection(member.id)}
-                      aria-label={`Select ${member.firstName} ${member.lastName}`}
-                    />
-                  </TableCell>
+                <TableRow key={member.id}>
                   <TableCell className='font-medium p-4'>
                     <div className='flex items-center gap-3'>
                       <span>

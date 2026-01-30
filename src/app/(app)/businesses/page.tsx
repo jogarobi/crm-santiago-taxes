@@ -30,7 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 
 function formatEIN(ein: string): string {
   const cleaned = ein.replace(/\D/g, '');
@@ -47,7 +46,6 @@ export default function BusinessesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
-  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
 
   // Set document title
   useEffect(() => {
@@ -77,13 +75,6 @@ export default function BusinessesPage() {
   const businesses = response?.data || [];
   const meta = response?.meta;
 
-  // Clear selection when page changes
-  useEffect(() => {
-    // Intentionally clearing selection when pagination or search changes
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSelectedRows(new Set());
-  }, [pageIndex, pageSize, debouncedSearch]);
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -91,29 +82,6 @@ export default function BusinessesPage() {
       year: 'numeric',
     });
   };
-
-  // Selection handlers
-  const toggleRowSelection = (businessId: number) => {
-    const newSelection = new Set(selectedRows);
-    if (newSelection.has(businessId)) {
-      newSelection.delete(businessId);
-    } else {
-      newSelection.add(businessId);
-    }
-    setSelectedRows(newSelection);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedRows.size === businesses.length) {
-      setSelectedRows(new Set());
-    } else {
-      setSelectedRows(new Set(businesses.map((business) => business.id)));
-    }
-  };
-
-  const isAllSelected =
-    businesses.length > 0 && selectedRows.size === businesses.length;
-  const isSomeSelected = selectedRows.size > 0 && !isAllSelected;
 
   return (
     <div className='flex flex-col gap-6'>
@@ -165,38 +133,9 @@ export default function BusinessesPage() {
 
       {!isLoading && !error && businesses && businesses.length > 0 && (
         <div className='bg-white border rounded-lg overflow-hidden'>
-          {selectedRows.size > 0 && (
-            <div className='flex items-center justify-between px-4 py-3 bg-purple/10 border-b'>
-              <p className='text-sm font-medium text-purple'>
-                {selectedRows.size} business{selectedRows.size !== 1 ? 'es' : ''}{' '}
-                selected
-              </p>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => setSelectedRows(new Set())}
-                className='h-8'
-              >
-                Clear selection
-              </Button>
-            </div>
-          )}
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className='p-4 w-12'>
-                  <Checkbox
-                    checked={
-                      isAllSelected
-                        ? true
-                        : isSomeSelected
-                        ? 'indeterminate'
-                        : false
-                    }
-                    onCheckedChange={toggleSelectAll}
-                    aria-label='Select all'
-                  />
-                </TableHead>
                 <TableHead className='p-4'>Business Name</TableHead>
                 <TableHead className='p-4'>Account Holder</TableHead>
                 <TableHead className='p-4'>Entity Type</TableHead>
@@ -214,20 +153,7 @@ export default function BusinessesPage() {
                   onClick={() => {
                     window.location.href = `/clients/${business.accountId}/businesses/${business.id}`;
                   }}
-                  data-state={
-                    selectedRows.has(business.id) ? 'selected' : undefined
-                  }
                 >
-                  <TableCell
-                    className='p-4'
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Checkbox
-                      checked={selectedRows.has(business.id)}
-                      onCheckedChange={() => toggleRowSelection(business.id)}
-                      aria-label={`Select ${business.registeredName}`}
-                    />
-                  </TableCell>
                   <TableCell className='font-medium p-4'>
                     <div className='flex items-center gap-3'>
                       <span>{business.registeredName}</span>
