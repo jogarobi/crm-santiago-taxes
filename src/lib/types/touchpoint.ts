@@ -1,4 +1,4 @@
-export type TouchpointType = 'Call' | 'Walk-in' | 'Appointment Booked' | 'Email';
+export type TouchpointType = 'Call' | 'Walk-in' | 'Appointment' | 'Email';
 
 export type Touchpoint = {
   id: number;

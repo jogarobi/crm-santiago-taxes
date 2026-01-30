@@ -92,15 +92,13 @@ export default function Appointments() {
     return staffData.data.filter((staff) => staff.squareId);
   }, [staffData]);
 
-  // Find the current user's staff record by matching email
   const currentUserStaff = useMemo(() => {
     if (!currentUser?.email || !staffWithSquareId.length) return null;
     return staffWithSquareId.find(
-      (staff) => staff.email?.toLowerCase() === currentUser.email.toLowerCase()
+      (staff) => staff.email?.toLowerCase() === currentUser.email.toLowerCase(),
     );
   }, [currentUser, staffWithSquareId]);
 
-  // Compute the default selected staff ID based on role
   const defaultStaffId = useMemo(() => {
     if (!currentUser) return 'all';
     if (isOwner) return 'all';
@@ -182,7 +180,7 @@ export default function Appointments() {
       .filter(
         (item) =>
           item.type === 'ITEM_VARIATION' &&
-          item.itemVariationData?.availableForBooking
+          item.itemVariationData?.availableForBooking,
       )
       .map((variation) => variation.id)
       .filter((id): id is string => !!id);
@@ -196,7 +194,7 @@ export default function Appointments() {
           teamMemberIds: allStaffSquareIds,
           serviceVariationIds,
         }
-      : null
+      : null,
   );
 
   const availableSlots = useMemo(() => {
@@ -213,7 +211,7 @@ export default function Appointments() {
     return allAvailableSlots
       .filter((slot) => {
         const hasMatchingTeamMember = slot.appointmentSegments?.some(
-          (segment) => segment.teamMemberId === selectedStaffId
+          (segment) => segment.teamMemberId === selectedStaffId,
         );
         return hasMatchingTeamMember;
       })
@@ -222,7 +220,7 @@ export default function Appointments() {
 
   const formatDateTime = (
     startAt: string,
-    endAt?: string
+    endAt?: string,
   ): { date: string; time: string } => {
     const startDate = new Date(startAt);
 
@@ -447,7 +445,7 @@ export default function Appointments() {
                   variant='secondary'
                   className={clsx(
                     getStatusColor(selectedAppointment.status),
-                    'text-[13px] font-medium w-fit'
+                    'text-[13px] font-medium w-fit',
                   )}
                 >
                   {capitalizeFirst(selectedAppointment.status)}
@@ -499,7 +497,7 @@ export default function Appointments() {
                     {
                       formatDateTime(
                         selectedAppointment.startAt || '',
-                        selectedAppointment.endAt
+                        selectedAppointment.endAt,
                       ).date
                     }
                   </span>
@@ -516,7 +514,7 @@ export default function Appointments() {
                     {
                       formatDateTime(
                         selectedAppointment.startAt || '',
-                        selectedAppointment.endAt
+                        selectedAppointment.endAt,
                       ).time
                     }{' '}
                     {selectedAppointment.durationMinutes && (
@@ -636,7 +634,7 @@ export default function Appointments() {
                               variant='secondary'
                               className={clsx(
                                 getStatusColor(appointment.status),
-                                'text-xs'
+                                'text-xs',
                               )}
                             >
                               {capitalizeFirst(appointment.status)}
@@ -651,7 +649,7 @@ export default function Appointments() {
                               {
                                 formatDateTime(
                                   appointment.startAt || '',
-                                  appointment.endAt
+                                  appointment.endAt,
                                 ).time
                               }
                             </span>
@@ -693,7 +691,7 @@ export default function Appointments() {
                       variant='secondary'
                       className={clsx(
                         getStatusColor(selectedAppointment.status),
-                        'text-[13px] font-medium w-fit'
+                        'text-[13px] font-medium w-fit',
                       )}
                     >
                       {capitalizeFirst(selectedAppointment.status)}
@@ -745,7 +743,7 @@ export default function Appointments() {
                         {
                           formatDateTime(
                             selectedAppointment.startAt || '',
-                            selectedAppointment.endAt
+                            selectedAppointment.endAt,
                           ).date
                         }
                       </span>
@@ -762,7 +760,7 @@ export default function Appointments() {
                         {
                           formatDateTime(
                             selectedAppointment.startAt || '',
-                            selectedAppointment.endAt
+                            selectedAppointment.endAt,
                           ).time
                         }{' '}
                         {selectedAppointment.durationMinutes && (
@@ -806,7 +804,7 @@ export default function Appointments() {
                       <p>
                         Created on:{' '}
                         {new Date(
-                          selectedAppointment.createdAt
+                          selectedAppointment.createdAt,
                         ).toLocaleString()}
                       </p>
                     )}

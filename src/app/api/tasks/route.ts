@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { task } from '@/db/migrations/schema';
+import { task, staff } from '@/db/migrations/schema';
 import { eq, desc, like, and, count } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
   try {
-    await requirePermission({ task: ['read'] });
+    const { session, role } = await requirePermission({ task: ['read'] });
 
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('accountId');
@@ -19,6 +19,30 @@ export async function GET(request: Request) {
 
     // Build where conditions
     const conditions = [];
+
+    // If user is not an owner, filter tasks to only show their assigned tasks
+    if (role !== 'owner' && session?.user?.email) {
+      // Find the staff record for the current user
+      const staffRecord = await db
+        .select()
+        .from(staff)
+        .where(eq(staff.email, session.user.email.toLowerCase()))
+        .limit(1);
+
+      if (staffRecord.length > 0) {
+        // Filter tasks assigned to this staff member
+        conditions.push(eq(task.assignedTo, staffRecord[0].id.toString()));
+      } else {
+        // If no staff record found, return empty results
+        return NextResponse.json({
+          success: true,
+          tasks: [],
+          count: 0,
+          total: 0,
+          hasMore: false,
+        });
+      }
+    }
 
     if (accountId) {
       const accountIdInt = parseInt(accountId);

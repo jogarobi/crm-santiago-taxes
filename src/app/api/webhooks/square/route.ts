@@ -243,7 +243,7 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
         // Create activity for appointment booking
         try {
           const activityTypeId = await getOrCreateActivityType(
-            'Appointment Booked',
+            'Appointment',
             'Calendar'
           );
 
@@ -476,7 +476,7 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
           // Create activity for appointment booking
           try {
             const activityTypeId = await getOrCreateActivityType(
-              'Appointment Booked',
+              'Appointment',
               'Calendar'
             );
 
@@ -537,41 +537,6 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
           .where(eq(appointment.squareId, booking.id));
 
         console.log('✅ Appointment updated in database:', booking.id);
-
-        // Create activity for appointment update
-        try {
-          const activityTypeId = await getOrCreateActivityType(
-            'Appointment Updated',
-            'Edit'
-          );
-
-          let withPerson = '';
-          if (booking.creatorDetails?.creatorType === 'TEAM_MEMBER') {
-            withPerson = accountName || 'a customer';
-          } else {
-            withPerson = createdBy || 'staff';
-          }
-
-          const activityTitle = `${
-            createdBy || 'Someone'
-          } updated an appointment with ${withPerson}${
-            serviceName ? ` for ${serviceName}` : ''
-          }`;
-
-          await db.insert(activity).values({
-            accountId: dbAccount?.id || null,
-            typeId: activityTypeId,
-            title: activityTitle,
-            createdAt: new Date().toISOString(),
-            createdBy: createdBy || 'SQUARE_WEBHOOK',
-            entity: 'appointment',
-            entityId: existingAppointments[0]?.id || null,
-          });
-
-          console.log('✅ Activity created for appointment update');
-        } catch (error) {
-          console.error('Failed to create activity:', error);
-        }
 
         break;
       }

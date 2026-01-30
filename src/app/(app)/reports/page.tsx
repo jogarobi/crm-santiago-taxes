@@ -1,6 +1,7 @@
 'use client';
 
-import { useStats } from '@/hooks/use-stats';
+import { useState } from 'react';
+import { useStats, type StatsPeriod } from '@/hooks/use-stats';
 import {
   Loader2,
   Users,
@@ -30,12 +31,20 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { format } from 'date-fns';
 
 const COLORS = ['#7c3aed', '#a78bfa', '#c4b5fd', '#ddd6fe', '#ede9fe'];
 
 export default function ReportsPage() {
-  const { data: stats, isLoading } = useStats();
+  const [period, setPeriod] = useState<StatsPeriod>('all');
+  const { data: stats, isLoading } = useStats({ period });
 
   if (isLoading) {
     return (
@@ -59,6 +68,13 @@ export default function ReportsPage() {
     appointments: Number(item.count),
   }));
 
+  // Prepare data for touchpoints chart
+  const touchpointsData = stats.touchpointsByType.map((item) => ({
+    name: item.typeName || 'Unknown',
+    count: Number(item.count),
+    icon: item.typeIcon,
+  }));
+
   const chartConfig = {
     appointments: {
       label: 'Appointments',
@@ -66,10 +82,31 @@ export default function ReportsPage() {
     },
   };
 
+  const touchpointChartConfig = {
+    count: {
+      label: 'Touchpoints',
+      color: '#7c3aed',
+    },
+  };
+
   return (
     <div className='flex flex-col gap-8'>
-      <div>
-        <h1 className='text-2xl font-bold mb-2'>Reports & Analytics</h1>
+      <div className='flex items-center justify-between'>
+        <h1 className='text-2xl font-bold'>Reports & Analytics</h1>
+        <Select
+          value={period}
+          onValueChange={(value: StatsPeriod) => setPeriod(value)}
+        >
+          <SelectTrigger className='w-[180px]'>
+            <SelectValue placeholder='Select period' />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value='day'>Today</SelectItem>
+            <SelectItem value='month'>This Month</SelectItem>
+            <SelectItem value='year'>This Year</SelectItem>
+            <SelectItem value='all'>All Time</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
@@ -215,6 +252,91 @@ export default function ReportsPage() {
             ) : (
               <div className='flex items-center justify-center h-[300px] text-neutral-500'>
                 No appointment data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Client Touchpoints Chart */}
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+        <Card className='bg-white shadow-none'>
+          <CardHeader>
+            <CardTitle>Client Touchpoints by Type</CardTitle>
+            <CardDescription>
+              Activity types ranked by occurrence
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {touchpointsData.length > 0 ? (
+              <ChartContainer
+                config={touchpointChartConfig}
+                className='h-[300px]'
+              >
+                <BarChart data={touchpointsData}>
+                  <CartesianGrid strokeDasharray='3 3' />
+                  <XAxis
+                    dataKey='name'
+                    tick={{ fontSize: 12 }}
+                    angle={-45}
+                    textAnchor='end'
+                    height={80}
+                  />
+                  <YAxis />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar
+                    dataKey='count'
+                    fill='var(--color-count)'
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+            ) : (
+              <div className='flex items-center justify-center h-[300px] text-neutral-500'>
+                No touchpoint data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className='bg-white shadow-none'>
+          <CardHeader>
+            <CardTitle>Touchpoints Distribution</CardTitle>
+            <CardDescription>
+              Percentage breakdown of client interactions by type
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {touchpointsData.length > 0 ? (
+              <ChartContainer
+                config={touchpointChartConfig}
+                className='h-[300px] flex items-center justify-center'
+              >
+                <PieChart>
+                  <Pie
+                    data={touchpointsData}
+                    dataKey='count'
+                    nameKey='name'
+                    cx='50%'
+                    cy='50%'
+                    outerRadius={100}
+                    label={({ name, percent }) =>
+                      `${name}: ${((percent || 0) * 100).toFixed(0)}%`
+                    }
+                  >
+                    {touchpointsData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
+            ) : (
+              <div className='flex items-center justify-center h-[300px] text-neutral-500'>
+                No touchpoint data available
               </div>
             )}
           </CardContent>

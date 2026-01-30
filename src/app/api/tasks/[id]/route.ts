@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { task } from '@/db/migrations/schema';
+import { task, staff } from '@/db/migrations/schema';
 import { eq } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
 
@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission({ task: ['read'] });
+    const { session, role } = await requirePermission({ task: ['read'] });
 
     const { id } = await params;
     const taskId = parseInt(id);
@@ -31,6 +31,25 @@ export async function GET(
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
+    // If user is not an owner, verify they are assigned to this task
+    if (role !== 'owner' && session?.user?.email) {
+      const staffRecord = await db
+        .select()
+        .from(staff)
+        .where(eq(staff.email, session.user.email.toLowerCase()))
+        .limit(1);
+
+      if (
+        staffRecord.length === 0 ||
+        result[0].assignedTo !== staffRecord[0].id.toString()
+      ) {
+        return NextResponse.json(
+          { error: 'Access denied. This task is not assigned to you.' },
+          { status: 403 }
+        );
+      }
+    }
+
     return NextResponse.json({
       success: true,
       task: result[0],
@@ -49,7 +68,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission({ task: ['update'] });
+    const { session, role } = await requirePermission({ task: ['update'] });
 
     const { id } = await params;
     const taskId = parseInt(id);
@@ -77,6 +96,25 @@ export async function PUT(
 
     if (existingTask.length === 0) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
+
+    // If user is not an owner, verify they are assigned to this task
+    if (role !== 'owner' && session?.user?.email) {
+      const staffRecord = await db
+        .select()
+        .from(staff)
+        .where(eq(staff.email, session.user.email.toLowerCase()))
+        .limit(1);
+
+      if (
+        staffRecord.length === 0 ||
+        existingTask[0].assignedTo !== staffRecord[0].id.toString()
+      ) {
+        return NextResponse.json(
+          { error: 'Access denied. This task is not assigned to you.' },
+          { status: 403 }
+        );
+      }
     }
 
     const updateData: any = {
@@ -120,7 +158,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission({ task: ['delete'] });
+    const { session, role } = await requirePermission({ task: ['delete'] });
 
     const { id } = await params;
     const taskId = parseInt(id);
@@ -140,6 +178,26 @@ export async function DELETE(
 
     if (existingTask.length === 0) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
+
+    // If user is not an owner, verify they are assigned to this task
+    // Note: Staff members typically don't have delete permission anyway
+    if (role !== 'owner' && session?.user?.email) {
+      const staffRecord = await db
+        .select()
+        .from(staff)
+        .where(eq(staff.email, session.user.email.toLowerCase()))
+        .limit(1);
+
+      if (
+        staffRecord.length === 0 ||
+        existingTask[0].assignedTo !== staffRecord[0].id.toString()
+      ) {
+        return NextResponse.json(
+          { error: 'Access denied. This task is not assigned to you.' },
+          { status: 403 }
+        );
+      }
     }
 
     await db.delete(task).where(eq(task.id, taskId));

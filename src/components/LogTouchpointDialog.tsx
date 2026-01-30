@@ -27,7 +27,7 @@ interface LogTouchpointDialogProps {
 const TOUCHPOINT_TYPES: TouchpointType[] = [
   'Call',
   'Walk-in',
-  'Appointment Booked',
+  'Appointment',
   'Email',
 ];
 

@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
+export type StatsPeriod = 'day' | 'month' | 'year' | 'all';
+
 export type Stats = {
   totalClients: number;
   totalBusinesses: number;
@@ -14,6 +16,12 @@ export type Stats = {
     service: string | null;
     count: number;
   }>;
+  touchpointsByType: Array<{
+    typeName: string | null;
+    typeIcon: string | null;
+    count: number;
+  }>;
+  mostPopularService: string | null;
 };
 
 export type StatsResponse = {
@@ -21,13 +29,23 @@ export type StatsResponse = {
   stats: Stats;
 };
 
-const statsKeys = {
-  all: ['stats'] as const,
-  overview: () => [...statsKeys.all, 'overview'] as const,
+export type StatsParams = {
+  period?: StatsPeriod;
 };
 
-async function fetchStats(): Promise<Stats> {
-  const response = await fetch('/api/stats');
+const statsKeys = {
+  all: ['stats'] as const,
+  overview: (params?: StatsParams) => [...statsKeys.all, 'overview', params] as const,
+};
+
+async function fetchStats(params?: StatsParams): Promise<Stats> {
+  const urlParams = new URLSearchParams();
+
+  if (params?.period) {
+    urlParams.append('period', params.period);
+  }
+
+  const response = await fetch(`/api/stats?${urlParams.toString()}`);
 
   if (!response.ok) {
     throw new Error('Failed to fetch stats');
@@ -37,10 +55,10 @@ async function fetchStats(): Promise<Stats> {
   return data.stats;
 }
 
-export function useStats() {
+export function useStats(params?: StatsParams) {
   return useQuery({
-    queryKey: statsKeys.overview(),
-    queryFn: fetchStats,
+    queryKey: statsKeys.overview(params),
+    queryFn: () => fetchStats(params),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }

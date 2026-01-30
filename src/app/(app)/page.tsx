@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Empty,
   EmptyHeader,
@@ -12,15 +13,41 @@ import { UpcomingAppointments } from '@/components/UpcomingAppointments';
 import { SearchAccounts } from '@/components/SearchAccounts';
 import { useAccountCount } from '@/hooks/use-accounts';
 import { useAppointmentCount } from '@/hooks/use-appointments';
+import { useStats, type StatsPeriod } from '@/hooks/use-stats';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function Home() {
+  const [period, setPeriod] = useState<StatsPeriod>('all');
   const { data: accountCount, isLoading } = useAccountCount();
   const { data: appointmentCount, isLoading: isLoadingAppointmentCount } =
     useAppointmentCount();
+  const { data: stats, isLoading: isLoadingStats } = useStats({ period });
 
   return (
     <div className='flex flex-col gap-10'>
       <SearchAccounts />
+
+      <div className='flex items-center justify-between'>
+        <h2 className='text-xl font-semibold'>Overview</h2>
+        <Select value={period} onValueChange={(value: StatsPeriod) => setPeriod(value)}>
+          <SelectTrigger className='w-[180px]'>
+            <SelectValue placeholder='Select period' />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value='day'>Today</SelectItem>
+            <SelectItem value='month'>This Month</SelectItem>
+            <SelectItem value='year'>This Year</SelectItem>
+            <SelectItem value='all'>All Time</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className='flex items-center gap-7'>
         <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
           <div className='flex items-center justify-between'>
@@ -38,7 +65,13 @@ export default function Home() {
           <div className='flex items-center justify-between'>
             <p className='text-[15px] text-neutral-600'>Businesses</p>
           </div>
-          <p className='font-bold text-[22px] text-purple'>1</p>
+          <p className='font-bold text-[22px] text-purple'>
+            {isLoadingStats ? (
+              <Loader2 className='animate-spin text-purple' />
+            ) : (
+              stats?.totalBusinesses?.toLocaleString() || '0'
+            )}
+          </p>
         </div>
         <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
           <div className='flex items-center justify-between'>
@@ -57,7 +90,15 @@ export default function Home() {
           <div className='flex items-center justify-between'>
             <p className='text-[15px] text-neutral-600'>Most popular service</p>
           </div>
-          <p className='font-bold text-xl text-purple'>Tax Preparation</p>
+          <p className='font-bold text-xl text-purple'>
+            {isLoadingStats ? (
+              <Loader2 className='animate-spin text-purple' />
+            ) : stats?.mostPopularService ? (
+              stats.mostPopularService
+            ) : (
+              'N/A'
+            )}
+          </p>
         </div>
       </div>
 
