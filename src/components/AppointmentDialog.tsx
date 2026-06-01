@@ -28,8 +28,18 @@ import {
   useAvailability,
 } from '@/hooks/use-appointments';
 import { useCatalogList } from '@/hooks/use-catalog';
+import { useTeamMembers } from '@/hooks/use-team';
 import type { Account } from '@/lib/types/account';
-import { AlertCircle, CheckCircle2, Loader2, Search, X } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Plus,
+  Search,
+  X,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface AppointmentDialogProps {
@@ -38,12 +48,32 @@ interface AppointmentDialogProps {
   selectedDateTime?: Date;
 }
 
-// Helper function to convert 24-hour time to 12-hour format with AM/PM
+type SelectedSegment = {
+  serviceVariationId: string;
+  teamMemberId: string;
+  durationMinutes: number;
+  serviceVariationVersion: string | undefined;
+  serviceName: string;
+  price: number;
+};
+
+type ServiceOption = {
+  variationId: string;
+  serviceName: string;
+  durationMinutes: number;
+  version: string | undefined;
+  price: number;
+};
+
 function formatTimeTo12Hour(time24: string): string {
   const [hours, minutes] = time24.split(':').map(Number);
   const period = hours >= 12 ? 'PM' : 'AM';
   const hours12 = hours % 12 || 12;
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+
+function formatPrice(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
 }
 
 export function AppointmentDialog({
@@ -56,7 +86,10 @@ export function AppointmentDialog({
   const [accountSearch, setAccountSearch] = useState('');
   const [debouncedAccountSearch, setDebouncedAccountSearch] = useState('');
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
-  const [serviceVariationId, setServiceVariationId] = useState<string>('');
+  const [selectedSegments, setSelectedSegments] = useState<SelectedSegment[]>(
+    [],
+  );
+  const [showAddServices, setShowAddServices] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [initialTimeFromClick, setInitialTimeFromClick] = useState<string>('');
@@ -88,14 +121,10 @@ export function AppointmentDialog({
       const month = (tzDate.getMonth() + 1).toString().padStart(2, '0');
       const day = tzDate.getDate().toString().padStart(2, '0');
       const initialDate = `${year}-${month}-${day}`;
-
       const hours = tzDate.getHours().toString().padStart(2, '0');
       const minutes = tzDate.getMinutes().toString().padStart(2, '0');
       const initialTime = `${hours}:${minutes}`;
-
-      if (selectedDate !== initialDate) {
-        setSelectedDate(initialDate);
-      }
+      if (selectedDate !== initialDate) setSelectedDate(initialDate);
       if (selectedTime !== initialTime) {
         setSelectedTime(initialTime);
         setInitialTimeFromClick(initialTime);
@@ -105,8 +134,6 @@ export function AppointmentDialog({
   }, [open, selectedDateTime]);
 
   useEffect(() => {
-    // Only clear time when date changes, but preserve time from initial click
-    // Don't clear when only serviceVariationId changes to keep the clicked time
     if (selectedDate && !initialTimeFromClick) {
       setSelectedTime('');
     }
@@ -115,15 +142,51 @@ export function AppointmentDialog({
   const { data: accountsData, isLoading: isAccountsLoading } = useAccounts(
     debouncedAccountSearch
       ? { search: debouncedAccountSearch, onlyWithSquareId: true }
-      : undefined
+      : undefined,
   );
   const { data: catalogItems, isLoading: isCatalogLoading } = useCatalogList();
+  const { data: teamMembers = [] } = useTeamMembers();
+
+  const defaultTeamMemberId = teamMembers[0]?.id || '';
+
+  const appointmentServices: ServiceOption[] = (catalogItems || [])
+    .filter((item) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const it = item as any;
+      return (
+        item.type === 'ITEM' &&
+        it.itemData?.productType === 'APPOINTMENTS_SERVICE'
+      );
+    })
+    .flatMap((item) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const it = item as any;
+      const variations: any[] = it.itemData?.variations || [];
+      return variations
+        .filter((v: any) => v.itemVariationData?.serviceDuration)
+        .map((v: any) => ({
+          variationId: v.id || '',
+          serviceName: it.itemData?.name || '',
+          durationMinutes: Math.round(
+            Number(v.itemVariationData?.serviceDuration || 0) / 60000,
+          ),
+          version: v.version?.toString(),
+          price: Number(v.itemVariationData?.priceMoney?.amount || 0),
+        }));
+    });
+
+  const availabilitySegments = selectedSegments.map((s) => ({
+    serviceVariationId: s.serviceVariationId,
+    teamMemberId: s.teamMemberId,
+  }));
+
   const { data: availableTimeSlots = [], isLoading: isLoadingAvailability } =
     useAvailability(
-      selectedDate && serviceVariationId
-        ? { selectedDate, serviceVariationId, teamMemberId: 'YG3C3GKYDQ23T' }
-        : null
+      selectedDate && selectedSegments.length > 0
+        ? { selectedDate, segments: availabilitySegments }
+        : null,
     );
+
   const createAppointment = useCreateAppointment();
 
   const handleAccountSelect = (account: Account) => {
@@ -139,13 +202,43 @@ export function AppointmentDialog({
     setAccountSearch('');
   };
 
+  const addService = (service: ServiceOption) => {
+    if (
+      selectedSegments.some((s) => s.serviceVariationId === service.variationId)
+    )
+      return;
+    setSelectedSegments((prev) => [
+      ...prev,
+      {
+        serviceVariationId: service.variationId,
+        teamMemberId: defaultTeamMemberId,
+        durationMinutes: service.durationMinutes,
+        serviceVariationVersion: service.version,
+        serviceName: service.serviceName,
+        price: service.price,
+      },
+    ]);
+    setSelectedTime('');
+  };
+
+  const removeSegment = (index: number) => {
+    setSelectedSegments((prev) => prev.filter((_, i) => i !== index));
+    setSelectedTime('');
+  };
+
+  const getTeamMemberName = (id: string) => {
+    const member = teamMembers.find((m) => m.id === id);
+    if (!member) return '';
+    return [member.givenName, member.familyName].filter(Boolean).join(' ');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess(false);
 
-    if (!selectedDate || !selectedTime || !serviceVariationId) {
-      setError('Please fill in all required fields');
+    if (!selectedDate || !selectedTime || selectedSegments.length === 0) {
+      setError('Please select at least one service, a date, and a time');
       return;
     }
 
@@ -158,36 +251,27 @@ export function AppointmentDialog({
       hours,
       minutes,
       0,
-      0
+      0,
     );
 
     try {
-      const variations = catalogItems
-        ?.filter((item) => item.type === 'ITEM')
-        .flatMap((item) => item.itemData?.variations);
-
-      const selectedItem = catalogItems
-        ?.filter((item) => item.type === 'ITEM')
-        .find((item) =>
-          item.itemData?.variations?.some((v) => v.id === serviceVariationId)
-        );
-      const serviceName = selectedItem?.itemData?.name || undefined;
+      const serviceNames = selectedSegments
+        .map((s) => s.serviceName)
+        .join(', ');
 
       await createAppointment.mutateAsync({
         startAt: bookingDateTime.toISOString(),
-        customerId: accountId,
+        customerId: accountId || undefined,
         customerNote: undefined,
-        serviceName,
-        appointmentSegments: [
-          {
-            durationMinutes: 30,
-            serviceVariationId,
-            teamMemberId: 'YG3C3GKYDQ23T',
-            serviceVariationVersion: variations?.find(
-              (variation) => variation?.id === serviceVariationId
-            )?.version,
-          },
-        ],
+        serviceName: serviceNames,
+        appointmentSegments: selectedSegments.map((s) => ({
+          durationMinutes: s.durationMinutes,
+          serviceVariationId: s.serviceVariationId,
+          teamMemberId: s.teamMemberId,
+          serviceVariationVersion: s.serviceVariationVersion as
+            | bigint
+            | undefined,
+        })),
       });
 
       setSuccess(true);
@@ -195,12 +279,12 @@ export function AppointmentDialog({
         onOpenChange(false);
         resetForm();
       }, 1500);
-    } catch (error) {
-      console.error('Error creating appointment:', error);
+    } catch (err) {
+      console.error('Error creating appointment:', err);
       setError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to create appointment. Please try again.'
+        err instanceof Error
+          ? err.message
+          : 'Failed to create appointment. Please try again.',
       );
     }
   };
@@ -209,7 +293,8 @@ export function AppointmentDialog({
     setAccountId('');
     setSelectedAccount(null);
     setAccountSearch('');
-    setServiceVariationId('');
+    setSelectedSegments([]);
+    setShowAddServices(false);
     setSelectedDate('');
     setSelectedTime('');
     setInitialTimeFromClick('');
@@ -242,50 +327,113 @@ export function AppointmentDialog({
           )}
 
           <div className='w-full mt-3'>
-            <Label htmlFor='service-variation-id' className='mb-2'>
-              Service <span className='text-red-500'>*</span>
+            <Label className='mb-3 block'>
+              Services <span className='text-red-500'>*</span>
             </Label>
-            <Select
-              value={serviceVariationId}
-              onValueChange={setServiceVariationId}
-              disabled={isCatalogLoading}
-            >
-              <SelectTrigger className='w-full' id='service-variation-id'>
-                <SelectValue
-                  placeholder={
-                    isCatalogLoading
-                      ? 'Loading services...'
-                      : 'Select a service'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent className='w-full'>
-                {catalogItems
-                  ?.filter((item) => item.type === 'ITEM')
-                  .map((item) => {
-                    const variations = item.itemData?.variations || [];
 
-                    return variations
-                      .filter(
-                        (variation) =>
-                          variation.type === 'ITEM_VARIATION' &&
-                          variation.itemVariationData?.availableForBooking
-                      )
-                      .map((variation) => {
-                        return (
-                          <SelectItem
-                            key={variation.id}
-                            value={variation.id || ''}
-                          >
-                            {item.itemData?.name}
-                          </SelectItem>
+            {selectedSegments.length > 0 && (
+              <div className='border rounded-lg mb-2 divide-y'>
+                {selectedSegments.map((segment, index) => (
+                  <div
+                    key={segment.serviceVariationId}
+                    className='flex items-start justify-between px-4 py-3'
+                  >
+                    <div>
+                      <p className='font-semibold text-sm'>
+                        {segment.serviceName}
+                      </p>
+                      {getTeamMemberName(segment.teamMemberId) && (
+                        <p className='text-sm text-neutral-500'>
+                          {getTeamMemberName(segment.teamMemberId)}
+                        </p>
+                      )}
+                      <p className='text-sm text-neutral-500'>
+                        {segment.durationMinutes} mins
+                      </p>
+                    </div>
+                    <div className='flex items-center gap-3'>
+                      <span className='text-sm font-medium'>
+                        {formatPrice(segment.price)}
+                      </span>
+                      <Button
+                        type='button'
+                        variant='ghost'
+                        size='sm'
+                        onClick={() => removeSegment(index)}
+                        className='h-6 w-6 p-0 text-neutral-400 hover:text-neutral-700'
+                      >
+                        <X className='w-4 h-4' />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type='button'
+              onClick={() => setShowAddServices((v) => !v)}
+              className='w-full flex items-center justify-between px-4 py-3 border rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors'
+            >
+              <span className='flex items-center gap-2'>
+                <Plus className='w-4 h-4' />
+                Add services
+              </span>
+              {showAddServices ? (
+                <ChevronUp className='w-4 h-4 text-neutral-400' />
+              ) : (
+                <ChevronDown className='w-4 h-4 text-neutral-400' />
+              )}
+            </button>
+
+            {showAddServices && (
+              <div className='border border-t-0 rounded-b-lg shadow-sm'>
+                {isCatalogLoading ? (
+                  <div className='p-4 text-center text-sm text-neutral-500'>
+                    <Loader2 className='w-4 h-4 animate-spin inline mr-2' />
+                    Loading services...
+                  </div>
+                ) : appointmentServices.length === 0 ? (
+                  <div className='p-4 text-center text-sm text-neutral-500'>
+                    No appointment services found
+                  </div>
+                ) : (
+                  <div className='px-4 pt-3 pb-1'>
+                    <div className='overflow-y-auto max-h-56'>
+                      {appointmentServices.map((service) => {
+                        const alreadyAdded = selectedSegments.some(
+                          (s) => s.serviceVariationId === service.variationId,
                         );
-                      });
-                  })}
-              </SelectContent>
-            </Select>
+                        return (
+                          <button
+                            key={service.variationId}
+                            type='button'
+                            disabled={alreadyAdded}
+                            onClick={() => addService(service)}
+                            className='w-full flex items-center justify-between py-3 border-b last:border-b-0 text-left hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+                          >
+                            <div>
+                              <p className='font-semibold text-sm'>
+                                {service.serviceName}
+                              </p>
+                              <p className='text-xs text-neutral-500'>
+                                {service.durationMinutes} mins
+                              </p>
+                            </div>
+                            <span className='text-sm font-medium'>
+                              {formatPrice(service.price)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
+          {/* Client */}
           <div className='relative account-search-container'>
             <Label htmlFor='client' className='mb-2'>
               Client
@@ -386,8 +534,9 @@ export function AppointmentDialog({
             )}
           </div>
 
+          {/* Date and time */}
           <div className='flex items-center gap-4 w-full'>
-            <div className='w-full '>
+            <div className='w-full'>
               <Label htmlFor='date' className='mb-2'>
                 Date <span className='text-red-500'>*</span>
               </Label>
@@ -401,7 +550,7 @@ export function AppointmentDialog({
               />
             </div>
 
-            <div className='w-full '>
+            <div className='w-full'>
               <Label htmlFor='time' className='mb-2'>
                 Time <span className='text-red-500'>*</span>
               </Label>
@@ -409,7 +558,9 @@ export function AppointmentDialog({
                 value={selectedTime}
                 onValueChange={setSelectedTime}
                 disabled={
-                  isLoadingAvailability || !selectedDate || !serviceVariationId
+                  isLoadingAvailability ||
+                  !selectedDate ||
+                  selectedSegments.length === 0
                 }
               >
                 <SelectTrigger className='w-full' id='time'>
@@ -417,11 +568,11 @@ export function AppointmentDialog({
                     placeholder={
                       isLoadingAvailability
                         ? 'Loading available times...'
-                        : !selectedDate || !serviceVariationId
-                        ? 'Select first'
-                        : availableTimeSlots.length === 0
-                        ? 'No available times'
-                        : 'Select a time'
+                        : !selectedDate || selectedSegments.length === 0
+                          ? 'Select first'
+                          : availableTimeSlots.length === 0
+                            ? 'No available times'
+                            : 'Select a time'
                     }
                   />
                 </SelectTrigger>

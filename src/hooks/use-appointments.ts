@@ -12,8 +12,10 @@ import type {
 
 type AvailabilityParams = {
   selectedDate: string;
-  serviceVariationId: string;
-  teamMemberId: string;
+  segments: Array<{
+    serviceVariationId: string;
+    teamMemberId: string;
+  }>;
 };
 
 export const appointmentKeys = {
@@ -241,7 +243,7 @@ export function useSearchAvailability() {
 async function fetchAvailability(
   params: AvailabilityParams
 ): Promise<string[]> {
-  const { selectedDate, serviceVariationId, teamMemberId } = params;
+  const { selectedDate, segments } = params;
 
   const response = await fetch('/api/appointments/search-availability', {
     method: 'POST',
@@ -253,14 +255,10 @@ async function fetchAvailability(
             startAt: `${selectedDate}T00:00:00.000Z`,
             endAt: `${selectedDate}T23:59:00.000Z`,
           },
-          segmentFilters: [
-            {
-              serviceVariationId,
-              teamMemberIdFilter: {
-                any: [teamMemberId],
-              },
-            },
-          ],
+          segmentFilters: segments.map((s) => ({
+            serviceVariationId: s.serviceVariationId,
+            teamMemberIdFilter: { any: [s.teamMemberId] },
+          })),
         },
       },
     }),
@@ -294,8 +292,8 @@ export function useAvailability(params: AvailabilityParams | null) {
     queryFn: () => fetchAvailability(params!),
     enabled:
       !!params?.selectedDate &&
-      !!params?.serviceVariationId &&
-      !!params?.teamMemberId,
+      !!params?.segments?.length &&
+      params.segments.every((s) => !!s.serviceVariationId && !!s.teamMemberId),
   });
 }
 
