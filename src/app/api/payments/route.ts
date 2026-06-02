@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const pageSize = Math.min(
       parseInt(searchParams.get('pageSize') || '50'),
-      200
+      200,
     );
     const pageIndex = parseInt(searchParams.get('pageIndex') || '0');
     const beginTime = searchParams.get('beginTime') || undefined;
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
       beginTime,
       endTime,
       sortOrder,
-      limit: 200, // Fetch a larger batch to support pagination
+      limit: 200, // Fetch larger batch to support pagination
     });
 
     const allPayments: Payment[] = [];
@@ -79,8 +79,8 @@ export async function GET(request: Request) {
 
     const serializedPayments: Payment[] = JSON.parse(
       JSON.stringify(paginatedPayments, (_, value) =>
-        typeof value === 'bigint' ? value.toString() : value
-      )
+        typeof value === 'bigint' ? value.toString() : value,
+      ),
     );
 
     return NextResponse.json({
@@ -96,7 +96,7 @@ export async function GET(request: Request) {
     console.error('Failed to fetch payments:', error);
     return NextResponse.json(
       { error: 'Failed to fetch payments' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
