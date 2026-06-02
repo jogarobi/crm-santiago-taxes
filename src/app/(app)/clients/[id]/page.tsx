@@ -112,6 +112,98 @@ import type { Business } from '@/lib/types/business';
 import type { AccountRelationship } from '@/lib/types/account-relationship';
 import type { Appointment } from '@/lib/types/appointment';
 
+type DatePreset = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
+
+function getDateRange(preset: DatePreset, customFrom: string, customTo: string) {
+  const now = new Date();
+  if (preset === 'today') {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    return { dateFrom: start.toISOString(), dateTo: end.toISOString() };
+  }
+  if (preset === 'this_week') {
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
+    const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6, 23, 59, 59, 999);
+    return { dateFrom: monday.toISOString(), dateTo: sunday.toISOString() };
+  }
+  if (preset === 'this_month') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    return { dateFrom: start.toISOString(), dateTo: end.toISOString() };
+  }
+  if (preset === 'custom') {
+    return {
+      dateFrom: customFrom ? new Date(customFrom).toISOString() : undefined,
+      dateTo: customTo ? new Date(customTo + 'T23:59:59.999').toISOString() : undefined,
+    };
+  }
+  return {};
+}
+
+function DateFilterBar({
+  preset,
+  setPreset,
+  customFrom,
+  setCustomFrom,
+  customTo,
+  setCustomTo,
+}: {
+  preset: DatePreset;
+  setPreset: (p: DatePreset) => void;
+  customFrom: string;
+  setCustomFrom: (v: string) => void;
+  customTo: string;
+  setCustomTo: (v: string) => void;
+}) {
+  const labels: Record<DatePreset, string> = {
+    all: 'All',
+    today: 'Today',
+    this_week: 'This Week',
+    this_month: 'This Month',
+    custom: 'Custom',
+  };
+  return (
+    <div className='flex items-center gap-2'>
+      {(['all', 'today', 'this_week', 'this_month', 'custom'] as DatePreset[]).map((p) => (
+        <button
+          key={p}
+          onClick={() => {
+            setPreset(p);
+            if (p !== 'custom') { setCustomFrom(''); setCustomTo(''); }
+          }}
+          className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+            preset === p
+              ? 'bg-purple text-white border-purple'
+              : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300 hover:text-neutral-900'
+          }`}
+        >
+          {labels[p]}
+        </button>
+      ))}
+      {preset === 'custom' && (
+        <>
+          <input
+            type='date'
+            value={customFrom}
+            onChange={(e) => setCustomFrom(e.target.value)}
+            className='text-sm border border-neutral-200 rounded-md px-2 py-1.5 text-neutral-700 focus:outline-none focus:ring-1 focus:ring-purple'
+          />
+          <span className='text-neutral-400 text-sm'>to</span>
+          <input
+            type='date'
+            value={customTo}
+            min={customFrom}
+            onChange={(e) => setCustomTo(e.target.value)}
+            className='text-sm border border-neutral-200 rounded-md px-2 py-1.5 text-neutral-700 focus:outline-none focus:ring-1 focus:ring-purple'
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
 type Props = {
   params: Promise<{ id: string }>;
 };
@@ -156,10 +248,25 @@ export default function AccountDetailPage({ params }: Props) {
   const [logTouchpointDialogOpen, setLogTouchpointDialogOpen] = useState(false);
   const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false);
 
+  // Date filters per tab
+  const [tpPreset, setTpPreset] = useState<DatePreset>('all');
+  const [tpCustomFrom, setTpCustomFrom] = useState('');
+  const [tpCustomTo, setTpCustomTo] = useState('');
+
+  const [notesPreset, setNotesPreset] = useState<DatePreset>('all');
+  const [notesCustomFrom, setNotesCustomFrom] = useState('');
+  const [notesCustomTo, setNotesCustomTo] = useState('');
+
+  const [tasksPreset, setTasksPreset] = useState<DatePreset>('all');
+  const [tasksCustomFrom, setTasksCustomFrom] = useState('');
+  const [tasksCustomTo, setTasksCustomTo] = useState('');
+
+  const notesDateRange = getDateRange(notesPreset, notesCustomFrom, notesCustomTo);
   const { data: notesData, isLoading: notesLoading } = useNotes(accountId, {
     search: notesSearchQuery || undefined,
     limit: notesLimit,
     offset: 0,
+    ...(notesPreset !== 'all' ? notesDateRange : {}),
   });
 
   const { data: appointments, isLoading: appointmentsLoading } =
@@ -167,9 +274,13 @@ export default function AccountDetailPage({ params }: Props) {
       accountId: accountId,
     });
 
+  const tpDateRange = getDateRange(tpPreset, tpCustomFrom, tpCustomTo);
   const { data: touchpoints, isLoading: touchpointsLoading } = useTouchpoints({
     accountId,
+    ...(tpPreset !== 'all' ? tpDateRange : {}),
   });
+
+  const tasksDateRange = getDateRange(tasksPreset, tasksCustomFrom, tasksCustomTo);
 
   const handleNoteClick = (note: Note) => {
     setSelectedNote(note);
@@ -452,21 +563,27 @@ export default function AccountDetailPage({ params }: Props) {
 
         <TabsContent value='notes'>
           <div className='bg-white border rounded-xl p-6.5'>
-            <div className='flex items-center gap-6 justify-between mb-7'>
-              <div className='flex items-center gap-4 w-full'>
-                <div className='relative w-full'>
-                  <SearchIcon
-                    className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'
-                    size={18}
-                  />
-                  <input
-                    type='text'
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    placeholder='Search notes...'
-                    className='pl-10 pr-3 py-3 rounded-lg border text-sm w-full'
-                  />
-                </div>
+            <div className='flex items-center gap-3 justify-between mb-7'>
+              <div className='relative flex-1'>
+                <SearchIcon
+                  className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'
+                  size={18}
+                />
+                <input
+                  type='text'
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder='Search notes...'
+                  className='pl-10 pr-3 py-3 rounded-lg border text-sm w-full'
+                />
               </div>
+              <DateFilterBar
+                preset={notesPreset}
+                setPreset={(p) => { setNotesPreset(p); setNotesLimit(4); }}
+                customFrom={notesCustomFrom}
+                setCustomFrom={setNotesCustomFrom}
+                customTo={notesCustomTo}
+                setCustomTo={setNotesCustomTo}
+              />
               <Button
                 className='bg-purple cursor-pointer'
                 onClick={() => setCreateNoteDialogOpen(true)}
@@ -881,13 +998,23 @@ export default function AccountDetailPage({ params }: Props) {
           <div className='bg-white border rounded-xl p-6'>
             <div className='flex items-center justify-between mb-6'>
               <h3 className='text-lg font-semibold'>Touchpoints</h3>
-              <Button
-                className='bg-purple cursor-pointer'
-                onClick={() => setLogTouchpointDialogOpen(true)}
-              >
-                <span>Log Touchpoint</span>
-                <PlusIcon />
-              </Button>
+              <div className='flex items-center gap-2'>
+                <DateFilterBar
+                  preset={tpPreset}
+                  setPreset={setTpPreset}
+                  customFrom={tpCustomFrom}
+                  setCustomFrom={setTpCustomFrom}
+                  customTo={tpCustomTo}
+                  setCustomTo={setTpCustomTo}
+                />
+                <Button
+                  className='bg-purple cursor-pointer'
+                  onClick={() => setLogTouchpointDialogOpen(true)}
+                >
+                  <span>Log Touchpoint</span>
+                  <PlusIcon />
+                </Button>
+              </div>
             </div>
 
             {touchpointsLoading ? (
@@ -968,16 +1095,29 @@ export default function AccountDetailPage({ params }: Props) {
           <div className='bg-white border rounded-xl p-6'>
             <div className='flex items-center justify-between mb-6'>
               <h3 className='text-lg font-semibold'>Tasks</h3>
-              <Button
-                className='bg-purple cursor-pointer'
-                onClick={() => setCreateTaskDialogOpen(true)}
-              >
-                <span>New Task</span>
-                <PlusIcon />
-              </Button>
+              <div className='flex items-center gap-2'>
+                <DateFilterBar
+                  preset={tasksPreset}
+                  setPreset={setTasksPreset}
+                  customFrom={tasksCustomFrom}
+                  setCustomFrom={setTasksCustomFrom}
+                  customTo={tasksCustomTo}
+                  setCustomTo={setTasksCustomTo}
+                />
+                <Button
+                  className='bg-purple cursor-pointer'
+                  onClick={() => setCreateTaskDialogOpen(true)}
+                >
+                  <span>New Task</span>
+                  <PlusIcon />
+                </Button>
+              </div>
             </div>
 
-            <TasksList accountId={accountId} />
+            <TasksList
+              accountId={accountId}
+              {...(tasksPreset !== 'all' ? tasksDateRange : {})}
+            />
           </div>
         </TabsContent>
 

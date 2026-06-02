@@ -134,6 +134,14 @@ export async function PUT(
       updateData.assignedTo = body.assignedTo;
     }
 
+    if (body.accountId !== undefined) {
+      updateData.accountId = body.accountId;
+    }
+
+    if (body.businessId !== undefined) {
+      updateData.businessId = body.businessId;
+    }
+
     const updatedTask = await db
       .update(task)
       .set(updateData)

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { business, businessEntity, clientAccount } from '@/db/migrations/schema';
-import { eq, desc, like, or, and, count } from 'drizzle-orm';
+import { eq, desc, asc, like, or, and, count, isNotNull } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
@@ -11,6 +11,9 @@ export async function GET(request: Request) {
     const search = searchParams.get('search');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const pageIndex = parseInt(searchParams.get('pageIndex') || '0');
+    const sortBy = searchParams.get('sortBy');
+    const sortDir = searchParams.get('sortDir') as 'asc' | 'desc' | null;
+    const createdBy = searchParams.get('createdBy');
 
     // Build where conditions
     const conditions = [];
@@ -24,6 +27,10 @@ export async function GET(request: Request) {
           like(clientAccount.lastName, `%${search.trim()}%`)
         )
       );
+    }
+
+    if (createdBy) {
+      conditions.push(eq(business.createdBy, createdBy));
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -68,7 +75,13 @@ export async function GET(request: Request) {
       .leftJoin(businessEntity, eq(business.entityId, businessEntity.id))
       .leftJoin(clientAccount, eq(business.accountId, clientAccount.id))
       .where(whereClause)
-      .orderBy(desc(business.createdAt))
+      .orderBy(
+        sortBy === 'name'
+          ? sortDir === 'desc'
+            ? desc(business.registeredName)
+            : asc(business.registeredName)
+          : desc(business.createdAt)
+      )
       .limit(pageSize)
       .offset(pageIndex * pageSize);
 

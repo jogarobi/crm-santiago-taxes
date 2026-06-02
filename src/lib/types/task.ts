@@ -11,6 +11,8 @@ export type Task = {
   createdBy: string;
   updatedAt: string | null;
   updatedBy: string | null;
+  accountName?: string | null;
+  businessName?: string | null;
 };
 
 export type CreateTaskInput = {
@@ -26,6 +28,8 @@ export type UpdateTaskInput = {
   content?: string;
   status?: TaskStatus;
   assignedTo?: string;
+  accountId?: number | null;
+  businessId?: number | null;
   updatedBy: string;
 };
 

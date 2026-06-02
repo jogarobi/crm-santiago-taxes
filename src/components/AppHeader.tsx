@@ -42,7 +42,7 @@ export function AppHeader() {
         <SidebarTrigger />
         <PageHeader />
         <div className='flex items-center gap-3'>
-          <Link href='https://online.taxslayerpro.com/'>
+          <Link href='https://online.taxslayerpro.com/' target='_blank' rel='noopener noreferrer'>
             <Button className='cursor-pointer'>
               <span>Go to TaxSlayerPro</span>
               <ArrowUpRightIcon />

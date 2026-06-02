@@ -17,6 +17,8 @@ export interface FetchNotesParams {
   limit?: number;
   offset?: number;
   businessId?: number;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface NotesResponse {
@@ -49,6 +51,12 @@ async function fetchNotes(
   }
   if (params?.businessId !== undefined) {
     urlParams.append('businessId', params.businessId.toString());
+  }
+  if (params?.dateFrom) {
+    urlParams.append('dateFrom', params.dateFrom);
+  }
+  if (params?.dateTo) {
+    urlParams.append('dateTo', params.dateTo);
   }
 
   const response = await fetch(`/api/notes?${urlParams.toString()}`);

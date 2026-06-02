@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTasks, useUpdateTask, useDeleteTask } from '@/hooks/use-tasks';
 import { useStaff } from '@/hooks/use-staff';
+import { useAccounts } from '@/hooks/use-accounts';
+import { useAllBusinesses } from '@/hooks/use-businesses';
 import { authClient } from '@/app/api/clients';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -30,13 +33,20 @@ import {
   ClockIcon,
   UserIcon,
   SearchIcon,
+  UserCircleIcon,
+  BuildingIcon,
+  Building2Icon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Task, TaskStatus } from '@/lib/types/task';
 
+type LinkType = 'none' | 'client' | 'business';
+
 interface TasksListProps {
   accountId?: number;
   businessId?: number;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 interface EditTaskData {
@@ -44,6 +54,11 @@ interface EditTaskData {
   content: string;
   status: TaskStatus;
   assignedTo: string;
+  linkType: LinkType;
+  selectedAccountId: number | null;
+  selectedAccountName: string | null;
+  selectedBusinessId: number | null;
+  selectedBusinessName: string | null;
 }
 
 function getStatusColor(status: TaskStatus): string {
@@ -80,20 +95,29 @@ function getStatusLabel(status: TaskStatus): string {
   }
 }
 
-export function TasksList({ accountId, businessId }: TasksListProps) {
+export function TasksList({ accountId, businessId, dateFrom, dateTo }: TasksListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [limit, setLimit] = useState(10);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editTaskData, setEditTaskData] = useState<EditTaskData | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  const [linkSearchInput, setLinkSearchInput] = useState('');
+  const [debouncedLinkSearch, setDebouncedLinkSearch] = useState('');
 
   const { data: session } = authClient.useSession();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedLinkSearch(linkSearchInput), 400);
+    return () => clearTimeout(timer);
+  }, [linkSearchInput]);
 
   const { data: tasksResponse, isLoading } = useTasks({
     accountId,
     businessId,
     search: searchQuery || undefined,
+    dateFrom,
+    dateTo,
     limit,
     offset: 0,
   });
@@ -102,11 +126,24 @@ export function TasksList({ accountId, businessId }: TasksListProps) {
     pageSize: 100,
   });
 
+  const { data: accountsData, isLoading: isLoadingAccounts } = useAccounts(
+    editTaskData?.linkType === 'client' && !editTaskData.selectedAccountId && debouncedLinkSearch
+      ? { search: debouncedLinkSearch, pageSize: 10 }
+      : undefined,
+  );
+  const { data: businessesData, isLoading: isLoadingBusinesses } = useAllBusinesses(
+    editTaskData?.linkType === 'business' && !editTaskData.selectedBusinessId && debouncedLinkSearch
+      ? { search: debouncedLinkSearch, pageSize: 10 }
+      : undefined,
+  );
+
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
 
   const tasks = tasksResponse?.tasks || [];
   const staffMembers = staffResponse?.data || [];
+  const searchedAccounts = accountsData?.data || [];
+  const searchedBusinesses = businessesData?.data || [];
   const hasMore = tasksResponse?.hasMore || false;
 
   const handleSearchChange = (value: string) => {
@@ -119,12 +156,20 @@ export function TasksList({ accountId, businessId }: TasksListProps) {
   };
 
   const handleEditTask = (task: Task) => {
+    const linkType: LinkType = task.businessId ? 'business' : task.accountId ? 'client' : 'none';
     setEditTaskData({
       task,
       content: task.content,
       status: task.status,
       assignedTo: task.assignedTo || 'unassigned',
+      linkType,
+      selectedAccountId: task.accountId ?? null,
+      selectedAccountName: task.accountName ?? null,
+      selectedBusinessId: task.businessId ?? null,
+      selectedBusinessName: task.businessName ?? null,
     });
+    setLinkSearchInput('');
+    setDebouncedLinkSearch('');
     setEditDialogOpen(true);
   };
 
@@ -136,6 +181,11 @@ export function TasksList({ accountId, businessId }: TasksListProps) {
         ? editTaskData.assignedTo
         : undefined;
 
+    const accountId =
+      editTaskData.linkType === 'client' ? (editTaskData.selectedAccountId ?? null) : null;
+    const businessId =
+      editTaskData.linkType === 'business' ? (editTaskData.selectedBusinessId ?? null) : null;
+
     updateTask.mutate(
       {
         taskId: editTaskData.task.id,
@@ -143,6 +193,8 @@ export function TasksList({ accountId, businessId }: TasksListProps) {
           content: editTaskData.content,
           status: editTaskData.status,
           assignedTo: assignedToValue,
+          accountId,
+          businessId,
           updatedBy: session.user.id,
         },
       },
@@ -261,6 +313,28 @@ export function TasksList({ accountId, businessId }: TasksListProps) {
                     </div>
                   </CardHeader>
                   <CardContent className='px-4 pt-0 space-y-2'>
+                    {task.businessName && (
+                      <div className='flex items-center gap-1'>
+                        <BuildingIcon
+                          className='w-4 h-4 text-neutral-500'
+                          strokeWidth={2}
+                        />
+                        <p className='text-sm text-neutral-600 font-medium'>
+                          {task.businessName}
+                        </p>
+                      </div>
+                    )}
+                    {!task.businessName && task.accountName && (
+                      <div className='flex items-center gap-1'>
+                        <UserCircleIcon
+                          className='w-4 h-4 text-neutral-500'
+                          strokeWidth={2}
+                        />
+                        <p className='text-sm text-neutral-600 font-medium'>
+                          {task.accountName}
+                        </p>
+                      </div>
+                    )}
                     {assignedStaff && (
                       <div className='flex items-center gap-1'>
                         <UserIcon
@@ -310,13 +384,16 @@ export function TasksList({ accountId, businessId }: TasksListProps) {
       )}
 
       {/* Edit Task Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+      <Dialog open={editDialogOpen} onOpenChange={(open) => {
+        setEditDialogOpen(open);
+        if (!open) { setEditTaskData(null); setLinkSearchInput(''); }
+      }}>
+        <DialogContent className='max-w-xl'>
           <DialogHeader>
             <DialogTitle>Edit Task</DialogTitle>
           </DialogHeader>
           {editTaskData && (
-            <div className='space-y-7 py-4'>
+            <div className='space-y-5 py-4'>
               <div className='space-y-3'>
                 <Label htmlFor='edit-content'>Task Description</Label>
                 <Textarea
@@ -324,10 +401,7 @@ export function TasksList({ accountId, businessId }: TasksListProps) {
                   placeholder='Enter task description...'
                   value={editTaskData.content}
                   onChange={(e) =>
-                    setEditTaskData({
-                      ...editTaskData,
-                      content: e.target.value,
-                    })
+                    setEditTaskData({ ...editTaskData, content: e.target.value })
                   }
                   rows={3}
                 />
@@ -351,6 +425,172 @@ export function TasksList({ accountId, businessId }: TasksListProps) {
                     <SelectItem value='abandoned'>Abandoned</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className='space-y-3'>
+                <Label>Link to (Optional)</Label>
+                <Select
+                  value={editTaskData.linkType}
+                  onValueChange={(value: LinkType) => {
+                    setEditTaskData({
+                      ...editTaskData,
+                      linkType: value,
+                      selectedAccountId: null,
+                      selectedAccountName: null,
+                      selectedBusinessId: null,
+                      selectedBusinessName: null,
+                    });
+                    setLinkSearchInput('');
+                  }}
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='none'>None (General Task)</SelectItem>
+                    <SelectItem value='client'>Client Account</SelectItem>
+                    <SelectItem value='business'>Business</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {editTaskData.linkType === 'client' && editTaskData.selectedAccountId && (
+                  <div className='flex items-center justify-between p-3 bg-neutral-50 border rounded-lg'>
+                    <div className='flex items-center gap-2'>
+                      <UserCircleIcon className='w-5 h-5 text-neutral-500' />
+                      <span className='text-sm font-medium text-neutral-900'>
+                        {editTaskData.selectedAccountName}
+                      </span>
+                    </div>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='sm'
+                      className='h-7 text-neutral-500'
+                      onClick={() => {
+                        setEditTaskData({ ...editTaskData, selectedAccountId: null, selectedAccountName: null });
+                        setLinkSearchInput('');
+                      }}
+                    >
+                      Change
+                    </Button>
+                  </div>
+                )}
+
+                {editTaskData.linkType === 'client' && !editTaskData.selectedAccountId && (
+                  <div className='space-y-2'>
+                    <div className='relative'>
+                      <SearchIcon className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400' />
+                      <Input
+                        placeholder='Search client by name...'
+                        value={linkSearchInput}
+                        onChange={(e) => setLinkSearchInput(e.target.value)}
+                        className='pl-9'
+                      />
+                    </div>
+                    <div className='flex flex-col gap-1 max-h-40 overflow-y-auto border rounded-lg'>
+                      {isLoadingAccounts ? (
+                        <div className='flex items-center justify-center py-6'>
+                          <Loader2 className='w-4 h-4 animate-spin text-neutral-400' />
+                        </div>
+                      ) : searchedAccounts.length === 0 ? (
+                        <p className='text-center py-6 text-sm text-neutral-400'>
+                          {linkSearchInput ? 'No clients found' : 'Start typing to search'}
+                        </p>
+                      ) : (
+                        searchedAccounts.map((account) => (
+                          <div
+                            key={account.id}
+                            className='flex items-center gap-3 px-3 py-2 hover:bg-neutral-50 cursor-pointer'
+                            onClick={() => {
+                              setEditTaskData({
+                                ...editTaskData,
+                                selectedAccountId: account.id,
+                                selectedAccountName: `${account.firstName} ${account.lastName}`,
+                              });
+                              setLinkSearchInput('');
+                            }}
+                          >
+                            <div className='w-7 h-7 rounded-full bg-purple/10 flex items-center justify-center text-purple text-xs font-semibold'>
+                              {account.firstName[0]}{account.lastName[0]}
+                            </div>
+                            <span className='text-sm font-medium text-neutral-900'>
+                              {account.firstName} {account.lastName}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {editTaskData.linkType === 'business' && editTaskData.selectedBusinessId && (
+                  <div className='flex items-center justify-between p-3 bg-neutral-50 border rounded-lg'>
+                    <div className='flex items-center gap-2'>
+                      <Building2Icon className='w-5 h-5 text-neutral-500' />
+                      <span className='text-sm font-medium text-neutral-900'>
+                        {editTaskData.selectedBusinessName}
+                      </span>
+                    </div>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='sm'
+                      className='h-7 text-neutral-500'
+                      onClick={() => {
+                        setEditTaskData({ ...editTaskData, selectedBusinessId: null, selectedBusinessName: null });
+                        setLinkSearchInput('');
+                      }}
+                    >
+                      Change
+                    </Button>
+                  </div>
+                )}
+
+                {editTaskData.linkType === 'business' && !editTaskData.selectedBusinessId && (
+                  <div className='space-y-2'>
+                    <div className='relative'>
+                      <SearchIcon className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400' />
+                      <Input
+                        placeholder='Search business by name...'
+                        value={linkSearchInput}
+                        onChange={(e) => setLinkSearchInput(e.target.value)}
+                        className='pl-9'
+                      />
+                    </div>
+                    <div className='flex flex-col gap-1 max-h-40 overflow-y-auto border rounded-lg'>
+                      {isLoadingBusinesses ? (
+                        <div className='flex items-center justify-center py-6'>
+                          <Loader2 className='w-4 h-4 animate-spin text-neutral-400' />
+                        </div>
+                      ) : searchedBusinesses.length === 0 ? (
+                        <p className='text-center py-6 text-sm text-neutral-400'>
+                          {linkSearchInput ? 'No businesses found' : 'Start typing to search'}
+                        </p>
+                      ) : (
+                        searchedBusinesses.map((biz) => (
+                          <div
+                            key={biz.id}
+                            className='flex items-center gap-3 px-3 py-2 hover:bg-neutral-50 cursor-pointer'
+                            onClick={() => {
+                              setEditTaskData({
+                                ...editTaskData,
+                                selectedBusinessId: biz.id,
+                                selectedBusinessName: biz.registeredName,
+                              });
+                              setLinkSearchInput('');
+                            }}
+                          >
+                            <div className='w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-700'>
+                              <Building2Icon size={14} />
+                            </div>
+                            <span className='text-sm font-medium text-neutral-900'>
+                              {biz.registeredName}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className='space-y-3'>
                 <Label htmlFor='edit-assignedTo'>Assign To (Optional)</Label>

@@ -18,6 +18,8 @@ export interface FetchTasksParams {
   status?: TaskStatus;
   assignedTo?: string;
   search?: string;
+  dateFrom?: string;
+  dateTo?: string;
   limit?: number;
   offset?: number;
 }
@@ -55,6 +57,12 @@ async function fetchTasks(
   }
   if (params?.search) {
     urlParams.append('search', params.search);
+  }
+  if (params?.dateFrom) {
+    urlParams.append('dateFrom', params.dateFrom);
+  }
+  if (params?.dateTo) {
+    urlParams.append('dateTo', params.dateTo);
   }
   if (params?.limit !== undefined) {
     urlParams.append('limit', params.limit.toString());

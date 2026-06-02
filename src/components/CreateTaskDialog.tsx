@@ -51,7 +51,7 @@ export function CreateTaskDialog({
   const [linkType, setLinkType] = useState<LinkType>('none');
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
-    null
+    null,
   );
 
   // Search state
@@ -76,7 +76,7 @@ export function CreateTaskDialog({
   const { data: accountsData, isLoading: isLoadingAccounts } = useAccounts(
     linkType === 'client' && debouncedSearch && !isContextMode
       ? { search: debouncedSearch, pageSize }
-      : undefined
+      : undefined,
   );
 
   // Fetch businesses for search
@@ -84,7 +84,7 @@ export function CreateTaskDialog({
     useAllBusinesses(
       linkType === 'business' && debouncedSearch && !isContextMode
         ? { search: debouncedSearch, pageSize }
-        : undefined
+        : undefined,
     );
 
   const staffMembers = staffResponse?.data || [];
@@ -339,7 +339,7 @@ export function CreateTaskDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className='flex flex-col gap-4 mt-2'>
+        <div className='flex flex-col gap-10 mt-2'>
           {error && (
             <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
               <p className='text-red-800 text-sm'>{error}</p>
@@ -376,10 +376,10 @@ export function CreateTaskDialog({
               </Button>
             </>
           ) : (
-            <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
+            <form onSubmit={handleSubmit} className='flex flex-col gap-6'>
               {!isContextMode && (
                 <>
-                  <div className='flex flex-col gap-2'>
+                  <div className='flex flex-col gap-3'>
                     <Label htmlFor='linkType'>Link to (Optional)</Label>
                     <Select
                       value={linkType}
@@ -389,11 +389,13 @@ export function CreateTaskDialog({
                         setSelectedBusiness(null);
                       }}
                     >
-                      <SelectTrigger id='linkType'>
+                      <SelectTrigger id='linkType' className='w-full'>
                         <SelectValue placeholder='Select link type...' />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value='none'>None (General Task)</SelectItem>
+                        <SelectItem value='none'>
+                          None (General Task)
+                        </SelectItem>
                         <SelectItem value='client'>Client Account</SelectItem>
                         <SelectItem value='business'>Business</SelectItem>
                       </SelectContent>
@@ -460,7 +462,7 @@ export function CreateTaskDialog({
                 </>
               )}
 
-              <div className='flex flex-col gap-2'>
+              <div className='flex flex-col gap-3'>
                 <Label htmlFor='content'>Task Description</Label>
                 <Textarea
                   id='content'
@@ -473,10 +475,10 @@ export function CreateTaskDialog({
                 />
               </div>
 
-              <div className='flex flex-col gap-2'>
+              <div className='flex flex-col gap-3'>
                 <Label htmlFor='assignedTo'>Assign To (Optional)</Label>
                 <Select value={assignedTo} onValueChange={setAssignedTo}>
-                  <SelectTrigger id='assignedTo'>
+                  <SelectTrigger id='assignedTo' className='w-full'>
                     <SelectValue placeholder='Select a staff member...' />
                   </SelectTrigger>
                   <SelectContent>

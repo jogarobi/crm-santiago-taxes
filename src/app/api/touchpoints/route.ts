@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { activity, activityType, service } from '@/db/migrations/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, gte, lte } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
@@ -11,6 +11,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('accountId');
     const businessId = searchParams.get('businessId');
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
@@ -43,6 +45,13 @@ export async function GET(request: Request) {
         );
       }
       conditions.push(eq(activity.businessId, businessIdInt));
+    }
+
+    if (dateFrom) {
+      conditions.push(gte(activity.createdAt, dateFrom));
+    }
+    if (dateTo) {
+      conditions.push(lte(activity.createdAt, dateTo));
     }
 
     const whereClause = conditions.length > 1

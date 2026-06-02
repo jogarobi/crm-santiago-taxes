@@ -5,7 +5,7 @@ import type { Touchpoint, CreateTouchpointInput } from '@/lib/types/touchpoint';
 export const touchpointKeys = {
   all: ['touchpoints'] as const,
   lists: () => [...touchpointKeys.all, 'list'] as const,
-  list: (params: { accountId?: number; businessId?: number }) => [...touchpointKeys.lists(), params] as const,
+  list: (params: FetchTouchpointsParams) => [...touchpointKeys.lists(), params] as const,
 };
 
 // Types
@@ -23,6 +23,8 @@ export interface TouchpointResponse {
 export interface FetchTouchpointsParams {
   accountId?: number;
   businessId?: number;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 // API Functions
@@ -34,6 +36,12 @@ async function fetchTouchpoints(params: FetchTouchpointsParams): Promise<Touchpo
   }
   if (params.businessId !== undefined) {
     urlParams.append('businessId', params.businessId.toString());
+  }
+  if (params.dateFrom) {
+    urlParams.append('dateFrom', params.dateFrom);
+  }
+  if (params.dateTo) {
+    urlParams.append('dateTo', params.dateTo);
   }
 
   const response = await fetch(`/api/touchpoints?${urlParams.toString()}`);

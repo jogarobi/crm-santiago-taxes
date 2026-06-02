@@ -28,6 +28,9 @@ export interface FetchAccountsParams {
   pageIndex?: number;
   onlyWithSquareId?: boolean;
   accountType?: 'all' | 'clients' | 'businesses';
+  sortBy?: 'name';
+  sortDir?: 'asc' | 'desc';
+  createdBy?: string;
 }
 
 export interface AccountCountResponse {
@@ -53,6 +56,15 @@ async function fetchAccounts(params?: FetchAccountsParams): Promise<PaginatedAcc
   }
   if (params?.accountType) {
     urlParams.append('accountType', params.accountType);
+  }
+  if (params?.sortBy) {
+    urlParams.append('sortBy', params.sortBy);
+  }
+  if (params?.sortDir) {
+    urlParams.append('sortDir', params.sortDir);
+  }
+  if (params?.createdBy) {
+    urlParams.append('createdBy', params.createdBy);
   }
 
   const url = `/api/accounts${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
@@ -166,6 +178,20 @@ export function useDeleteAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accountKeys.lists() });
     },
+  });
+}
+
+async function fetchAccountCreators(): Promise<string[]> {
+  const response = await fetch('/api/accounts/creators');
+  if (!response.ok) throw new Error('Failed to fetch creators');
+  const data: { creators: string[] } = await response.json();
+  return data.creators;
+}
+
+export function useAccountCreators() {
+  return useQuery({
+    queryKey: [...accountKeys.all, 'creators'] as const,
+    queryFn: fetchAccountCreators,
   });
 }
 

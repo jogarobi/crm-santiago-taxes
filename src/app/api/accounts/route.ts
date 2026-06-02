@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { clientAccount, business } from '@/db/migrations/schema';
-import { or, like, eq, count, sql } from 'drizzle-orm';
+import { or, like, eq, count, sql, asc, desc } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
@@ -13,6 +13,9 @@ export async function GET(request: Request) {
     const accountType = searchParams.get('accountType') || 'all';
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const pageIndex = parseInt(searchParams.get('pageIndex') || '0');
+    const sortBy = searchParams.get('sortBy');
+    const sortDir = searchParams.get('sortDir') as 'asc' | 'desc' | null;
+    const createdBy = searchParams.get('createdBy');
 
     const offset = pageIndex * pageSize;
 
@@ -42,6 +45,10 @@ export async function GET(request: Request) {
       conditions.push(sql`${clientAccount.squareId} IS NOT NULL`);
     }
 
+    if (createdBy) {
+      conditions.push(eq(clientAccount.createdBy, createdBy));
+    }
+
     if (accountType === 'clients') {
       conditions.push(sql`NOT EXISTS (
         SELECT 1 FROM ${business}
@@ -64,10 +71,17 @@ export async function GET(request: Request) {
 
     const total = totalResult[0]?.count || 0;
 
+    const dir = sortDir === 'desc' ? desc : asc;
+    const orderBy =
+      sortBy === 'name'
+        ? [dir(clientAccount.firstName), dir(clientAccount.lastName)]
+        : [asc(clientAccount.id)];
+
     const clientAccounts = await db
       .select()
       .from(clientAccount)
       .where(whereClause)
+      .orderBy(...orderBy)
       .limit(pageSize)
       .offset(offset);
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccounts } from '@/hooks/use-accounts';
+import { useAccounts, useAccountCreators } from '@/hooks/use-accounts';
 import {
   Table,
   TableBody,
@@ -18,6 +18,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ListFilter,
+  Check,
 } from 'lucide-react';
 import {
   InputGroup,
@@ -31,6 +36,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { CreateClientDialog } from '@/components/CreateClientDialog';
 
 export default function ClientsPage() {
@@ -39,6 +51,8 @@ export default function ClientsPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [createdByFilter, setCreatedByFilter] = useState<string>('');
 
   useEffect(() => {
     document.title = 'Clients | Santiago Taxes CRM';
@@ -62,13 +76,38 @@ export default function ClientsPage() {
     pageSize,
     pageIndex,
     accountType: 'clients',
+    sortBy: 'name',
+    sortDir,
+    createdBy: createdByFilter || undefined,
   });
+
+  const { data: creators = [] } = useAccountCreators();
+
+  const toggleNameSort = () => {
+    setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    setPageIndex(0);
+  };
 
   const accounts = response?.data || [];
   const meta = response?.meta;
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '—';
+
+    let d = new Date(dateString);
+
+    // Handle DD/M/YY or DD/MM/YYYY stored as slash-separated strings
+    if (isNaN(d.getTime()) && dateString.includes('/')) {
+      const [dayStr, monthStr, yearStr] = dateString.split('/');
+      const day = parseInt(dayStr, 10);
+      const month = parseInt(monthStr, 10) - 1;
+      let year = parseInt(yearStr, 10);
+      if (year < 100) year += year < 30 ? 2000 : 1900;
+      d = new Date(year, month, day);
+    }
+
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -145,12 +184,56 @@ export default function ClientsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className='p-4'>Name</TableHead>
+                <TableHead className='p-4'>
+                  <button
+                    onClick={toggleNameSort}
+                    className='flex items-center gap-1 hover:text-neutral-900 transition-colors'
+                  >
+                    Name
+                    {sortDir === 'asc' ? (
+                      <ArrowUp className='w-3.5 h-3.5' />
+                    ) : sortDir === 'desc' ? (
+                      <ArrowDown className='w-3.5 h-3.5' />
+                    ) : (
+                      <ArrowUpDown className='w-3.5 h-3.5 text-neutral-400' />
+                    )}
+                  </button>
+                </TableHead>
                 <TableHead className='p-4'>Date of Birth</TableHead>
                 <TableHead className='p-4'>SSN (Last 4)</TableHead>
-                <TableHead className='p-4'>Address</TableHead>
                 <TableHead className='p-4'>Created</TableHead>
-                <TableHead className='p-4'>Created By</TableHead>
+                <TableHead className='p-4'>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className='flex items-center gap-1 hover:text-neutral-900 transition-colors'>
+                        Created By
+                        <ListFilter
+                          className={`w-3.5 h-3.5 ${createdByFilter ? 'text-purple' : 'text-neutral-400'}`}
+                        />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align='start' className='min-w-[10rem]'>
+                      <DropdownMenuItem
+                        onClick={() => { setCreatedByFilter(''); setPageIndex(0); }}
+                        className='flex items-center gap-2'
+                      >
+                        <Check className={`w-3.5 h-3.5 ${!createdByFilter ? 'opacity-100' : 'opacity-0'}`} />
+                        All creators
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {creators.map((name) => (
+                        <DropdownMenuItem
+                          key={name}
+                          onClick={() => { setCreatedByFilter(name); setPageIndex(0); }}
+                          className='flex items-center gap-2'
+                        >
+                          <Check className={`w-3.5 h-3.5 ${createdByFilter === name ? 'opacity-100' : 'opacity-0'}`} />
+                          {name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -170,11 +253,7 @@ export default function ClientsPage() {
                     </div>
                   </TableCell>
                   <TableCell className='p-4'>
-                    {new Date(account.dateOfBirth).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
+                    {formatDate(account.dateOfBirth)}
                   </TableCell>
                   <TableCell className='p-4'>
                     {account.ssnLastFour ? (
@@ -184,13 +263,6 @@ export default function ClientsPage() {
                     )}
                   </TableCell>
 
-                  <TableCell className='p-4'>
-                    {account.city && account.state && (
-                      <span>
-                        {account.address} {account.city}, {account.state}
-                      </span>
-                    )}
-                  </TableCell>
                   <TableCell className='p-4'>
                     {formatDate(account.createdAt)}
                   </TableCell>

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { task, staff } from '@/db/migrations/schema';
-import { eq, desc, like, and, count } from 'drizzle-orm';
+import { task, staff, clientAccount, business } from '@/db/migrations/schema';
+import { eq, desc, like, and, count, sql, gte, lte } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
@@ -14,6 +14,8 @@ export async function GET(request: Request) {
     const status = searchParams.get('status');
     const assignedTo = searchParams.get('assignedTo');
     const search = searchParams.get('search');
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
     const limit = parseInt(searchParams.get('limit') || '100');
     const offset = parseInt(searchParams.get('offset') || '0');
 
@@ -78,6 +80,14 @@ export async function GET(request: Request) {
       conditions.push(like(task.content, `%${search.trim()}%`));
     }
 
+    if (dateFrom) {
+      conditions.push(gte(task.createdAt, dateFrom));
+    }
+
+    if (dateTo) {
+      conditions.push(lte(task.createdAt, dateTo));
+    }
+
     const whereClause =
       conditions.length > 1
         ? and(...conditions)
@@ -93,10 +103,25 @@ export async function GET(request: Request) {
 
     const total = totalResult[0]?.count || 0;
 
-    // Get paginated tasks
+    // Get paginated tasks with joined account/business names
     const tasks = await db
-      .select()
+      .select({
+        id: task.id,
+        accountId: task.accountId,
+        businessId: task.businessId,
+        content: task.content,
+        status: task.status,
+        assignedTo: task.assignedTo,
+        createdAt: task.createdAt,
+        createdBy: task.createdBy,
+        updatedAt: task.updatedAt,
+        updatedBy: task.updatedBy,
+        accountName: sql<string | null>`CASE WHEN ${clientAccount.firstName} IS NOT NULL THEN ${clientAccount.firstName} || ' ' || ${clientAccount.lastName} ELSE NULL END`,
+        businessName: business.registeredName,
+      })
       .from(task)
+      .leftJoin(clientAccount, eq(task.accountId, clientAccount.id))
+      .leftJoin(business, eq(task.businessId, business.id))
       .where(whereClause)
       .orderBy(desc(task.createdAt))
       .limit(limit)

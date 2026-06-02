@@ -6,6 +6,9 @@ export interface FetchAllBusinessesParams {
   search?: string;
   pageSize?: number;
   pageIndex?: number;
+  sortBy?: 'name';
+  sortDir?: 'asc' | 'desc';
+  createdBy?: string;
 }
 
 export interface AllBusinessesResponse {
@@ -51,6 +54,15 @@ async function fetchAllBusinesses(
   }
   if (params?.pageIndex !== undefined) {
     urlParams.append('pageIndex', params.pageIndex.toString());
+  }
+  if (params?.sortBy) {
+    urlParams.append('sortBy', params.sortBy);
+  }
+  if (params?.sortDir) {
+    urlParams.append('sortDir', params.sortDir);
+  }
+  if (params?.createdBy) {
+    urlParams.append('createdBy', params.createdBy);
   }
 
   const response = await fetch(`/api/businesses?${urlParams.toString()}`);
@@ -128,6 +140,20 @@ async function deleteBusiness(
 }
 
 // Hooks
+async function fetchBusinessCreators(): Promise<string[]> {
+  const response = await fetch('/api/businesses/creators');
+  if (!response.ok) throw new Error('Failed to fetch creators');
+  const data: { creators: string[] } = await response.json();
+  return data.creators;
+}
+
+export function useBusinessCreators() {
+  return useQuery({
+    queryKey: [...businessKeys.all, 'creators'] as const,
+    queryFn: fetchBusinessCreators,
+  });
+}
+
 export function useBusinesses(accountId: number) {
   return useQuery({
     queryKey: businessKeys.list(accountId),

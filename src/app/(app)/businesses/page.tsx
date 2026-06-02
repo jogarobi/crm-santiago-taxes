@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAllBusinesses } from '@/hooks/use-businesses';
+import { useAllBusinesses, useBusinessCreators } from '@/hooks/use-businesses';
 import {
   Table,
   TableBody,
@@ -17,6 +17,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ListFilter,
+  Check,
 } from 'lucide-react';
 import {
   InputGroup,
@@ -30,6 +35,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 function formatEIN(ein: string): string {
   const cleaned = ein.replace(/\D/g, '');
@@ -46,6 +58,8 @@ export default function BusinessesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [createdByFilter, setCreatedByFilter] = useState<string>('');
 
   // Set document title
   useEffect(() => {
@@ -70,7 +84,17 @@ export default function BusinessesPage() {
     search: debouncedSearch || undefined,
     pageSize,
     pageIndex,
+    sortBy: 'name',
+    sortDir,
+    createdBy: createdByFilter || undefined,
   });
+
+  const { data: creators = [] } = useBusinessCreators();
+
+  const toggleNameSort = () => {
+    setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    setPageIndex(0);
+  };
 
   const businesses = response?.data || [];
   const meta = response?.meta;
@@ -136,13 +160,56 @@ export default function BusinessesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className='p-4'>Business Name</TableHead>
+                <TableHead className='p-4'>
+                  <button
+                    onClick={toggleNameSort}
+                    className='flex items-center gap-1 hover:text-neutral-900 transition-colors'
+                  >
+                    Business Name
+                    {sortDir === 'asc' ? (
+                      <ArrowUp className='w-3.5 h-3.5' />
+                    ) : (
+                      <ArrowDown className='w-3.5 h-3.5' />
+                    )}
+                  </button>
+                </TableHead>
                 <TableHead className='p-4'>Account Holder</TableHead>
                 <TableHead className='p-4'>Entity Type</TableHead>
                 <TableHead className='p-4'>EIN</TableHead>
                 <TableHead className='p-4'>Address</TableHead>
                 <TableHead className='p-4'>Created</TableHead>
-                <TableHead className='p-4'>Created By</TableHead>
+                <TableHead className='p-4'>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className='flex items-center gap-1 hover:text-neutral-900 transition-colors'>
+                        Created By
+                        <ListFilter
+                          className={`w-3.5 h-3.5 ${createdByFilter ? 'text-purple' : 'text-neutral-400'}`}
+                        />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align='start' className='min-w-[10rem]'>
+                      <DropdownMenuItem
+                        onClick={() => { setCreatedByFilter(''); setPageIndex(0); }}
+                        className='flex items-center gap-2'
+                      >
+                        <Check className={`w-3.5 h-3.5 ${!createdByFilter ? 'opacity-100' : 'opacity-0'}`} />
+                        All creators
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {creators.map((name) => (
+                        <DropdownMenuItem
+                          key={name}
+                          onClick={() => { setCreatedByFilter(name); setPageIndex(0); }}
+                          className='flex items-center gap-2'
+                        >
+                          <Check className={`w-3.5 h-3.5 ${createdByFilter === name ? 'opacity-100' : 'opacity-0'}`} />
+                          {name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

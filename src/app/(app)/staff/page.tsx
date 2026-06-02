@@ -208,7 +208,6 @@ export default function StaffPage() {
                 <TableHead className='p-4'>Role</TableHead>
                 <TableHead className='p-4'>Email</TableHead>
                 <TableHead className='p-4'>Status</TableHead>
-                <TableHead className='p-4'>Square ID</TableHead>
                 <TableHead className='p-4'>Created</TableHead>
                 <TableHead className='p-4'>Created By</TableHead>
                 <TableHead className='p-4'>Actions</TableHead>
@@ -250,15 +249,6 @@ export default function StaffPage() {
                   </TableCell>
                   <TableCell className='p-4'>
                     {getStatusBadge(member.status)}
-                  </TableCell>
-                  <TableCell className='p-4'>
-                    {member.squareId ? (
-                      <span className='font-mono text-sm'>
-                        {member.squareId}
-                      </span>
-                    ) : (
-                      <span className='text-neutral-400'>—</span>
-                    )}
                   </TableCell>
                   <TableCell className='p-4'>
                     {formatDate(member.createdAt)}
