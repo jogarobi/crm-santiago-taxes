@@ -223,22 +223,32 @@ export default function ClientsPage() {
                         />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align='start' className='min-w-[10rem]'>
+                    <DropdownMenuContent align='start' className='min-w-40'>
                       <DropdownMenuItem
-                        onClick={() => { setCreatedByFilter(''); setPageIndex(0); }}
+                        onClick={() => {
+                          setCreatedByFilter('');
+                          setPageIndex(0);
+                        }}
                         className='flex items-center gap-2'
                       >
-                        <Check className={`w-3.5 h-3.5 ${!createdByFilter ? 'opacity-100' : 'opacity-0'}`} />
+                        <Check
+                          className={`w-3.5 h-3.5 ${!createdByFilter ? 'opacity-100' : 'opacity-0'}`}
+                        />
                         All creators
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       {creators.map((name) => (
                         <DropdownMenuItem
                           key={name}
-                          onClick={() => { setCreatedByFilter(name); setPageIndex(0); }}
+                          onClick={() => {
+                            setCreatedByFilter(name);
+                            setPageIndex(0);
+                          }}
                           className='flex items-center gap-2'
                         >
-                          <Check className={`w-3.5 h-3.5 ${createdByFilter === name ? 'opacity-100' : 'opacity-0'}`} />
+                          <Check
+                            className={`w-3.5 h-3.5 ${createdByFilter === name ? 'opacity-100' : 'opacity-0'}`}
+                          />
                           {name}
                         </DropdownMenuItem>
                       ))}
