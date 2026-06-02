@@ -4,6 +4,7 @@ import { clientAccount, business } from '@/db/migrations/schema';
 import { or, like, eq, count, sql, asc, desc } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
 
+
 export async function GET(request: Request) {
   try {
     await requirePermission({ client: ['read'] });
@@ -36,6 +37,12 @@ export async function GET(request: Request) {
             SELECT 1 FROM ${business}
             WHERE ${business.accountId} = CAST(${clientAccount.id} AS TEXT)
             AND ${business.registeredName} LIKE ${`%${search}%`}
+          )`,
+          sql`EXISTS (
+            SELECT 1 FROM ClientAccountContact
+            WHERE ClientAccountContact.accountId = "ClientAccount"."id"
+            AND ClientAccountContact.contactValue LIKE ${`%${search}%`}
+            AND LOWER(ClientAccountContact.contactType) LIKE '%phone%'
           )`
         )
       );
@@ -78,7 +85,29 @@ export async function GET(request: Request) {
         : [asc(clientAccount.id)];
 
     const clientAccounts = await db
-      .select()
+      .select({
+        id: clientAccount.id,
+        firstName: clientAccount.firstName,
+        lastName: clientAccount.lastName,
+        dateOfBirth: clientAccount.dateOfBirth,
+        ssnLastFour: clientAccount.ssnLastFour,
+        address: clientAccount.address,
+        city: clientAccount.city,
+        state: clientAccount.state,
+        zipCode: clientAccount.zipCode,
+        createdBy: clientAccount.createdBy,
+        updatedAt: clientAccount.updatedAt,
+        updatedBy: clientAccount.updatedBy,
+        squareId: clientAccount.squareId,
+        createdAt: clientAccount.createdAt,
+        phoneNumber: sql<string | null>`(
+          SELECT contactValue FROM ClientAccountContact
+          WHERE ClientAccountContact.accountId = "ClientAccount"."id"
+          AND LOWER(ClientAccountContact.contactType) LIKE '%phone%'
+          ORDER BY ClientAccountContact.createdAt DESC
+          LIMIT 1
+        )`,
+      })
       .from(clientAccount)
       .where(whereClause)
       .orderBy(...orderBy)

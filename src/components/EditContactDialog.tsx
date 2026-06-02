@@ -15,6 +15,7 @@ import {
 import { Loader2 } from 'lucide-react';
 import { useUpdateAccountContact } from '@/hooks/use-account-contact';
 import type { AccountContact } from '@/lib/types/account-contact';
+import { authClient } from '@/app/api/clients';
 
 interface EditContactDialogProps {
   open: boolean;
@@ -30,19 +31,15 @@ export function EditContactDialog({
   contact,
 }: EditContactDialogProps) {
   const updateContact = useUpdateAccountContact();
+  const { data: session } = authClient.useSession();
   const [error, setError] = useState<string | null>(null);
   const [contactType, setContactType] = useState<'email' | 'phone'>('email');
   const [contactValue, setContactValue] = useState('');
 
   useEffect(() => {
     if (contact) {
-      if (contact.email) {
-        setContactType('email');
-        setContactValue(contact.email);
-      } else if (contact.phoneNumber) {
-        setContactType('phone');
-        setContactValue(contact.phoneNumber);
-      }
+      setContactType(contact.contactType as 'email' | 'phone');
+      setContactValue(contact.contactValue);
     }
   }, [contact]);
 
@@ -62,9 +59,9 @@ export function EditContactDialog({
         accountId,
         contactId: contact.id,
         data: {
-          email: contactType === 'email' ? contactValue : undefined,
-          phoneNumber: contactType === 'phone' ? contactValue : undefined,
-          updatedBy: 'system', // TODO: Replace with actual user
+          contactType,
+          contactValue,
+          updatedBy: session?.user?.id ?? 'system',
         },
       });
 

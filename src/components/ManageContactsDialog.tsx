@@ -4,14 +4,6 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from './ui/table';
-import {
   Loader2,
   PlusIcon,
   Edit2Icon,
@@ -42,14 +34,47 @@ interface ManageContactsDialogProps {
 
 function formatPhoneNumber(phoneNumber: string): string {
   const cleaned = phoneNumber.replace(/\D/g, '');
-
   if (cleaned.length === 10) {
     return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
   } else if (cleaned.length === 11 && cleaned[0] === '1') {
     return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
   }
-
   return phoneNumber;
+}
+
+interface ContactRowProps {
+  contact: AccountContact;
+  display: string;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function ContactRow({ display, onEdit, onDelete }: ContactRowProps) {
+  return (
+    <div className='flex items-center justify-between py-2 px-3 rounded-lg hover:bg-neutral-50 group'>
+      <span className='text-[15px]'>{display}</span>
+      <div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+        <Button
+          variant='ghost'
+          size='sm'
+          onClick={onEdit}
+          className='h-7 w-7 p-0 text-neutral-500 hover:text-neutral-900'
+        >
+          <Edit2Icon size={13} />
+          <span className='sr-only'>Edit</span>
+        </Button>
+        <Button
+          variant='ghost'
+          size='sm'
+          onClick={onDelete}
+          className='h-7 w-7 p-0 text-neutral-500 hover:text-red-600'
+        >
+          <TrashIcon size={13} />
+          <span className='sr-only'>Delete</span>
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export function ManageContactsDialog({
@@ -64,6 +89,9 @@ export function ManageContactsDialog({
   const [deleteContactDialogOpen, setDeleteContactDialogOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<AccountContact | null>(null);
 
+  const phones = contacts?.filter((c) => c.contactType.toLowerCase().includes('phone')) ?? [];
+  const emails = contacts?.filter((c) => c.contactType.toLowerCase().includes('email')) ?? [];
+
   const handleDeleteClick = (contact: AccountContact) => {
     setSelectedContact(contact);
     setDeleteContactDialogOpen(true);
@@ -76,12 +104,8 @@ export function ManageContactsDialog({
 
   const handleDeleteConfirm = async () => {
     if (!selectedContact) return;
-
     try {
-      await deleteContact.mutateAsync({
-        accountId,
-        contactId: selectedContact.id,
-      });
+      await deleteContact.mutateAsync({ accountId, contactId: selectedContact.id });
       setDeleteContactDialogOpen(false);
       setSelectedContact(null);
     } catch (error) {
@@ -92,109 +116,73 @@ export function ManageContactsDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className='max-w-3xl max-h-[90vh] overflow-y-auto'>
+        <DialogContent className='max-w-lg'>
           <DialogHeader>
-            <DialogTitle className='text-xl'>Manage Contacts</DialogTitle>
-          </DialogHeader>
-
-          <div className='flex flex-col gap-4 mt-4'>
-            <div className='flex justify-between items-center'>
-              <p className='text-sm text-neutral-600'>
-                {contacts?.length || 0} contact{contacts?.length !== 1 ? 's' : ''}
-              </p>
+            <div className='flex items-center justify-between'>
+              <DialogTitle className='text-xl'>Manage Contacts</DialogTitle>
               <Button
-                className='bg-purple cursor-pointer'
+                className='bg-purple cursor-pointer mr-6'
+                size='sm'
                 onClick={() => setAddContactDialogOpen(true)}
               >
-                <PlusIcon className='w-4 h-4 mr-2' />
+                <PlusIcon className='w-4 h-4' />
                 Add Contact
               </Button>
             </div>
+          </DialogHeader>
 
-            {isLoading ? (
-              <div className='flex items-center justify-center py-12'>
-                <Loader2 className='w-6 h-6 animate-spin text-purple' />
-                <span className='ml-3 text-[15px] text-neutral-600'>
-                  Loading contacts...
-                </span>
-              </div>
-            ) : contacts && contacts.length > 0 ? (
-              <div className='border rounded-lg overflow-hidden'>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className='p-4'>Email</TableHead>
-                      <TableHead className='p-4'>Phone Number</TableHead>
-                      <TableHead className='p-4'>Created</TableHead>
-                      <TableHead className='p-4 w-32'>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {contacts.map((contact) => (
-                      <TableRow key={contact.id}>
-                        <TableCell className='p-4'>
-                          {contact.email ? (
-                            <div className='flex items-center gap-2'>
-                              <MailIcon size={16} className='text-neutral-400' />
-                              <span>{contact.email}</span>
-                            </div>
-                          ) : (
-                            <span className='text-neutral-400'>—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className='p-4'>
-                          {contact.phoneNumber ? (
-                            <div className='flex items-center gap-2'>
-                              <PhoneIcon size={16} className='text-neutral-400' />
-                              <span>{formatPhoneNumber(contact.phoneNumber)}</span>
-                            </div>
-                          ) : (
-                            <span className='text-neutral-400'>—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className='p-4'>
-                          {new Date(contact.createdAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
-                        </TableCell>
-                        <TableCell className='p-4'>
-                          <div className='flex items-center gap-2'>
-                            <Button
-                              variant='outline'
-                              size='sm'
-                              onClick={() => handleEditClick(contact)}
-                              className='h-8 w-8 p-0'
-                            >
-                              <Edit2Icon size={14} />
-                              <span className='sr-only'>Edit</span>
-                            </Button>
-                            <Button
-                              variant='outline'
-                              size='sm'
-                              onClick={() => handleDeleteClick(contact)}
-                              className='h-8 w-8 p-0 text-red-600 hover:text-red-700'
-                            >
-                              <TrashIcon size={14} />
-                              <span className='sr-only'>Delete</span>
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+          {isLoading ? (
+            <div className='flex items-center justify-center py-12'>
+              <Loader2 className='w-6 h-6 animate-spin text-purple' />
+              <span className='ml-3 text-[15px] text-neutral-600'>Loading contacts...</span>
+            </div>
+          ) : (
+            <div className='flex flex-col gap-5 mt-2'>
+              <div>
+                <div className='flex items-center gap-2 mb-2'>
+                  <PhoneIcon size={14} className='text-neutral-500' />
+                  <span className='text-sm font-medium text-neutral-600'>Phone Numbers</span>
+                </div>
+                {phones.length === 0 ? (
+                  <p className='text-sm text-neutral-400 px-3 py-2'>No phone numbers added</p>
+                ) : (
+                  <div className='flex flex-col'>
+                    {phones.map((contact) => (
+                      <ContactRow
+                        key={contact.id}
+                        contact={contact}
+                        display={formatPhoneNumber(contact.contactValue)}
+                        onEdit={() => handleEditClick(contact)}
+                        onDelete={() => handleDeleteClick(contact)}
+                      />
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className='bg-neutral-50 border rounded-lg p-12 text-center'>
-                <p className='text-neutral-500 mb-2'>No contacts yet</p>
-                <p className='text-sm text-neutral-400'>
-                  Click &quot;Add Contact&quot; to create a new contact
-                </p>
+
+              <div className='border-t pt-4'>
+                <div className='flex items-center gap-2 mb-2'>
+                  <MailIcon size={14} className='text-neutral-500' />
+                  <span className='text-sm font-medium text-neutral-600'>Email Addresses</span>
+                </div>
+                {emails.length === 0 ? (
+                  <p className='text-sm text-neutral-400 px-3 py-2'>No email addresses added</p>
+                ) : (
+                  <div className='flex flex-col'>
+                    {emails.map((contact) => (
+                      <ContactRow
+                        key={contact.id}
+                        contact={contact}
+                        display={contact.contactValue}
+                        onEdit={() => handleEditClick(contact)}
+                        onDelete={() => handleDeleteClick(contact)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -211,22 +199,16 @@ export function ManageContactsDialog({
         contact={selectedContact}
       />
 
-      <AlertDialog
-        open={deleteContactDialogOpen}
-        onOpenChange={setDeleteContactDialogOpen}
-      >
+      <AlertDialog open={deleteContactDialogOpen} onOpenChange={setDeleteContactDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Contact</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this contact? This action cannot be
-              undone.
+              Are you sure you want to delete this contact? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteContact.isPending}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteContact.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               disabled={deleteContact.isPending}

@@ -1,8 +1,8 @@
 export type AccountContact = {
   id: number;
   accountId: number;
-  email?: string | null;
-  phoneNumber?: string | null;
+  contactType: string;
+  contactValue: string;
   createdAt: string;
   createdBy: string;
   updatedAt?: string | null;
@@ -11,11 +11,13 @@ export type AccountContact = {
 
 export type CreateAccountContactInput = {
   accountId: number;
-  email?: string;
-  phoneNumber?: string;
+  contactType: 'email' | 'phone';
+  contactValue: string;
   createdBy: string;
 };
 
-export type UpdateAccountContactInput = Partial<CreateAccountContactInput> & {
+export type UpdateAccountContactInput = {
+  contactType?: 'email' | 'phone';
+  contactValue?: string;
   updatedBy: string;
 };

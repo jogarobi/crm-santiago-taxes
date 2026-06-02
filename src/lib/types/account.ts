@@ -13,6 +13,7 @@ export type Account = {
   updatedAt?: string | null;
   updatedBy?: string | null;
   squareId?: string | null;
+  phoneNumber?: string | null;
   businesses?: {
     id: number;
     registeredName: string;

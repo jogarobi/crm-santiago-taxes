@@ -66,9 +66,16 @@ export async function POST(
       );
     }
 
-    if (!body.createdBy) {
+    if (!body.createdBy || !body.contactType || !body.contactValue) {
       return NextResponse.json(
-        { error: 'Missing required field: createdBy' },
+        { error: 'Missing required fields: contactType, contactValue, createdBy' },
+        { status: 400 }
+      );
+    }
+
+    if (!['email', 'phone'].includes(body.contactType)) {
+      return NextResponse.json(
+        { error: 'contactType must be "email" or "phone"' },
         { status: 400 }
       );
     }
@@ -88,8 +95,8 @@ export async function POST(
       .insert(clientAccountContact)
       .values({
         accountId,
-        email: body.email,
-        phoneNumber: body.phoneNumber,
+        contactType: body.contactType,
+        contactValue: body.contactValue,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
       })

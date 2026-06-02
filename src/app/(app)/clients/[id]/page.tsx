@@ -305,17 +305,17 @@ export default function AccountDetailPage({ params }: Props) {
 
   // Get the most recent phone and email from contacts
   const hasPhone = contacts
-    ?.filter((c) => c.phoneNumber)
+    ?.filter((c) => c.contactType.toLowerCase().includes('phone'))
     .sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )[0]?.phoneNumber;
+    )[0]?.contactValue;
   const hasEmail = contacts
-    ?.filter((c) => c.email)
+    ?.filter((c) => c.contactType.toLowerCase().includes('email'))
     .sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )[0]?.email;
+    )[0]?.contactValue;
 
   const lastTouchpointDate = touchpointsLoading
     ? '...'
@@ -677,21 +677,29 @@ export default function AccountDetailPage({ params }: Props) {
                 </div>
               )}
 
-              {hasEmail && (
+              {contacts && contacts.filter((c) => c.contactType.toLowerCase().includes('email')).length > 0 && (
                 <div>
-                  <label className='text-sm text-neutral-500'>Email</label>
-                  <p className='font-medium text-[15px]'>{hasEmail}</p>
+                  <label className='text-sm text-neutral-500'>
+                    Email{contacts.filter((c) => c.contactType.toLowerCase().includes('email')).length > 1 ? 's' : ''}
+                  </label>
+                  {contacts
+                    .filter((c) => c.contactType.toLowerCase().includes('email'))
+                    .map((c) => (
+                      <p key={c.id} className='font-medium text-[15px]'>{c.contactValue}</p>
+                    ))}
                 </div>
               )}
 
-              {hasPhone && (
+              {contacts && contacts.filter((c) => c.contactType.toLowerCase().includes('phone')).length > 0 && (
                 <div>
                   <label className='text-sm text-neutral-500'>
-                    Phone Number
+                    Phone{contacts.filter((c) => c.contactType.toLowerCase().includes('phone')).length > 1 ? 's' : ''}
                   </label>
-                  <p className='font-medium text-[15px]'>
-                    {formatPhoneNumber(hasPhone)}
-                  </p>
+                  {contacts
+                    .filter((c) => c.contactType.toLowerCase().includes('phone'))
+                    .map((c) => (
+                      <p key={c.id} className='font-medium text-[15px]'>{formatPhoneNumber(c.contactValue)}</p>
+                    ))}
                 </div>
               )}
 

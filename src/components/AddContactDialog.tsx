@@ -14,6 +14,7 @@ import {
 } from './ui/select';
 import { Loader2 } from 'lucide-react';
 import { useCreateAccountContact } from '@/hooks/use-account-contact';
+import { authClient } from '@/app/api/clients';
 
 interface AddContactDialogProps {
   open: boolean;
@@ -27,6 +28,7 @@ export function AddContactDialog({
   accountId,
 }: AddContactDialogProps) {
   const createContact = useCreateAccountContact();
+  const { data: session } = authClient.useSession();
   const [error, setError] = useState<string | null>(null);
   const [contactType, setContactType] = useState<'email' | 'phone'>('email');
   const [contactValue, setContactValue] = useState('');
@@ -43,9 +45,9 @@ export function AddContactDialog({
     try {
       await createContact.mutateAsync({
         accountId,
-        email: contactType === 'email' ? contactValue : undefined,
-        phoneNumber: contactType === 'phone' ? contactValue : undefined,
-        createdBy: 'system', // TODO: Replace with actual user
+        contactType,
+        contactValue,
+        createdBy: session?.user?.id ?? 'system',
       });
 
       setContactValue('');

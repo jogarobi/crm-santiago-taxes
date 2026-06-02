@@ -91,6 +91,16 @@ export default function ClientsPage() {
   const accounts = response?.data || [];
   const meta = response?.meta;
 
+  const formatPhone = (phone: string | null | undefined) => {
+    if (!phone) return null;
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 10)
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    if (cleaned.length === 11 && cleaned[0] === '1')
+      return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+    return phone;
+  };
+
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return '—';
 
@@ -130,7 +140,7 @@ export default function ClientsPage() {
 
       <InputGroup className='py-6 bg-white'>
         <InputGroupInput
-          placeholder='Search by name, SSN last 4 digits, or ID...'
+          placeholder='Search by name, phone, SSN last 4 digits, or ID...'
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -201,6 +211,7 @@ export default function ClientsPage() {
                 </TableHead>
                 <TableHead className='p-4'>Date of Birth</TableHead>
                 <TableHead className='p-4'>SSN (Last 4)</TableHead>
+                <TableHead className='p-4'>Phone</TableHead>
                 <TableHead className='p-4'>Created</TableHead>
                 <TableHead className='p-4'>
                   <DropdownMenu>
@@ -262,7 +273,11 @@ export default function ClientsPage() {
                       <span className='text-neutral-400'>—</span>
                     )}
                   </TableCell>
-
+                  <TableCell className='p-4'>
+                    {formatPhone(account.phoneNumber) ?? (
+                      <span className='text-neutral-400'>—</span>
+                    )}
+                  </TableCell>
                   <TableCell className='p-4'>
                     {formatDate(account.createdAt)}
                   </TableCell>
