@@ -50,179 +50,141 @@ async function getOrCreateActivityType(
   return result[0].id;
 }
 
+async function resolveStaffId(teamMemberId: string): Promise<number | null> {
+  try {
+    const staffMember = await db
+      .select()
+      .from(staff)
+      .where(eq(staff.squareId, teamMemberId))
+      .limit(1);
+
+    if (staffMember.length > 0) return staffMember[0].id;
+
+    const result = await square.teamMembers.get({ teamMemberId });
+    if (!result.teamMember) return null;
+
+    const staffResult = await db.insert(staff).values({
+      squareId: result.teamMember.id || '',
+      title: result.teamMember.wageSetting?.jobAssignments?.[0]?.jobTitle || 'Staff',
+      status: result.teamMember.status || 'INACTIVE',
+      firstName: result.teamMember.givenName || 'Unknown',
+      lastName: result.teamMember.familyName || 'Unknown',
+      createdAt: new Date().toISOString(),
+      createdBy: 'SQUARE_WEBHOOK',
+    });
+    return staffResult.lastInsertRowid ? Number(staffResult.lastInsertRowid) : null;
+  } catch (error) {
+    console.error(`Failed to resolve staff for teamMemberId ${teamMemberId}:`, error);
+    return null;
+  }
+}
+
+async function resolveCreatedBy(creatorDetails?: { teamMemberId?: string; customerId?: string; creatorType?: string }): Promise<string | null> {
+  try {
+    if (creatorDetails?.teamMemberId) {
+      const result = await square.teamMembers.get({ teamMemberId: creatorDetails.teamMemberId });
+      const tm = result.teamMember;
+      if (tm) return `${tm.givenName || ''} ${tm.familyName || ''}`.trim() || null;
+    } else if (creatorDetails?.customerId) {
+      const result = await square.customers.get({ customerId: creatorDetails.customerId });
+      const c = result.customer;
+      if (c) return `${c.givenName || ''} ${c.familyName || ''}`.trim() || null;
+    }
+  } catch (error) {
+    console.error('Failed to resolve createdBy:', error);
+  }
+  return null;
+}
+
+async function resolveServiceName(serviceVariationId: string): Promise<string | null> {
+  try {
+    const catalogResponse = await square.catalog.object.get({
+      objectId: serviceVariationId,
+      includeRelatedObjects: true,
+    });
+    const relatedObjects = catalogResponse.relatedObjects || [];
+    const serviceObject = relatedObjects.find((obj) => obj.type === 'ITEM');
+    return serviceObject?.itemData?.name || null;
+  } catch (error) {
+    console.error(`Failed to retrieve service ${serviceVariationId} from Square:`, error);
+    return null;
+  }
+}
+
 async function handleBookingEvent(event: SquareWebhookEvent) {
   const bookingId = event.data.id.split(':')[0];
 
   console.log(`Processing booking event: ${event.type}`, {
     eventId: event.event_id,
-    bookingId: bookingId,
-    rawId: event.data.id,
+    bookingId,
   });
 
-  try {
-    switch (event.type) {
-      case 'booking.created': {
-        const response = await square.bookings.get({
-          bookingId: bookingId,
-        });
-        const booking = response.booking;
+  switch (event.type) {
+    case 'booking.created':
+    case 'booking.updated': {
+      let booking;
+      try {
+        const response = await square.bookings.get({ bookingId });
+        booking = response.booking;
+      } catch (error) {
+        console.error(`Failed to fetch booking ${bookingId} from Square:`, error);
+        return;
+      }
 
-        if (!booking) {
-          console.error('Booking not found in Square:', bookingId);
-          return;
-        }
+      if (!booking || !booking.id) {
+        console.error('Booking not found in Square:', bookingId);
+        return;
+      }
 
-        let dbAccount = null;
-        let accountName: string | null = null;
-        let serviceName: string | null = null;
+      // Resolve customer
+      let dbAccount = null;
+      let accountName: string | null = null;
+      if (booking.customerId) {
+        const accounts = await db
+          .select()
+          .from(clientAccount)
+          .where(eq(clientAccount.squareId, booking.customerId))
+          .limit(1);
+        dbAccount = accounts[0] || null;
 
-        if (booking.customerId) {
-          const accounts = await db
-            .select()
-            .from(clientAccount)
-            .where(eq(clientAccount.squareId, booking.customerId))
-            .limit(1);
-
-          dbAccount = accounts[0];
-
-          if (!dbAccount) {
-            console.warn(
-              `Customer ${booking.customerId} not found in local database. Fetching from Square...`
-            );
-
-            try {
-              const customerResponse = await square.customers.get({
-                customerId: booking.customerId,
-              });
-
-              if (customerResponse.customer) {
-                const customer = customerResponse.customer;
-                accountName = `${customer.givenName || ''} ${
-                  customer.familyName || ''
-                }`.trim();
-                console.log(
-                  `Retrieved customer name from Square: ${accountName}`
-                );
-              }
-            } catch (error) {
-              console.error(
-                `Failed to retrieve customer ${booking.customerId} from Square:`,
-                error
-              );
-            }
-          } else {
-            accountName = `${dbAccount.firstName} ${dbAccount.lastName}`;
+        if (dbAccount) {
+          accountName = `${dbAccount.firstName} ${dbAccount.lastName}`;
+        } else {
+          try {
+            const customerResponse = await square.customers.get({ customerId: booking.customerId });
+            const customer = customerResponse.customer;
+            if (customer) accountName = `${customer.givenName || ''} ${customer.familyName || ''}`.trim() || null;
+          } catch (error) {
+            console.error(`Failed to fetch customer ${booking.customerId} from Square:`, error);
           }
         }
+      }
 
-        let appointmentTeamMemberId: string | null = null;
-        if (
-          booking.appointmentSegments &&
-          booking.appointmentSegments.length > 0
-        ) {
-          const serviceVariationId =
-            booking.appointmentSegments[0].serviceVariationId;
-          appointmentTeamMemberId =
-            booking.appointmentSegments[0].teamMemberId || null;
+      // Resolve service name and staff
+      const segment = booking.appointmentSegments?.[0];
+      const serviceName = segment?.serviceVariationId
+        ? await resolveServiceName(segment.serviceVariationId)
+        : null;
+      const staffId = segment?.teamMemberId
+        ? await resolveStaffId(segment.teamMemberId)
+        : null;
 
-          if (serviceVariationId) {
-            try {
-              const catalogResponse = await square.catalog.object.get({
-                objectId: serviceVariationId,
-                includeRelatedObjects: true,
-              });
+      const createdBy = await resolveCreatedBy(booking.creatorDetails as Parameters<typeof resolveCreatedBy>[0]);
 
-              if (catalogResponse.object) {
-                // The service variation's related object contains the service name
-                const relatedObjects = catalogResponse.relatedObjects || [];
-                const serviceObject = relatedObjects.find(
-                  (obj) => obj.type === 'ITEM'
-                );
+      const startAt = booking.startAt || new Date().toISOString();
+      const durationMinutes = segment?.durationMinutes || 60;
+      const endAt = new Date(new Date(startAt).getTime() + durationMinutes * 60000).toISOString();
 
-                if (serviceObject && serviceObject.itemData) {
-                  serviceName = serviceObject.itemData.name || null;
-                  console.log(
-                    `Retrieved service name from Square: ${serviceName}`
-                  );
-                }
-              }
-            } catch (error) {
-              console.error(
-                `Failed to retrieve service ${serviceVariationId} from Square:`,
-                error
-              );
-            }
-          }
-        }
-
-        let createdBy: string | null = null;
-        let staffId: number | null = null;
-
-        if (appointmentTeamMemberId) {
-          const result = await square.teamMembers.get({
-            teamMemberId: appointmentTeamMemberId,
-          });
-
-          const staffMember = await db
-            .select()
-            .from(staff)
-            .where(eq(staff.squareId, appointmentTeamMemberId))
-            .limit(1);
-
-          if (staffMember.length === 0) {
-            const staffResult = await db.insert(staff).values({
-              squareId: result.teamMember?.id || '',
-              title:
-                result.teamMember?.wageSetting?.jobAssignments?.[0].jobTitle ||
-                'Staff',
-              status: result.teamMember?.status || 'INACTIVE',
-              firstName: result.teamMember?.givenName || 'Unknown',
-              lastName: result.teamMember?.familyName || 'Unknown',
-              createdAt: new Date().toISOString(),
-              createdBy: 'SQUARE_WEBHOOK',
-            });
-
-            if (staffResult) {
-              staffId = staffResult.lastInsertRowid
-                ? Number(staffResult.lastInsertRowid)
-                : null;
-            }
-          } else {
-            staffId = staffMember[0].id;
-          }
-        }
-
-        if (booking.creatorDetails?.teamMemberId) {
-          const result = await square.teamMembers.get({
-            teamMemberId: booking.creatorDetails.teamMemberId,
-          });
-
-          createdBy =
-            `${result.teamMember?.givenName} ${result.teamMember?.familyName}` ||
-            null;
-        } else if (booking.creatorDetails?.customerId) {
-          const result = await square.customers.get({
-            customerId: booking.creatorDetails.customerId,
-          });
-          createdBy = `${result.customer?.givenName} ${result.customer?.familyName}`;
-        }
-
-        const startAt = booking.startAt || new Date().toISOString();
-        const durationMinutes =
-          booking.appointmentSegments?.[0]?.durationMinutes || 60;
-        const endAt = new Date(
-          new Date(startAt).getTime() + durationMinutes * 60000
-        ).toISOString();
-
+      if (event.type === 'booking.created') {
         const newAppointment = await db
           .insert(appointment)
           .values({
             squareId: booking.id,
             accountSquareId: booking.customerId || 'N/A',
             status: booking.status || 'PENDING',
-            startAt: startAt,
-            endAt: endAt,
-            durationMinutes: durationMinutes,
+            startAt,
+            endAt,
+            durationMinutes,
             staffId,
             accountId: dbAccount?.id || null,
             accountName,
@@ -233,234 +195,44 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
           })
           .returning();
 
-        console.log('✅ Appointment created in database:', {
-          id: newAppointment[0]?.id,
-          squareId: newAppointment[0]?.squareId,
-          accountId: newAppointment[0]?.accountId,
-          status: newAppointment[0]?.status,
-        });
+        console.log('✅ Appointment created:', newAppointment[0]?.id);
 
-        // Create activity for appointment booking
         try {
-          const activityTypeId = await getOrCreateActivityType(
-            'Appointment',
-            'Calendar'
-          );
-
-          // Determine who the appointment is with
-          let withPerson = '';
-          if (booking.creatorDetails?.creatorType === 'TEAM_MEMBER') {
-            // Created by team member, show customer name
-            withPerson = accountName || 'a customer';
-          } else {
-            // Created by customer, show staff member
-            withPerson = createdBy || 'staff';
-          }
-
-          const activityTitle = `${
-            createdBy || 'Someone'
-          } booked an appointment with ${withPerson}${
-            serviceName ? ` for ${serviceName}` : ''
-          }`;
-
+          const activityTypeId = await getOrCreateActivityType('Appointment', 'Calendar');
+          const withPerson = booking.creatorDetails?.creatorType === 'TEAM_MEMBER'
+            ? (accountName || 'a customer')
+            : (createdBy || 'staff');
           await db.insert(activity).values({
             accountId: dbAccount?.id || null,
             typeId: activityTypeId,
-            title: activityTitle,
+            title: `${createdBy || 'Someone'} booked an appointment with ${withPerson}${serviceName ? ` for ${serviceName}` : ''}`,
             createdAt: new Date().toISOString(),
             createdBy: createdBy || 'SQUARE_WEBHOOK',
             entity: 'appointment',
             entityId: newAppointment[0]?.id || null,
           });
-
-          console.log('✅ Activity created for appointment booking');
         } catch (error) {
           console.error('Failed to create activity:', error);
         }
-
-        break;
-      }
-
-      case 'booking.updated': {
-        console.log('Booking updated:', bookingId);
-
-        const bookingResponse = await square.bookings.get({
-          bookingId: bookingId,
-        });
-        const booking = bookingResponse.booking;
-
-        if (!booking || !booking.id) {
-          console.error(
-            'Booking not found in Square or missing ID:',
-            bookingId
-          );
-          return;
-        }
-
-        let dbAccount = null;
-        let accountName: string | null = null;
-        let serviceName: string | null = null;
-
-        if (booking.customerId) {
-          const accounts = await db
-            .select()
-            .from(clientAccount)
-            .where(eq(clientAccount.squareId, booking.customerId))
-            .limit(1);
-
-          dbAccount = accounts[0];
-
-          if (!dbAccount) {
-            console.warn(
-              `Customer ${booking.customerId} not found in local database. Fetching from Square...`
-            );
-
-            try {
-              const customerResponse = await square.customers.get({
-                customerId: booking.customerId,
-              });
-
-              if (customerResponse.customer) {
-                const customer = customerResponse.customer;
-                accountName = `${customer.givenName || ''} ${
-                  customer.familyName || ''
-                }`.trim();
-                console.log(
-                  `Retrieved customer name from Square: ${accountName}`
-                );
-              }
-            } catch (error) {
-              console.error(
-                `Failed to retrieve customer ${booking.customerId} from Square:`,
-                error
-              );
-            }
-          } else {
-            accountName = `${dbAccount.firstName} ${dbAccount.lastName}`;
-          }
-        }
-
-        // Get service name and staff member from booking
-        let appointmentTeamMemberId: string | null = null;
-        if (
-          booking.appointmentSegments &&
-          booking.appointmentSegments.length > 0
-        ) {
-          const serviceVariationId =
-            booking.appointmentSegments[0].serviceVariationId;
-          appointmentTeamMemberId =
-            booking.appointmentSegments[0].teamMemberId || null;
-
-          if (serviceVariationId) {
-            try {
-              const catalogResponse = await square.catalog.object.get({
-                objectId: serviceVariationId,
-                includeRelatedObjects: true,
-              });
-
-              if (catalogResponse.object) {
-                const relatedObjects = catalogResponse.relatedObjects || [];
-                const serviceObject = relatedObjects.find(
-                  (obj) => obj.type === 'ITEM'
-                );
-
-                if (serviceObject && serviceObject.itemData) {
-                  serviceName = serviceObject.itemData.name || null;
-                  console.log(
-                    `Retrieved service name from Square: ${serviceName}`
-                  );
-                }
-              }
-            } catch (error) {
-              console.error(
-                `Failed to retrieve service ${serviceVariationId} from Square:`,
-                error
-              );
-            }
-          }
-        }
-
-        let createdBy: string | null = null;
-        let staffId: number | null = null;
-
-        // Get the staff member the appointment is WITH (from appointmentSegments)
-        if (appointmentTeamMemberId) {
-          const result = await square.teamMembers.get({
-            teamMemberId: appointmentTeamMemberId,
-          });
-
-          const staffMember = await db
-            .select()
-            .from(staff)
-            .where(eq(staff.squareId, appointmentTeamMemberId))
-            .limit(1);
-
-          if (staffMember.length === 0) {
-            const staffResult = await db.insert(staff).values({
-              squareId: result.teamMember?.id || '',
-              title:
-                result.teamMember?.wageSetting?.jobAssignments?.[0].jobTitle ||
-                'Staff',
-              status: result.teamMember?.status || 'INACTIVE',
-              firstName: result.teamMember?.givenName || 'Unknown',
-              lastName: result.teamMember?.familyName || 'Unknown',
-              createdAt: new Date().toISOString(),
-              createdBy: 'SQUARE_WEBHOOK',
-            });
-
-            if (staffResult) {
-              staffId = staffResult.lastInsertRowid
-                ? Number(staffResult.lastInsertRowid)
-                : null;
-            }
-          } else {
-            staffId = staffMember[0].id;
-          }
-        }
-
-        // Get who created the booking for tracking purposes
-        if (booking.creatorDetails?.teamMemberId) {
-          const result = await square.teamMembers.get({
-            teamMemberId: booking.creatorDetails.teamMemberId,
-          });
-
-          createdBy =
-            `${result.teamMember?.givenName} ${result.teamMember?.familyName}` ||
-            null;
-        } else if (booking.creatorDetails?.customerId) {
-          const result = await square.customers.get({
-            customerId: booking.creatorDetails.customerId,
-          });
-          createdBy = `${result.customer?.givenName} ${result.customer?.familyName}`;
-        }
-
-        const existingAppointments = await db
+      } else {
+        // booking.updated
+        const existing = await db
           .select()
           .from(appointment)
           .where(eq(appointment.squareId, booking.id))
           .limit(1);
 
-        if (existingAppointments.length === 0) {
-          console.warn(
-            'Appointment not found in database, creating new one:',
-            booking.id
-          );
-          const startAt = booking.startAt || new Date().toISOString();
-          const durationMinutes =
-            booking.appointmentSegments?.[0]?.durationMinutes || 60;
-          const endAt = new Date(
-            new Date(startAt).getTime() + durationMinutes * 60000
-          ).toISOString();
-
-          const newAppointmentFromUpdate = await db
+        if (existing.length === 0) {
+          // Upsert if not found
+          const newAppt = await db
             .insert(appointment)
             .values({
               squareId: booking.id,
               accountSquareId: booking.customerId || 'N/A',
               status: booking.status || 'PENDING',
-              startAt: startAt,
-              endAt: endAt,
-              durationMinutes: durationMinutes,
+              startAt,
+              endAt,
+              durationMinutes,
               accountId: dbAccount?.id || null,
               accountName,
               service: serviceName,
@@ -470,154 +242,65 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
               createdAt: new Date().toISOString(),
             })
             .returning();
-
-          console.log('✅ Appointment created in database (from update event)');
-
-          // Create activity for appointment booking
-          try {
-            const activityTypeId = await getOrCreateActivityType(
-              'Appointment',
-              'Calendar'
-            );
-
-            let withPerson = '';
-            if (booking.creatorDetails?.creatorType === 'TEAM_MEMBER') {
-              withPerson = accountName || 'a customer';
-            } else {
-              withPerson = createdBy || 'staff';
-            }
-
-            const activityTitle = `${
-              createdBy || 'Someone'
-            } booked an appointment with ${withPerson}${
-              serviceName ? ` for ${serviceName}` : ''
-            }`;
-
-            await db.insert(activity).values({
+          console.log('✅ Appointment created (from update event):', newAppt[0]?.id);
+        } else {
+          await db
+            .update(appointment)
+            .set({
+              status: booking.status || 'PENDING',
+              startAt,
+              endAt,
+              durationMinutes,
               accountId: dbAccount?.id || null,
-              typeId: activityTypeId,
-              title: activityTitle,
-              createdAt: new Date().toISOString(),
-              createdBy: createdBy || 'SQUARE_WEBHOOK',
-              entity: 'appointment',
-              entityId: newAppointmentFromUpdate[0]?.id || null,
-            });
-
-            console.log('✅ Activity created for appointment booking');
-          } catch (error) {
-            console.error('Failed to create activity:', error);
-          }
-
-          return;
+              accountName,
+              service: serviceName,
+              staffId,
+              updatedBy: createdBy,
+              updatedAt: new Date().toISOString(),
+            })
+            .where(eq(appointment.squareId, booking.id));
+          console.log('✅ Appointment updated:', booking.id);
         }
-
-        const startAt = booking.startAt || existingAppointments[0].startAt;
-        const durationMinutes =
-          booking.appointmentSegments?.[0]?.durationMinutes ||
-          existingAppointments[0].durationMinutes ||
-          60;
-        const endAt = new Date(
-          new Date(startAt).getTime() + durationMinutes * 60000
-        ).toISOString();
-
-        await db
-          .update(appointment)
-          .set({
-            status: booking.status || 'PENDING',
-            startAt: startAt,
-            endAt: endAt,
-            durationMinutes: durationMinutes,
-            accountId: dbAccount?.id || null,
-            accountName,
-            service: serviceName,
-            staffId,
-            updatedBy: createdBy,
-            updatedAt: new Date().toISOString(),
-          })
-          .where(eq(appointment.squareId, booking.id));
-
-        console.log('✅ Appointment updated in database:', booking.id);
-
-        break;
       }
-
-      case 'booking.cancelled': {
-        console.log('Booking cancelled:', bookingId);
-
-        // Get the appointment details before updating
-        const appointmentToCancel = await db
-          .select()
-          .from(appointment)
-          .where(eq(appointment.squareId, bookingId))
-          .limit(1);
-
-        await db
-          .update(appointment)
-          .set({
-            status: 'CANCELLED',
-            updatedBy: 'SQUARE_WEBHOOK',
-            updatedAt: new Date().toISOString(),
-          })
-          .where(eq(appointment.squareId, bookingId));
-
-        console.log(
-          '✅ Appointment marked as cancelled in database:',
-          bookingId
-        );
-
-        // Create activity for appointment cancellation
-        if (appointmentToCancel.length > 0) {
-          try {
-            const activityTypeId = await getOrCreateActivityType(
-              'Appointment Cancelled',
-              'X'
-            );
-
-            const cancelledAppt = appointmentToCancel[0];
-            const activityTitle = `Appointment${
-              cancelledAppt.service ? ` for ${cancelledAppt.service}` : ''
-            } with ${cancelledAppt.accountName || 'customer'} was cancelled`;
-
-            await db.insert(activity).values({
-              accountId: cancelledAppt.accountId || null,
-              typeId: activityTypeId,
-              title: activityTitle,
-              createdAt: new Date().toISOString(),
-              createdBy: 'SQUARE_WEBHOOK',
-              entity: 'appointment',
-              entityId: cancelledAppt.id || null,
-            });
-
-            console.log('✅ Activity created for appointment cancellation');
-          } catch (error) {
-            console.error('Failed to create activity:', error);
-          }
-        }
-
-        break;
-      }
-
-      default:
-        console.log(`Unhandled booking event type: ${event.type}`);
-    }
-  } catch (error) {
-    console.error(`❌ Error handling booking event ${event.type}:`, error);
-
-    try {
-      await db.insert(log).values({
-        statusCode: 500,
-        message: error instanceof Error ? error.message : 'Unknown error',
-        eventType: event.type,
-        eventId: event.event_id,
-        paylaod: JSON.stringify(event.data),
-        createdBy: 'SQUARE_WEBHOOK',
-        createdAt: new Date().toISOString(),
-      });
-    } catch (logError) {
-      console.error('Failed to log error to database:', logError);
+      break;
     }
 
-    throw error;
+    case 'booking.cancelled': {
+      const appointmentToCancel = await db
+        .select()
+        .from(appointment)
+        .where(eq(appointment.squareId, bookingId))
+        .limit(1);
+
+      await db
+        .update(appointment)
+        .set({ status: 'CANCELLED', updatedBy: 'SQUARE_WEBHOOK', updatedAt: new Date().toISOString() })
+        .where(eq(appointment.squareId, bookingId));
+
+      console.log('✅ Appointment cancelled:', bookingId);
+
+      if (appointmentToCancel.length > 0) {
+        try {
+          const activityTypeId = await getOrCreateActivityType('Appointment Cancelled', 'X');
+          const appt = appointmentToCancel[0];
+          await db.insert(activity).values({
+            accountId: appt.accountId || null,
+            typeId: activityTypeId,
+            title: `Appointment${appt.service ? ` for ${appt.service}` : ''} with ${appt.accountName || 'customer'} was cancelled`,
+            createdAt: new Date().toISOString(),
+            createdBy: 'SQUARE_WEBHOOK',
+            entity: 'appointment',
+            entityId: appt.id || null,
+          });
+        } catch (error) {
+          console.error('Failed to create cancellation activity:', error);
+        }
+      }
+      break;
+    }
+
+    default:
+      console.log(`Unhandled booking event type: ${event.type}`);
   }
 }
 
@@ -648,95 +331,57 @@ async function handleCustomerEvent(event: SquareWebhookEvent) {
   }
 }
 
+async function writeLog(statusCode: number, message: string, eventType: string, eventId: string, payload: string) {
+  try {
+    await db.insert(log).values({
+      statusCode,
+      message,
+      eventType,
+      eventId,
+      paylaod: payload,
+      createdBy: 'SQUARE_WEBHOOK',
+      createdAt: new Date().toISOString(),
+    });
+  } catch (logError) {
+    console.error('Failed to write to log table:', logError);
+  }
+}
+
 export async function POST(request: NextRequest) {
   let body = '';
   let webhookEvent: SquareWebhookEvent | null = null;
 
+  const signature = request.headers.get('x-square-hmacsha256-signature');
+  if (!signature) {
+    return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
+  }
+
   try {
-    const signature = request.headers.get('x-square-hmacsha256-signature');
-
-    if (!signature) {
-      console.error('Missing webhook signature');
-      return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
-    }
-
     body = await request.text();
+  } catch {
+    return NextResponse.json({ error: 'Failed to read body' }, { status: 400 });
+  }
 
-    const signatureKey = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
+  const signatureKey = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
+  if (!signatureKey) {
+    console.error('SQUARE_WEBHOOK_SIGNATURE_KEY not configured');
+    await writeLog(500, 'SQUARE_WEBHOOK_SIGNATURE_KEY env var not set', 'unknown', 'unknown', body);
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
+  }
 
-    if (!signatureKey) {
-      console.error('SQUARE_WEBHOOK_SIGNATURE_KEY not configured');
-      return NextResponse.json(
-        { error: 'Webhook signature key not configured' },
-        { status: 500 }
-      );
-    }
+  try {
+    webhookEvent = JSON.parse(body) as SquareWebhookEvent;
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+  }
 
-    const notificationUrl = request.url;
+  console.log('Received Square webhook:', {
+    type: webhookEvent.type,
+    eventId: webhookEvent.event_id,
+    merchantId: webhookEvent.merchant_id,
+  });
 
-    console.log('Webhook validation attempt:', {
-      notificationUrl,
-      hasSignatureKey: !!signatureKey,
-      signatureKeyLength: signatureKey.length,
-      signatureHeaderLength: signature.length,
-      bodyLength: body.length,
-      method: request.method,
-    });
-
-    try {
-      /*       const isValidSignature = await WebhooksHelper.verifySignature({
-        requestBody: body,
-        signatureHeader: signature,
-        signatureKey: signatureKey,
-        notificationUrl: notificationUrl,
-      });
-
-      if (!isValidSignature) {
-        console.error('Invalid webhook signature', {
-          notificationUrlUsed: notificationUrl,
-          signaturePreview: signature.substring(0, 20) + '...',
-          bodyPreview: body.substring(0, 100),
-        });
-        return NextResponse.json(
-          {
-            error: 'Invalid signature',
-            hint: 'Check that SQUARE_WEBHOOK_SIGNATURE_KEY matches Square Dashboard and notification URL is exact',
-          },
-          { status: 403 }
-        );
-      } */
-
-      console.log('Webhook signature verified successfully');
-    } catch (verificationError) {
-      console.error('Error during signature verification:', verificationError);
-      return NextResponse.json(
-        {
-          error: 'Signature verification failed',
-          message:
-            verificationError instanceof Error
-              ? verificationError.message
-              : 'Unknown error',
-        },
-        { status: 500 }
-      );
-    }
-
-    webhookEvent = JSON.parse(body);
-
-    if (!webhookEvent) {
-      console.error('Failed to parse webhook event');
-      return NextResponse.json(
-        { error: 'Invalid webhook data' },
-        { status: 400 }
-      );
-    }
-
-    console.log('Received Square webhook:', {
-      type: webhookEvent.type,
-      eventId: webhookEvent.event_id,
-      merchantId: webhookEvent.merchant_id,
-    });
-
+  try {
     if (webhookEvent.type.startsWith('booking.')) {
       await handleBookingEvent(webhookEvent);
     } else if (webhookEvent.type.startsWith('customer.')) {
@@ -744,31 +389,18 @@ export async function POST(request: NextRequest) {
     } else {
       console.log(`Unhandled event type: ${webhookEvent.type}`);
     }
-
-    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error processing webhook:', error);
-
-    try {
-      await db.insert(log).values({
-        statusCode: 500,
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Unknown error processing webhook',
-        eventType: webhookEvent?.type || 'unknown',
-        eventId: webhookEvent?.event_id || 'unknown',
-        paylaod: body || 'No payload available',
-        createdBy: 'SQUARE_WEBHOOK',
-        createdAt: new Date().toISOString(),
-      });
-    } catch (logError) {
-      console.error('Failed to log error to database:', logError);
-    }
-
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    console.error('Error processing webhook event:', error);
+    await writeLog(
+      500,
+      error instanceof Error ? error.message : 'Unknown processing error',
+      webhookEvent.type,
+      webhookEvent.event_id,
+      body
     );
+    // Return 200 so Square does not retry and create duplicate records
+    return NextResponse.json({ received: true, error: 'Processing failed — logged' });
   }
+
+  return NextResponse.json({ received: true });
 }
