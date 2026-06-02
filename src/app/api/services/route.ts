@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     const conditions = [];
 
     if (isActive !== null && isActive !== undefined && isActive !== '') {
-      conditions.push(eq(service.isActive, isActive === 'true'));
+      conditions.push(eq(service.isActive, isActive === 'true' ? 1 : 0));
     }
 
     if (search && search.trim()) {
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       .insert(service)
       .values({
         name: body.name,
-        isActive: true,
+        isActive: 1,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
       })

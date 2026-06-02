@@ -151,7 +151,7 @@ export async function DELETE(
     await db
       .update(service)
       .set({
-        isActive: false,
+        isActive: 0,
         updatedAt: new Date().toISOString(),
         updatedBy: 'system',
       })

@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       await db
         .update(rolePermission)
         .set({
-          enabled: Boolean(enabled),
+          enabled: enabled ? 1 : 0,
           updatedAt: new Date().toISOString(),
         })
         .where(eq(rolePermission.id, existing[0].id));
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
         role,
         resource,
         action,
-        enabled: Boolean(enabled),
+        enabled: enabled ? 1 : 0,
         createdAt: new Date().toISOString(),
       });
     }

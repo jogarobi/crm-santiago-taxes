@@ -303,7 +303,7 @@ export async function initializeDefaultPermissions() {
               role,
               resource,
               action,
-              enabled: true,
+              enabled: 1,
               createdAt: new Date().toISOString(),
             });
           }
