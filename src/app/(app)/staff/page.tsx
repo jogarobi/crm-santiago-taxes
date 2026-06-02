@@ -49,7 +49,7 @@ export default function StaffPage() {
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const deleteStaff = useDeleteStaff();
 
-  // Set document title
+  // Set document title effect
   useEffect(() => {
     document.title = 'Staff | Santiago Taxes CRM';
   }, []);
@@ -231,8 +231,8 @@ export default function StaffPage() {
                           member.role === 'owner'
                             ? 'bg-purple-100 text-purple-800'
                             : member.role === 'admin'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
                         }
                       >
                         {member.role.charAt(0).toUpperCase() +
