@@ -8,6 +8,7 @@ export const serviceKeys = {
   list: (params?: FetchServicesParams) => [...serviceKeys.lists(), params] as const,
   details: () => [...serviceKeys.all, 'detail'] as const,
   detail: (serviceId: number) => [...serviceKeys.details(), serviceId] as const,
+  clientServices: (accountId: number) => [...serviceKeys.all, 'client', accountId] as const,
 };
 
 // Types
@@ -161,6 +162,71 @@ export function useDeleteService() {
         predicate: (query) =>
           query.queryKey[0] === 'services' && query.queryKey[1] === 'list',
       });
+    },
+  });
+}
+
+// Client-service junction hooks
+
+export interface ClientServiceEntry {
+  id: number;
+  accountId: number;
+  serviceId: number;
+  createdAt: string | null;
+  createdBy: string;
+  service: { id: number; name: string };
+}
+
+async function fetchClientServices(accountId: number): Promise<ClientServiceEntry[]> {
+  const res = await fetch(`/api/accounts/${accountId}/services`);
+  if (!res.ok) throw new Error('Failed to fetch client services');
+  return res.json();
+}
+
+async function addClientService(accountId: number, serviceId: number, createdBy: string) {
+  const res = await fetch(`/api/accounts/${accountId}/services`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ serviceId, createdBy }),
+  });
+  if (!res.ok) throw new Error('Failed to assign service');
+  return res.json();
+}
+
+async function removeClientService(accountId: number, serviceId: number) {
+  const res = await fetch(`/api/accounts/${accountId}/services?serviceId=${serviceId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Failed to remove service');
+  return res.json();
+}
+
+export function useClientServices(accountId: number) {
+  return useQuery({
+    queryKey: serviceKeys.clientServices(accountId),
+    queryFn: () => fetchClientServices(accountId),
+    enabled: !!accountId,
+  });
+}
+
+export function useAddClientService() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ accountId, serviceId, createdBy }: { accountId: number; serviceId: number; createdBy: string }) =>
+      addClientService(accountId, serviceId, createdBy),
+    onSuccess: (_, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: serviceKeys.clientServices(accountId) });
+    },
+  });
+}
+
+export function useRemoveClientService() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ accountId, serviceId }: { accountId: number; serviceId: number }) =>
+      removeClientService(accountId, serviceId),
+    onSuccess: (_, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: serviceKeys.clientServices(accountId) });
     },
   });
 }

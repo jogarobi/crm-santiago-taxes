@@ -72,6 +72,7 @@ import { useNotes } from '@/hooks/use-notes';
 import { useBusinesses } from '@/hooks/use-businesses';
 import { useAppointments } from '@/hooks/use-appointments';
 import { useTouchpoints } from '@/hooks/use-touchpoints';
+import { useClientServices, useAddClientService, useRemoveClientService, useServices } from '@/hooks/use-services';
 import {
   Building2Icon,
   CalendarIcon,
@@ -86,6 +87,9 @@ import {
   SearchIcon,
   TrashIcon,
   UserIcon,
+  XIcon,
+  BriefcaseIcon,
+  ChevronDownIcon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
@@ -277,6 +281,12 @@ export default function AccountDetailPage({ params }: Props) {
   const [flagDialogOpen, setFlagDialogOpen] = useState(false);
   const updateAccount = useUpdateAccount();
   const { data: session } = authClient.useSession();
+
+  const { data: clientServices } = useClientServices(accountId);
+  const { data: allServicesData } = useServices({ isActive: true, limit: 100 });
+  const addClientService = useAddClientService();
+  const removeClientService = useRemoveClientService();
+  const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
   const [manageContactsDialogOpen, setManageContactsDialogOpen] =
     useState(false);
   const [addRelationshipDialogOpen, setAddRelationshipDialogOpen] =
@@ -637,6 +647,9 @@ export default function AccountDetailPage({ params }: Props) {
           >
             Overview
           </TabsTrigger>
+          <TabsTrigger className='py-5 cursor-pointer' value='logins'>
+            Logins
+          </TabsTrigger>
           <TabsTrigger className='py-5 cursor-pointer' value='businesses'>
             Businesses
           </TabsTrigger>
@@ -649,9 +662,6 @@ export default function AccountDetailPage({ params }: Props) {
 
           <TabsTrigger className='py-5 cursor-pointer' value='relationships'>
             Relationships
-          </TabsTrigger>
-          <TabsTrigger className='py-5 cursor-pointer' value='logins'>
-            Logins
           </TabsTrigger>
         </TabsList>
 
@@ -729,136 +739,182 @@ export default function AccountDetailPage({ params }: Props) {
           </div>
         </TabsContent>
 
-        <TabsContent value='activity-overview' className='flex gap-8'>
-          <div className='bg-white border rounded-xl flex-1 p-6 flex flex-col gap-6'>
-            <h3 className='text-lg font-semibold'>Overview</h3>
-            <div className='grid grid-cols-2 gap-6'>
-              {account.address && (
-                <div>
-                  <div className='text-sm text-neutral-500 flex items-center gap-1 mb-1'>
-                    <span>Address Line</span>
-                  </div>
-                  <p className='font-medium text-[15px]'>{account.address}</p>
-                </div>
-              )}
+        <TabsContent value='activity-overview'>
+          <div className='grid grid-cols-2 gap-6'>
 
-              {account.city && (
-                <div>
-                  <label className='text-sm text-neutral-500'>City</label>
-                  <p className='font-medium text-[15px]'>{account.city}</p>
-                </div>
-              )}
-
-              {account.state && (
-                <div>
-                  <label className='text-sm text-neutral-500'>State</label>
-                  <p className='font-medium text-[15px]'>{account.state}</p>
-                </div>
-              )}
-
-              {account.zipCode && (
-                <div>
-                  <label className='text-sm text-neutral-500'>Zip Code</label>
-                  <p className='font-medium text-[15px]'>{account.zipCode}</p>
-                </div>
-              )}
-
-              {account.ssnLastFour && (
-                <div>
-                  <label className='text-sm text-neutral-500'>
-                    SSN (Last 4)
-                  </label>
-                  <p className='font-medium text-[15px]'>
-                    {account.ssnLastFour}
-                  </p>
-                </div>
-              )}
-
-              {contacts &&
-                contacts.filter((c) =>
-                  c.contactType.toLowerCase().includes('email'),
-                ).length > 0 && (
-                  <div>
-                    <label className='text-sm text-neutral-500'>
-                      Email
-                      {contacts.filter((c) =>
-                        c.contactType.toLowerCase().includes('email'),
-                      ).length > 1
-                        ? 's'
-                        : ''}
-                    </label>
-                    {contacts
-                      .filter((c) =>
-                        c.contactType.toLowerCase().includes('email'),
-                      )
-                      .map((c) => (
-                        <p key={c.id} className='font-medium text-[15px]'>
-                          {c.contactValue}
-                        </p>
-                      ))}
+            {/* Left — Client Details */}
+            <div className='bg-white border rounded-xl p-6 flex flex-col gap-6 min-w-0 overflow-hidden'>
+              <h3 className='text-lg font-semibold'>Client Details</h3>
+              <div className='grid grid-cols-2 gap-6'>
+                {account.address && (
+                  <div className='min-w-0'>
+                    <div className='text-sm text-neutral-500 flex items-center gap-1 mb-1'>
+                      <span>Address Line</span>
+                    </div>
+                    <p className='font-medium text-[15px] break-words'>{account.address}</p>
                   </div>
                 )}
 
-              {contacts &&
-                contacts.filter((c) =>
-                  c.contactType.toLowerCase().includes('phone'),
-                ).length > 0 && (
-                  <div>
-                    <label className='text-sm text-neutral-500'>
-                      Phone
-                      {contacts.filter((c) =>
-                        c.contactType.toLowerCase().includes('phone'),
-                      ).length > 1
-                        ? 's'
-                        : ''}
-                    </label>
-                    {contacts
-                      .filter((c) =>
-                        c.contactType.toLowerCase().includes('phone'),
-                      )
-                      .map((c) => (
-                        <p key={c.id} className='font-medium text-[15px]'>
-                          {formatPhoneNumber(c.contactValue)}
-                        </p>
-                      ))}
+                {account.city && (
+                  <div className='min-w-0'>
+                    <label className='text-sm text-neutral-500'>City</label>
+                    <p className='font-medium text-[15px] break-words'>{account.city}</p>
                   </div>
                 )}
 
-              <div>
-                <label className='text-sm text-neutral-500'>
-                  Date of Birth
-                </label>
-                <p className='font-medium text-[15px]'>{account.dateOfBirth}</p>
-              </div>
+                {account.state && (
+                  <div className='min-w-0'>
+                    <label className='text-sm text-neutral-500'>State</label>
+                    <p className='font-medium text-[15px] break-words'>{account.state}</p>
+                  </div>
+                )}
 
-              <div>
-                <label className='text-sm text-neutral-500'>Created At</label>
-                <p className='font-medium text-[15px]'>
-                  {new Date(account.createdAt).toLocaleDateString()}
-                </p>
-              </div>
+                {account.zipCode && (
+                  <div className='min-w-0'>
+                    <label className='text-sm text-neutral-500'>Zip Code</label>
+                    <p className='font-medium text-[15px] break-words'>{account.zipCode}</p>
+                  </div>
+                )}
 
-              <div>
-                <label className='text-sm text-neutral-500'>Created By</label>
-                <p className='font-medium text-[15px]'>{account.createdBy}</p>
-              </div>
+                {account.ssnLastFour && (
+                  <div className='min-w-0'>
+                    <label className='text-sm text-neutral-500'>SSN (Last 4)</label>
+                    <p className='font-medium text-[15px] break-words'>{account.ssnLastFour}</p>
+                  </div>
+                )}
 
-              {account.updatedAt && (
-                <div>
-                  <label className='text-sm text-neutral-500'>Updated At</label>
-                  <p className='font-medium text-[15px]'>
-                    {new Date(account.updatedAt).toLocaleDateString()}
-                  </p>
+                {contacts &&
+                  contacts.filter((c) => c.contactType.toLowerCase().includes('email')).length > 0 && (
+                    <div className='min-w-0'>
+                      <label className='text-sm text-neutral-500'>
+                        Email{contacts.filter((c) => c.contactType.toLowerCase().includes('email')).length > 1 ? 's' : ''}
+                      </label>
+                      {contacts
+                        .filter((c) => c.contactType.toLowerCase().includes('email'))
+                        .map((c) => (
+                          <p key={c.id} className='font-medium text-[15px] break-all'>{c.contactValue}</p>
+                        ))}
+                    </div>
+                  )}
+
+                {contacts &&
+                  contacts.filter((c) => c.contactType.toLowerCase().includes('phone')).length > 0 && (
+                    <div className='min-w-0'>
+                      <label className='text-sm text-neutral-500'>
+                        Phone{contacts.filter((c) => c.contactType.toLowerCase().includes('phone')).length > 1 ? 's' : ''}
+                      </label>
+                      {contacts
+                        .filter((c) => c.contactType.toLowerCase().includes('phone'))
+                        .map((c) => (
+                          <p key={c.id} className='font-medium text-[15px] break-words'>{formatPhoneNumber(c.contactValue)}</p>
+                        ))}
+                    </div>
+                  )}
+
+                <div className='min-w-0'>
+                  <label className='text-sm text-neutral-500'>Date of Birth</label>
+                  <p className='font-medium text-[15px] break-words'>{account.dateOfBirth}</p>
                 </div>
-              )}
 
-              {account.updatedBy && (
-                <div>
-                  <label className='text-sm text-neutral-500'>Updated By</label>
-                  <p className='font-medium text-[15px]'>{account.updatedBy}</p>
+                <div className='min-w-0'>
+                  <label className='text-sm text-neutral-500'>Created At</label>
+                  <p className='font-medium text-[15px] break-words'>{new Date(account.createdAt).toLocaleDateString()}</p>
+                </div>
+
+                <div className='min-w-0'>
+                  <label className='text-sm text-neutral-500'>Created By</label>
+                  <p className='font-medium text-[15px] break-words'>{account.createdBy}</p>
+                </div>
+
+                {account.updatedAt && (
+                  <div className='min-w-0'>
+                    <label className='text-sm text-neutral-500'>Updated At</label>
+                    <p className='font-medium text-[15px] break-words'>{new Date(account.updatedAt).toLocaleDateString()}</p>
+                  </div>
+                )}
+
+                {account.updatedBy && (
+                  <div className='min-w-0'>
+                    <label className='text-sm text-neutral-500'>Updated By</label>
+                    <p className='font-medium text-[15px] break-words'>{account.updatedBy}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right — Services */}
+            <div className='bg-white border rounded-xl p-6 flex flex-col gap-4'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-2'>
+                  <BriefcaseIcon size={16} className='text-neutral-500' />
+                  <h3 className='text-lg font-semibold'>Services</h3>
+                </div>
+                <div className='relative'>
+                  <button
+                    onClick={() => setServiceDropdownOpen((v) => !v)}
+                    className='flex items-center gap-1.5 text-sm text-purple border border-purple/30 rounded-lg px-3 py-1.5 hover:bg-purple/5 transition-colors cursor-pointer'
+                  >
+                    <PlusIcon size={13} />
+                    <span>Add</span>
+                    <ChevronDownIcon size={13} />
+                  </button>
+                  {serviceDropdownOpen && (
+                    <>
+                      <div className='fixed inset-0 z-10' onClick={() => setServiceDropdownOpen(false)} />
+                      <div className='absolute right-0 top-full mt-1 z-20 bg-white border rounded-xl shadow-lg py-1 w-64 max-h-72 overflow-y-auto'>
+                        {allServicesData?.services
+                          .filter((s) => !clientServices?.some((cs) => cs.serviceId === s.id))
+                          .map((s) => (
+                            <button
+                              key={s.id}
+                              className='w-full text-left px-4 py-2.5 text-sm hover:bg-purple/5 hover:text-purple transition-colors cursor-pointer'
+                              onClick={() => {
+                                addClientService.mutate({
+                                  accountId,
+                                  serviceId: s.id,
+                                  createdBy: session?.user?.name ?? 'unknown',
+                                });
+                                setServiceDropdownOpen(false);
+                              }}
+                            >
+                              {s.name}
+                            </button>
+                          ))}
+                        {allServicesData?.services.filter((s) => !clientServices?.some((cs) => cs.serviceId === s.id)).length === 0 && (
+                          <p className='px-4 py-3 text-sm text-neutral-400'>All services assigned</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {clientServices && clientServices.length > 0 ? (
+                <div className='flex flex-col gap-2'>
+                  {clientServices.map((cs) => (
+                    <div
+                      key={cs.id}
+                      className='flex items-center justify-between rounded-lg border px-4 py-2.5 group'
+                    >
+                      <span className='text-sm font-medium'>{cs.service.name}</span>
+                      <button
+                        className='text-neutral-300 hover:text-red-500 transition-colors'
+                        title='Remove service'
+                        onClick={() => removeClientService.mutate({ accountId, serviceId: cs.serviceId })}
+                      >
+                        <XIcon size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className='flex flex-col items-center justify-center flex-1 py-12 text-neutral-400'>
+                  <BriefcaseIcon size={32} className='mb-3 text-neutral-200' />
+                  <p className='text-sm'>No services assigned yet.</p>
                 </div>
               )}
             </div>
+
           </div>
         </TabsContent>
 

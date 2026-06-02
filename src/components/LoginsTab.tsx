@@ -43,7 +43,13 @@ interface LoginFormState {
   notes: string;
 }
 
-const EMPTY_FORM: LoginFormState = { label: '', username: '', password: '', url: '', notes: '' };
+const EMPTY_FORM: LoginFormState = {
+  label: '',
+  username: '',
+  password: '',
+  url: '',
+  notes: '',
+};
 
 function LoginForm({
   value,
@@ -67,7 +73,9 @@ function LoginForm({
         />
       </div>
       <div>
-        <label className='text-sm text-neutral-500 mb-1 block'>Username / Email *</label>
+        <label className='text-sm text-neutral-500 mb-1 block'>
+          Username / Email *
+        </label>
         <input
           className='w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple'
           placeholder='username@example.com'
@@ -77,7 +85,12 @@ function LoginForm({
       </div>
       <div>
         <label className='text-sm text-neutral-500 mb-1 block'>
-          Password {isEdit && <span className='text-neutral-400'>(leave blank to keep existing)</span>}
+          Password{' '}
+          {isEdit && (
+            <span className='text-neutral-400'>
+              (leave blank to keep existing)
+            </span>
+          )}
           {!isEdit && '*'}
         </label>
         <div className='relative'>
@@ -193,7 +206,12 @@ function RevealDialog({
           </div>
           {error && <p className='text-sm text-red-500'>{error}</p>}
           <DialogFooter>
-            <Button type='button' variant='outline' onClick={() => onOpenChange(false)} className='cursor-pointer'>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => onOpenChange(false)}
+              className='cursor-pointer'
+            >
               Cancel
             </Button>
             <Button
@@ -201,7 +219,11 @@ function RevealDialog({
               disabled={!pw || isPending}
               className='bg-purple cursor-pointer'
             >
-              {isPending ? <Loader2 size={14} className='animate-spin' /> : 'Confirm'}
+              {isPending ? (
+                <Loader2 size={14} className='animate-spin' />
+              ) : (
+                'Confirm'
+              )}
             </Button>
           </DialogFooter>
         </form>
@@ -241,7 +263,7 @@ function LoginRow({
         onError: (err) => {
           setRevealError(err.message);
         },
-      }
+      },
     );
   };
 
@@ -257,7 +279,11 @@ function LoginRow({
           <p className='font-medium text-sm truncate'>{login.label}</p>
           {login.url && (
             <a
-              href={login.url.startsWith('http') ? login.url : `https://${login.url}`}
+              href={
+                login.url.startsWith('http')
+                  ? login.url
+                  : `https://${login.url}`
+              }
               target='_blank'
               rel='noopener noreferrer'
               className='text-xs text-purple hover:underline flex items-center gap-1 mt-0.5'
@@ -269,14 +295,18 @@ function LoginRow({
         </div>
 
         <div className='flex items-center gap-1.5 min-w-0'>
-          <span className='text-sm text-neutral-700 truncate'>{login.username}</span>
+          <span className='text-sm text-neutral-700 truncate'>
+            {login.username}
+          </span>
           <CopyButton text={login.username} />
         </div>
 
         <div className='flex items-center gap-1.5'>
           {showRevealed && revealedPassword ? (
             <>
-              <span className='text-sm font-mono text-neutral-700'>{revealedPassword}</span>
+              <span className='text-sm font-mono text-neutral-700'>
+                {revealedPassword}
+              </span>
               <CopyButton text={revealedPassword} />
               <button
                 className='text-neutral-400 hover:text-neutral-600 transition-colors'
@@ -288,7 +318,9 @@ function LoginRow({
             </>
           ) : (
             <>
-              <span className='text-sm text-neutral-400 tracking-widest'>••••••••</span>
+              <span className='text-sm text-neutral-400 tracking-widest'>
+                ••••••••
+              </span>
               <button
                 className='text-neutral-400 hover:text-purple transition-colors'
                 title='Reveal password'
@@ -352,12 +384,23 @@ export function LoginsTab({ accountId, createdBy }: Props) {
     if (!form.label || !form.username || !form.password) return;
     createLogin.mutate(
       { accountId, data: { ...form, createdBy } },
-      { onSuccess: () => { setAddOpen(false); setForm(EMPTY_FORM); } }
+      {
+        onSuccess: () => {
+          setAddOpen(false);
+          setForm(EMPTY_FORM);
+        },
+      },
     );
   };
 
   const handleEditOpen = (login: ClientLogin) => {
-    setForm({ label: login.label, username: login.username, password: '', url: login.url ?? '', notes: login.notes ?? '' });
+    setForm({
+      label: login.label,
+      username: login.username,
+      password: '',
+      url: login.url ?? '',
+      notes: login.notes ?? '',
+    });
     setEditLogin(login);
   };
 
@@ -376,7 +419,12 @@ export function LoginsTab({ accountId, createdBy }: Props) {
           updatedBy: createdBy,
         },
       },
-      { onSuccess: () => { setEditLogin(null); setForm(EMPTY_FORM); } }
+      {
+        onSuccess: () => {
+          setEditLogin(null);
+          setForm(EMPTY_FORM);
+        },
+      },
     );
   };
 
@@ -384,7 +432,7 @@ export function LoginsTab({ accountId, createdBy }: Props) {
     if (!deleteTarget) return;
     deleteLogin.mutate(
       { accountId, loginId: deleteTarget.id },
-      { onSuccess: () => setDeleteTarget(null) }
+      { onSuccess: () => setDeleteTarget(null) },
     );
   };
 
@@ -409,9 +457,15 @@ export function LoginsTab({ accountId, createdBy }: Props) {
       ) : logins && logins.length > 0 ? (
         <div className='flex flex-col gap-2'>
           <div className='grid grid-cols-[1fr_1fr_1fr_auto] gap-4 px-4 pb-2'>
-            <span className='text-xs font-medium text-neutral-400 uppercase tracking-wide'>Label</span>
-            <span className='text-xs font-medium text-neutral-400 uppercase tracking-wide'>Username</span>
-            <span className='text-xs font-medium text-neutral-400 uppercase tracking-wide'>Password</span>
+            <span className='text-xs font-medium text-neutral-400 uppercase tracking-wide'>
+              Label
+            </span>
+            <span className='text-xs font-medium text-neutral-400 uppercase tracking-wide'>
+              Username
+            </span>
+            <span className='text-xs font-medium text-neutral-400 uppercase tracking-wide'>
+              Password
+            </span>
             <span />
           </div>
           {logins.map((login) => (
@@ -427,13 +481,21 @@ export function LoginsTab({ accountId, createdBy }: Props) {
       ) : (
         <div className='text-center py-12 text-neutral-500'>
           <KeyIcon size={32} className='mx-auto mb-3 text-neutral-300' />
-          <p className='text-sm'>No logins stored yet.</p>
-          <p className='text-xs text-neutral-400 mt-1'>Click &quot;Add Login&quot; to store a credential.</p>
+          <p className='text-md'>No logins stored yet.</p>
+          <p className='text-sm text-neutral-400 mt-1'>
+            Click &quot;Add Login&quot; to store a credential.
+          </p>
         </div>
       )}
 
       {/* Add dialog */}
-      <Dialog open={addOpen} onOpenChange={(v) => { setAddOpen(v); if (!v) setForm(EMPTY_FORM); }}>
+      <Dialog
+        open={addOpen}
+        onOpenChange={(v) => {
+          setAddOpen(v);
+          if (!v) setForm(EMPTY_FORM);
+        }}
+      >
         <DialogContent className='max-w-md'>
           <DialogHeader>
             <DialogTitle>Add Login</DialogTitle>
@@ -442,20 +504,43 @@ export function LoginsTab({ accountId, createdBy }: Props) {
             <LoginForm value={form} onChange={setForm} isEdit={false} />
           </div>
           <DialogFooter>
-            <Button variant='outline' onClick={() => setAddOpen(false)} className='cursor-pointer'>Cancel</Button>
+            <Button
+              variant='outline'
+              onClick={() => setAddOpen(false)}
+              className='cursor-pointer'
+            >
+              Cancel
+            </Button>
             <Button
               className='bg-purple cursor-pointer'
-              disabled={!form.label || !form.username || !form.password || createLogin.isPending}
+              disabled={
+                !form.label ||
+                !form.username ||
+                !form.password ||
+                createLogin.isPending
+              }
               onClick={handleAddSubmit}
             >
-              {createLogin.isPending ? <Loader2 size={14} className='animate-spin' /> : 'Save'}
+              {createLogin.isPending ? (
+                <Loader2 size={14} className='animate-spin' />
+              ) : (
+                'Save'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Edit dialog */}
-      <Dialog open={!!editLogin} onOpenChange={(v) => { if (!v) { setEditLogin(null); setForm(EMPTY_FORM); } }}>
+      <Dialog
+        open={!!editLogin}
+        onOpenChange={(v) => {
+          if (!v) {
+            setEditLogin(null);
+            setForm(EMPTY_FORM);
+          }
+        }}
+      >
         <DialogContent className='max-w-md'>
           <DialogHeader>
             <DialogTitle>Edit Login</DialogTitle>
@@ -464,35 +549,62 @@ export function LoginsTab({ accountId, createdBy }: Props) {
             <LoginForm value={form} onChange={setForm} isEdit={true} />
           </div>
           <DialogFooter>
-            <Button variant='outline' onClick={() => setEditLogin(null)} className='cursor-pointer'>Cancel</Button>
+            <Button
+              variant='outline'
+              onClick={() => setEditLogin(null)}
+              className='cursor-pointer'
+            >
+              Cancel
+            </Button>
             <Button
               className='bg-purple cursor-pointer'
               disabled={!form.label || !form.username || updateLogin.isPending}
               onClick={handleEditSubmit}
             >
-              {updateLogin.isPending ? <Loader2 size={14} className='animate-spin' /> : 'Save'}
+              {updateLogin.isPending ? (
+                <Loader2 size={14} className='animate-spin' />
+              ) : (
+                'Save'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete confirm dialog */}
-      <Dialog open={!!deleteTarget} onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}>
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => {
+          if (!v) setDeleteTarget(null);
+        }}
+      >
         <DialogContent className='max-w-sm'>
           <DialogHeader>
             <DialogTitle>Delete Login</DialogTitle>
           </DialogHeader>
           <p className='text-sm text-neutral-600 py-2'>
-            Are you sure you want to delete <span className='font-medium'>{deleteTarget?.label}</span>? This cannot be undone.
+            Are you sure you want to delete{' '}
+            <span className='font-medium'>{deleteTarget?.label}</span>? This
+            cannot be undone.
           </p>
           <DialogFooter>
-            <Button variant='outline' onClick={() => setDeleteTarget(null)} className='cursor-pointer'>Cancel</Button>
+            <Button
+              variant='outline'
+              onClick={() => setDeleteTarget(null)}
+              className='cursor-pointer'
+            >
+              Cancel
+            </Button>
             <Button
               className='bg-red-600 hover:bg-red-700 cursor-pointer'
               disabled={deleteLogin.isPending}
               onClick={handleDeleteConfirm}
             >
-              {deleteLogin.isPending ? <Loader2 size={14} className='animate-spin' /> : 'Delete'}
+              {deleteLogin.isPending ? (
+                <Loader2 size={14} className='animate-spin' />
+              ) : (
+                'Delete'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

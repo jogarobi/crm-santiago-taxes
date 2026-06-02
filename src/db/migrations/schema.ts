@@ -277,6 +277,16 @@ export const clientAccountContact = sqliteTable("ClientAccountContact", {
 	updatedBy: text(),
 });
 
+export const clientService = sqliteTable("ClientService", {
+	id: integer().primaryKey({ autoIncrement: true }),
+	accountId: integer().notNull().references(() => clientAccount.id, { onDelete: "cascade" }),
+	serviceId: integer().notNull().references(() => service.id, { onDelete: "cascade" }),
+	createdAt: text().default("(DATETIME('NOW'))"),
+	createdBy: text().notNull(),
+}, (table) => [
+	uniqueIndex("client_service_unique").on(table.accountId, table.serviceId),
+]);
+
 export const clientLogin = sqliteTable("ClientLogin", {
 	id: integer().primaryKey({ autoIncrement: true }),
 	accountId: integer().notNull().references(() => clientAccount.id, { onDelete: "cascade" }),
