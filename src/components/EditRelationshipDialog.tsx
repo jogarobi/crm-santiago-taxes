@@ -121,7 +121,7 @@ export function EditRelationshipDialog({
 
     try {
       await updateRelationship.mutateAsync({
-        accountId,
+        accountId: relationship.ownerAccountId,
         relationshipId: relationship.id,
         data: {
           relatedAccountId: selectedAccount.id,

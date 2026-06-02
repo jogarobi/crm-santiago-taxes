@@ -13,6 +13,7 @@ export type Account = {
   updatedAt?: string | null;
   updatedBy?: string | null;
   squareId?: string | null;
+  flag?: string | null;
   phoneNumber?: string | null;
   businesses?: {
     id: number;
@@ -35,4 +36,5 @@ export type CreateAccountInput = {
 
 export type UpdateAccountInput = Partial<CreateAccountInput> & {
   updatedBy: string;
+  flag?: string | null;
 };

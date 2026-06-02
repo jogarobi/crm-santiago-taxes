@@ -64,7 +64,8 @@ function getTimeUntilAnniversary(establishedDate: string): string {
     return `Due in ${monthsDiff} months`;
   }
 }
-import { useAccount } from '@/hooks/use-accounts';
+import { useAccount, useUpdateAccount } from '@/hooks/use-accounts';
+import { authClient } from '@/app/api/clients';
 import { useAccountContacts } from '@/hooks/use-account-contact';
 import { useAccountRelationships } from '@/hooks/use-account-relationships';
 import { useNotes } from '@/hooks/use-notes';
@@ -76,6 +77,7 @@ import {
   CalendarIcon,
   ClockIcon,
   Edit2Icon,
+  FlagIcon,
   IdCardIcon,
   Loader2,
   MailIcon,
@@ -99,6 +101,7 @@ import { DeleteBusinessDialog } from '@/components/DeleteBusinessDialog';
 import { EditClientDialog } from '@/components/EditClientDialog';
 import { DeleteClientDialog } from '@/components/DeleteClientDialog';
 import { ManageContactsDialog } from '@/components/ManageContactsDialog';
+import { SetFlagDialog } from '@/components/SetFlagDialog';
 import { AddRelationshipDialog } from '@/components/AddRelationshipDialog';
 import { EditRelationshipDialog } from '@/components/EditRelationshipDialog';
 import { DeleteRelationshipDialog } from '@/components/DeleteRelationshipDialog';
@@ -114,29 +117,63 @@ import type { Appointment } from '@/lib/types/appointment';
 
 type DatePreset = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
-function getDateRange(preset: DatePreset, customFrom: string, customTo: string) {
+function getDateRange(
+  preset: DatePreset,
+  customFrom: string,
+  customTo: string,
+) {
   const now = new Date();
   if (preset === 'today') {
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const end = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23,
+      59,
+      59,
+      999,
+    );
     return { dateFrom: start.toISOString(), dateTo: end.toISOString() };
   }
   if (preset === 'this_week') {
     const day = now.getDay();
     const diff = day === 0 ? -6 : 1 - day;
-    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
-    const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6, 23, 59, 59, 999);
+    const monday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + diff,
+    );
+    const sunday = new Date(
+      monday.getFullYear(),
+      monday.getMonth(),
+      monday.getDate() + 6,
+      23,
+      59,
+      59,
+      999,
+    );
     return { dateFrom: monday.toISOString(), dateTo: sunday.toISOString() };
   }
   if (preset === 'this_month') {
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const end = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
     return { dateFrom: start.toISOString(), dateTo: end.toISOString() };
   }
   if (preset === 'custom') {
     return {
       dateFrom: customFrom ? new Date(customFrom).toISOString() : undefined,
-      dateTo: customTo ? new Date(customTo + 'T23:59:59.999').toISOString() : undefined,
+      dateTo: customTo
+        ? new Date(customTo + 'T23:59:59.999').toISOString()
+        : undefined,
     };
   }
   return {};
@@ -166,12 +203,17 @@ function DateFilterBar({
   };
   return (
     <div className='flex items-center gap-2'>
-      {(['all', 'today', 'this_week', 'this_month', 'custom'] as DatePreset[]).map((p) => (
+      {(
+        ['all', 'today', 'this_week', 'this_month', 'custom'] as DatePreset[]
+      ).map((p) => (
         <button
           key={p}
           onClick={() => {
             setPreset(p);
-            if (p !== 'custom') { setCustomFrom(''); setCustomTo(''); }
+            if (p !== 'custom') {
+              setCustomFrom('');
+              setCustomTo('');
+            }
           }}
           className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
             preset === p
@@ -231,6 +273,9 @@ export default function AccountDetailPage({ params }: Props) {
   const [notesLimit, setNotesLimit] = useState(4);
   const [editClientDialogOpen, setEditClientDialogOpen] = useState(false);
   const [deleteClientDialogOpen, setDeleteClientDialogOpen] = useState(false);
+  const [flagDialogOpen, setFlagDialogOpen] = useState(false);
+  const updateAccount = useUpdateAccount();
+  const { data: session } = authClient.useSession();
   const [manageContactsDialogOpen, setManageContactsDialogOpen] =
     useState(false);
   const [addRelationshipDialogOpen, setAddRelationshipDialogOpen] =
@@ -261,7 +306,11 @@ export default function AccountDetailPage({ params }: Props) {
   const [tasksCustomFrom, setTasksCustomFrom] = useState('');
   const [tasksCustomTo, setTasksCustomTo] = useState('');
 
-  const notesDateRange = getDateRange(notesPreset, notesCustomFrom, notesCustomTo);
+  const notesDateRange = getDateRange(
+    notesPreset,
+    notesCustomFrom,
+    notesCustomTo,
+  );
   const { data: notesData, isLoading: notesLoading } = useNotes(accountId, {
     search: notesSearchQuery || undefined,
     limit: notesLimit,
@@ -280,7 +329,11 @@ export default function AccountDetailPage({ params }: Props) {
     ...(tpPreset !== 'all' ? tpDateRange : {}),
   });
 
-  const tasksDateRange = getDateRange(tasksPreset, tasksCustomFrom, tasksCustomTo);
+  const tasksDateRange = getDateRange(
+    tasksPreset,
+    tasksCustomFrom,
+    tasksCustomTo,
+  );
 
   const handleNoteClick = (note: Note) => {
     setSelectedNote(note);
@@ -363,6 +416,29 @@ export default function AccountDetailPage({ params }: Props) {
 
   return (
     <div className='flex flex-col gap-8 pt-3'>
+      {account.flag && (
+        <div className='flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-5 py-4'>
+          <FlagIcon className='w-4 h-4 text-red-500 mt-0.5 shrink-0' />
+          <p className='text-red-800 text-sm flex-1'>{account.flag}</p>
+          <button
+            onClick={() => setFlagDialogOpen(true)}
+            className='text-red-500 hover:text-red-700 text-xs font-medium shrink-0'
+          >
+            Edit
+          </button>
+          <button
+            onClick={async () => {
+              await updateAccount.mutateAsync({
+                id: accountId,
+                data: { flag: null, updatedBy: session?.user?.id ?? 'system' },
+              });
+            }}
+            className='text-red-500 hover:text-red-700 text-xs font-medium shrink-0'
+          >
+            Remove
+          </button>
+        </div>
+      )}
       <div className='flex items-center gap-8 bg-white border rounded-xl p-8'>
         <div className='text-3xl font-semibold h-20 w-20 rounded-full bg-purple text-white flex items-center justify-center'>
           {account.firstName[0] + account.lastName[0]}
@@ -448,6 +524,14 @@ export default function AccountDetailPage({ params }: Props) {
           </div>
 
           <div
+            className={`flex items-center gap-2 cursor-pointer ${account.flag ? 'text-red-500' : 'text-neutral-500 hover:text-red-500'}`}
+            onClick={() => setFlagDialogOpen(true)}
+          >
+            <FlagIcon size={15} strokeWidth={2.4} />
+            <span className='text-[15px] font-medium'>{account.flag ? 'Edit Flag' : 'Flag'}</span>
+          </div>
+
+          <div
             className='text-red-700 flex items-center gap-2 cursor-pointer'
             onClick={() => setDeleteClientDialogOpen(true)}
           >
@@ -498,6 +582,12 @@ export default function AccountDetailPage({ params }: Props) {
         open={manageContactsDialogOpen}
         onOpenChange={setManageContactsDialogOpen}
         accountId={accountId}
+      />
+      <SetFlagDialog
+        open={flagDialogOpen}
+        onOpenChange={setFlagDialogOpen}
+        accountId={accountId}
+        currentFlag={account.flag}
       />
       <AddRelationshipDialog
         open={addRelationshipDialogOpen}
@@ -578,7 +668,10 @@ export default function AccountDetailPage({ params }: Props) {
               </div>
               <DateFilterBar
                 preset={notesPreset}
-                setPreset={(p) => { setNotesPreset(p); setNotesLimit(4); }}
+                setPreset={(p) => {
+                  setNotesPreset(p);
+                  setNotesLimit(4);
+                }}
                 customFrom={notesCustomFrom}
                 setCustomFrom={setNotesCustomFrom}
                 customTo={notesCustomTo}
@@ -677,31 +770,55 @@ export default function AccountDetailPage({ params }: Props) {
                 </div>
               )}
 
-              {contacts && contacts.filter((c) => c.contactType.toLowerCase().includes('email')).length > 0 && (
-                <div>
-                  <label className='text-sm text-neutral-500'>
-                    Email{contacts.filter((c) => c.contactType.toLowerCase().includes('email')).length > 1 ? 's' : ''}
-                  </label>
-                  {contacts
-                    .filter((c) => c.contactType.toLowerCase().includes('email'))
-                    .map((c) => (
-                      <p key={c.id} className='font-medium text-[15px]'>{c.contactValue}</p>
-                    ))}
-                </div>
-              )}
+              {contacts &&
+                contacts.filter((c) =>
+                  c.contactType.toLowerCase().includes('email'),
+                ).length > 0 && (
+                  <div>
+                    <label className='text-sm text-neutral-500'>
+                      Email
+                      {contacts.filter((c) =>
+                        c.contactType.toLowerCase().includes('email'),
+                      ).length > 1
+                        ? 's'
+                        : ''}
+                    </label>
+                    {contacts
+                      .filter((c) =>
+                        c.contactType.toLowerCase().includes('email'),
+                      )
+                      .map((c) => (
+                        <p key={c.id} className='font-medium text-[15px]'>
+                          {c.contactValue}
+                        </p>
+                      ))}
+                  </div>
+                )}
 
-              {contacts && contacts.filter((c) => c.contactType.toLowerCase().includes('phone')).length > 0 && (
-                <div>
-                  <label className='text-sm text-neutral-500'>
-                    Phone{contacts.filter((c) => c.contactType.toLowerCase().includes('phone')).length > 1 ? 's' : ''}
-                  </label>
-                  {contacts
-                    .filter((c) => c.contactType.toLowerCase().includes('phone'))
-                    .map((c) => (
-                      <p key={c.id} className='font-medium text-[15px]'>{formatPhoneNumber(c.contactValue)}</p>
-                    ))}
-                </div>
-              )}
+              {contacts &&
+                contacts.filter((c) =>
+                  c.contactType.toLowerCase().includes('phone'),
+                ).length > 0 && (
+                  <div>
+                    <label className='text-sm text-neutral-500'>
+                      Phone
+                      {contacts.filter((c) =>
+                        c.contactType.toLowerCase().includes('phone'),
+                      ).length > 1
+                        ? 's'
+                        : ''}
+                    </label>
+                    {contacts
+                      .filter((c) =>
+                        c.contactType.toLowerCase().includes('phone'),
+                      )
+                      .map((c) => (
+                        <p key={c.id} className='font-medium text-[15px]'>
+                          {formatPhoneNumber(c.contactValue)}
+                        </p>
+                      ))}
+                  </div>
+                )}
 
               <div>
                 <label className='text-sm text-neutral-500'>
@@ -1149,23 +1266,28 @@ export default function AccountDetailPage({ params }: Props) {
                     key={relationship.id}
                     className='border rounded-lg p-4 flex items-center justify-between'
                   >
-                    <div className='flex flex-col gap-2'>
-                      <div className='flex items-center gap-3'>
-                        <div className='text-lg font-medium h-10 w-10 rounded-full bg-purple text-white flex items-center justify-center'>
-                          {relationship.relatedAccount?.firstName[0]}
-                          {relationship.relatedAccount?.lastName[0]}
-                        </div>
-                        <div>
-                          <p className='font-semibold'>
-                            {relationship.relatedAccount?.firstName}{' '}
-                            {relationship.relatedAccount?.lastName}
-                          </p>
-                          <p className='text-sm text-neutral-500 capitalize'>
-                            {relationship.relationship}
-                          </p>
-                        </div>
+                    <button
+                      className='flex items-center gap-3 text-left hover:opacity-80 transition-opacity cursor-pointer'
+                      onClick={() => {
+                        if (relationship.relatedAccount?.id) {
+                          window.location.href = `/clients/${relationship.relatedAccount.id}`;
+                        }
+                      }}
+                    >
+                      <div className='text-lg font-medium h-10 w-10 rounded-full bg-purple text-white flex items-center justify-center shrink-0'>
+                        {relationship.relatedAccount?.firstName[0]}
+                        {relationship.relatedAccount?.lastName[0]}
                       </div>
-                    </div>
+                      <div>
+                        <p className='font-semibold'>
+                          {relationship.relatedAccount?.firstName}{' '}
+                          {relationship.relatedAccount?.lastName}
+                        </p>
+                        <p className='text-sm text-neutral-500 capitalize'>
+                          {relationship.relationship}
+                        </p>
+                      </div>
+                    </button>
                     <div className='flex items-center gap-2'>
                       <Button
                         variant='outline'

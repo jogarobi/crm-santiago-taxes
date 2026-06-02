@@ -29,6 +29,7 @@ import {
 } from '@/hooks/use-appointments';
 import { useCatalogList } from '@/hooks/use-catalog';
 import { useTeamMembers } from '@/hooks/use-team';
+import { useCurrentStaff } from '@/hooks/use-staff';
 import type { Account } from '@/lib/types/account';
 import {
   AlertCircle,
@@ -93,6 +94,7 @@ export function AppointmentDialog({
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [initialTimeFromClick, setInitialTimeFromClick] = useState<string>('');
+  const [selectedTeamMemberId, setSelectedTeamMemberId] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<boolean>(false);
 
@@ -146,8 +148,17 @@ export function AppointmentDialog({
   );
   const { data: catalogItems, isLoading: isCatalogLoading } = useCatalogList();
   const { data: teamMembers = [] } = useTeamMembers();
+  const { data: currentStaff } = useCurrentStaff();
 
-  const defaultTeamMemberId = teamMembers[0]?.id || '';
+  // Set default team member to current user once staff data loads
+  useEffect(() => {
+    if (currentStaff?.squareId && !selectedTeamMemberId) {
+      setSelectedTeamMemberId(currentStaff.squareId);
+    } else if (teamMembers.length > 0 && !selectedTeamMemberId) {
+      setSelectedTeamMemberId(teamMembers[0].id || '');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStaff, teamMembers]);
 
   const appointmentServices: ServiceOption[] = (catalogItems || [])
     .filter((item) => {
@@ -202,6 +213,12 @@ export function AppointmentDialog({
     setAccountSearch('');
   };
 
+  const handleTeamMemberChange = (memberId: string) => {
+    setSelectedTeamMemberId(memberId);
+    setSelectedSegments((prev) => prev.map((s) => ({ ...s, teamMemberId: memberId })));
+    setSelectedTime('');
+  };
+
   const addService = (service: ServiceOption) => {
     if (
       selectedSegments.some((s) => s.serviceVariationId === service.variationId)
@@ -211,7 +228,7 @@ export function AppointmentDialog({
       ...prev,
       {
         serviceVariationId: service.variationId,
-        teamMemberId: defaultTeamMemberId,
+        teamMemberId: selectedTeamMemberId,
         durationMinutes: service.durationMinutes,
         serviceVariationVersion: service.version,
         serviceName: service.serviceName,
@@ -298,6 +315,7 @@ export function AppointmentDialog({
     setSelectedDate('');
     setSelectedTime('');
     setInitialTimeFromClick('');
+    setSelectedTeamMemberId(currentStaff?.squareId || teamMembers[0]?.id || '');
     setError('');
     setSuccess(false);
   };
@@ -431,6 +449,33 @@ export function AppointmentDialog({
                 )}
               </div>
             )}
+          </div>
+
+          {/* Staff Member */}
+          <div>
+            <Label htmlFor='staff-member' className='mb-2'>
+              Staff Member
+            </Label>
+            <Select
+              value={selectedTeamMemberId}
+              onValueChange={handleTeamMemberChange}
+              disabled={teamMembers.length === 0}
+            >
+              <SelectTrigger id='staff-member' className='w-full'>
+                <SelectValue placeholder='Select a staff member...' />
+              </SelectTrigger>
+              <SelectContent>
+                {teamMembers.map((member) => {
+                  const isCurrentUser = member.id === currentStaff?.squareId;
+                  const name = [member.givenName, member.familyName].filter(Boolean).join(' ');
+                  return (
+                    <SelectItem key={member.id} value={member.id || ''}>
+                      {name}{isCurrentUser ? ' (you)' : ''}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Client */}

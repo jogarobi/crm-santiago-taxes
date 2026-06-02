@@ -31,6 +31,8 @@ export interface FetchAccountsParams {
   sortBy?: 'name';
   sortDir?: 'asc' | 'desc';
   createdBy?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface AccountCountResponse {
@@ -65,6 +67,12 @@ async function fetchAccounts(params?: FetchAccountsParams): Promise<PaginatedAcc
   }
   if (params?.createdBy) {
     urlParams.append('createdBy', params.createdBy);
+  }
+  if (params?.dateFrom) {
+    urlParams.append('dateFrom', params.dateFrom);
+  }
+  if (params?.dateTo) {
+    urlParams.append('dateTo', params.dateTo);
   }
 
   const url = `/api/accounts${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;

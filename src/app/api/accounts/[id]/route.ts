@@ -83,6 +83,7 @@ export async function PUT(
         updatedBy: body.updatedBy,
         updatedAt: new Date().toISOString(),
         squareId: body.squareId,
+        flag: body.flag !== undefined ? (body.flag || null) : undefined,
       })
       .where(eq(clientAccount.id, accountId))
       .returning();

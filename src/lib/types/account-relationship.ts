@@ -7,7 +7,9 @@ export type AccountRelationship = {
   createdBy: string;
   updatedAt?: string | null;
   updatedBy?: string | null;
-  // Related account details for display
+  // The accountId that owns this record in the DB (used for edit/delete API calls)
+  ownerAccountId: number;
+  // Related account details for display (always the "other" account, not the viewer)
   relatedAccount?: {
     id: number;
     firstName: string;

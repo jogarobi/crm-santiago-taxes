@@ -27,6 +27,7 @@ export const clientAccount = sqliteTable("ClientAccount", {
 	updatedBy: text(),
 	squareId: text(),
 	createdAt: text(),
+	flag: text(),
 });
 
 export const businessEntity = sqliteTable("BusinessEntity", {
@@ -275,4 +276,14 @@ export const clientAccountContact = sqliteTable("ClientAccountContact", {
 	updatedAt: text(),
 	updatedBy: text(),
 });
+
+export const businessAccount = sqliteTable("BusinessAccount", {
+	id: integer().primaryKey({ autoIncrement: true }),
+	businessId: integer().notNull().references(() => business.id, { onDelete: "cascade" }),
+	accountId: integer().notNull().references(() => clientAccount.id, { onDelete: "cascade" }),
+	createdAt: text().default("(DATETIME('NOW'))"),
+	createdBy: text().notNull(),
+}, (table) => [
+	uniqueIndex("business_account_unique").on(table.businessId, table.accountId),
+]);
 

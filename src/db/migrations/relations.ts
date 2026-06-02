@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { clientAccount, clientAccountRelation, businessEntity, business, activityType, activity, user, staff, appointment, account, invitation, organization, member, session, note, task, clientAccountContact } from "./schema";
+import { clientAccount, clientAccountRelation, businessEntity, business, activityType, activity, user, staff, appointment, account, invitation, organization, member, session, note, task, clientAccountContact, businessAccount } from "./schema";
 
 export const clientAccountRelationRelations = relations(clientAccountRelation, ({one}) => ({
 	clientAccount_relatedAccountId: one(clientAccount, {
@@ -22,6 +22,7 @@ export const clientAccountRelations = relations(clientAccount, ({many}) => ({
 		relationName: "clientAccountRelation_accountId_clientAccount_id"
 	}),
 	businesses: many(business),
+	businessAccounts: many(businessAccount),
 	activities: many(activity),
 	appointments: many(appointment),
 	notes: many(note),
@@ -38,6 +39,7 @@ export const businessRelations = relations(business, ({one, many}) => ({
 		fields: [business.accountId],
 		references: [clientAccount.id]
 	}),
+	businessAccounts: many(businessAccount),
 	activities: many(activity),
 	notes: many(note),
 	tasks: many(task),
@@ -159,6 +161,17 @@ export const taskRelations = relations(task, ({one}) => ({
 export const clientAccountContactRelations = relations(clientAccountContact, ({one}) => ({
 	clientAccount: one(clientAccount, {
 		fields: [clientAccountContact.accountId],
+		references: [clientAccount.id]
+	}),
+}));
+
+export const businessAccountRelations = relations(businessAccount, ({one}) => ({
+	business: one(business, {
+		fields: [businessAccount.businessId],
+		references: [business.id]
+	}),
+	clientAccount: one(clientAccount, {
+		fields: [businessAccount.accountId],
 		references: [clientAccount.id]
 	}),
 }));

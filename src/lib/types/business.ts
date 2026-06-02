@@ -31,6 +31,24 @@ export interface Business {
     firstName: string;
     lastName: string;
   };
+  accounts?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  }[];
+}
+
+export interface BusinessAccountLink {
+  id: number;
+  businessId: number;
+  accountId: number;
+  createdAt: string | null;
+  createdBy: string;
+  account: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
 }
 
 export interface CreateBusinessInput {

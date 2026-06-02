@@ -23,6 +23,7 @@ import {
   ArrowDown,
   ListFilter,
   Check,
+  FlagIcon,
 } from 'lucide-react';
 import {
   InputGroup,
@@ -267,7 +268,12 @@ export default function ClientsPage() {
                   }}
                 >
                   <TableCell className='font-medium p-4'>
-                    <div className='flex items-center gap-3'>
+                    <div className='flex items-center gap-2'>
+                      {account.flag && (
+                        <FlagIcon
+                          className='w-3.5 h-3.5 text-red-500 shrink-0'
+                        />
+                      )}
                       <span>
                         {account.firstName} {account.lastName}
                       </span>

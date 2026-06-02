@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { business, businessEntity } from '@/db/migrations/schema';
-import { eq, and } from 'drizzle-orm';
+import { business, businessAccount, businessEntity, clientAccount } from '@/db/migrations/schema';
+import { eq, and, sql } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(
@@ -22,7 +22,7 @@ export async function GET(
       );
     }
 
-    // Fetch business with entity information
+    // Fetch business with entity and account information
     const result = await db
       .select({
         id: business.id,
@@ -43,9 +43,15 @@ export async function GET(
           id: businessEntity.id,
           name: businessEntity.name,
         },
+        account: {
+          id: clientAccount.id,
+          firstName: clientAccount.firstName,
+          lastName: clientAccount.lastName,
+        },
       })
       .from(business)
       .leftJoin(businessEntity, eq(business.entityId, businessEntity.id))
+      .leftJoin(clientAccount, sql`CAST(${business.accountId} AS INTEGER) = ${clientAccount.id}`)
       .where(
         and(
           eq(business.id, businessIdInt),
@@ -61,7 +67,18 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(result[0]);
+    // Fetch all associated accounts from junction table
+    const associatedAccounts = await db
+      .select({
+        id: clientAccount.id,
+        firstName: clientAccount.firstName,
+        lastName: clientAccount.lastName,
+      })
+      .from(businessAccount)
+      .innerJoin(clientAccount, eq(businessAccount.accountId, clientAccount.id))
+      .where(eq(businessAccount.businessId, businessIdInt));
+
+    return NextResponse.json({ ...result[0], accounts: associatedAccounts });
   } catch (error) {
     console.error('Error fetching business:', error);
     return NextResponse.json(

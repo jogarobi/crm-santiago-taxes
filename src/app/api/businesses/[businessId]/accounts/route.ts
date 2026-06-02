@@ -1,0 +1,141 @@
+import { NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { business, businessAccount, clientAccount } from '@/db/migrations/schema';
+import { eq, and } from 'drizzle-orm';
+import { requirePermission } from '@/lib/auth-utils';
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ businessId: string }> }
+) {
+  try {
+    await requirePermission({ business: ['read'] });
+
+    const { businessId } = await params;
+    const businessIdInt = parseInt(businessId);
+
+    if (isNaN(businessIdInt)) {
+      return NextResponse.json({ error: 'Invalid business ID' }, { status: 400 });
+    }
+
+    const businessExists = await db
+      .select({ id: business.id })
+      .from(business)
+      .where(eq(business.id, businessIdInt))
+      .limit(1);
+
+    if (businessExists.length === 0) {
+      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+    }
+
+    const accounts = await db
+      .select({
+        id: businessAccount.id,
+        businessId: businessAccount.businessId,
+        accountId: businessAccount.accountId,
+        createdAt: businessAccount.createdAt,
+        createdBy: businessAccount.createdBy,
+        account: {
+          id: clientAccount.id,
+          firstName: clientAccount.firstName,
+          lastName: clientAccount.lastName,
+        },
+      })
+      .from(businessAccount)
+      .innerJoin(clientAccount, eq(businessAccount.accountId, clientAccount.id))
+      .where(eq(businessAccount.businessId, businessIdInt));
+
+    return NextResponse.json(accounts);
+  } catch (error) {
+    console.error('Error fetching business accounts:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch business accounts' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ businessId: string }> }
+) {
+  try {
+    await requirePermission({ business: ['update'] });
+
+    const { businessId } = await params;
+    const businessIdInt = parseInt(businessId);
+    const body = await request.json();
+
+    if (isNaN(businessIdInt)) {
+      return NextResponse.json({ error: 'Invalid business ID' }, { status: 400 });
+    }
+
+    if (!body.accountId || !body.createdBy) {
+      return NextResponse.json(
+        { error: 'Missing required fields: accountId, createdBy' },
+        { status: 400 }
+      );
+    }
+
+    const accountIdInt = parseInt(body.accountId);
+    if (isNaN(accountIdInt)) {
+      return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
+    }
+
+    const businessExists = await db
+      .select({ id: business.id })
+      .from(business)
+      .where(eq(business.id, businessIdInt))
+      .limit(1);
+
+    if (businessExists.length === 0) {
+      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+    }
+
+    const accountExists = await db
+      .select({ id: clientAccount.id })
+      .from(clientAccount)
+      .where(eq(clientAccount.id, accountIdInt))
+      .limit(1);
+
+    if (accountExists.length === 0) {
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+    }
+
+    const existing = await db
+      .select({ id: businessAccount.id })
+      .from(businessAccount)
+      .where(
+        and(
+          eq(businessAccount.businessId, businessIdInt),
+          eq(businessAccount.accountId, accountIdInt)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      return NextResponse.json(
+        { error: 'Account is already associated with this business' },
+        { status: 409 }
+      );
+    }
+
+    const newLink = await db
+      .insert(businessAccount)
+      .values({
+        businessId: businessIdInt,
+        accountId: accountIdInt,
+        createdBy: body.createdBy,
+        createdAt: new Date().toISOString(),
+      })
+      .returning();
+
+    return NextResponse.json(newLink[0], { status: 201 });
+  } catch (error) {
+    console.error('Error adding account to business:', error);
+    return NextResponse.json(
+      { error: 'Failed to add account to business' },
+      { status: 500 }
+    );
+  }
+}

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { clientAccount, business } from '@/db/migrations/schema';
-import { or, like, eq, count, sql, asc, desc } from 'drizzle-orm';
+import { or, like, eq, count, sql, asc, desc, gte, lte } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
 
 
@@ -17,6 +17,8 @@ export async function GET(request: Request) {
     const sortBy = searchParams.get('sortBy');
     const sortDir = searchParams.get('sortDir') as 'asc' | 'desc' | null;
     const createdBy = searchParams.get('createdBy');
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
 
     const offset = pageIndex * pageSize;
 
@@ -54,6 +56,14 @@ export async function GET(request: Request) {
 
     if (createdBy) {
       conditions.push(eq(clientAccount.createdBy, createdBy));
+    }
+
+    if (dateFrom) {
+      conditions.push(gte(clientAccount.createdAt, dateFrom));
+    }
+
+    if (dateTo) {
+      conditions.push(lte(clientAccount.createdAt, dateTo));
     }
 
     if (accountType === 'clients') {
@@ -100,6 +110,7 @@ export async function GET(request: Request) {
         updatedBy: clientAccount.updatedBy,
         squareId: clientAccount.squareId,
         createdAt: clientAccount.createdAt,
+        flag: clientAccount.flag,
         phoneNumber: sql<string | null>`(
           SELECT contactValue FROM ClientAccountContact
           WHERE ClientAccountContact.accountId = "ClientAccount"."id"

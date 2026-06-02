@@ -117,9 +117,9 @@ export function useCreateAccountRelationship() {
 
   return useMutation({
     mutationFn: createAccountRelationship,
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: accountRelationshipKeys.list(data.accountId),
+        queryKey: accountRelationshipKeys.lists(),
       });
     },
   });
@@ -138,9 +138,9 @@ export function useUpdateAccountRelationship() {
       relationshipId: number;
       data: UpdateAccountRelationshipInput;
     }) => updateAccountRelationship(accountId, relationshipId, data),
-    onSuccess: (updatedRelationship, variables) => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: accountRelationshipKeys.list(updatedRelationship.accountId),
+        queryKey: accountRelationshipKeys.lists(),
       });
       queryClient.invalidateQueries({
         queryKey: accountRelationshipKeys.detail(variables.relationshipId),
@@ -162,7 +162,7 @@ export function useDeleteAccountRelationship() {
     }) => deleteAccountRelationship(accountId, relationshipId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: accountRelationshipKeys.list(variables.accountId),
+        queryKey: accountRelationshipKeys.lists(),
       });
       queryClient.invalidateQueries({
         queryKey: accountRelationshipKeys.detail(variables.relationshipId),

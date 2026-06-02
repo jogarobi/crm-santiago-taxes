@@ -34,7 +34,7 @@ export function DeleteRelationshipDialog({
 
     try {
       await deleteRelationship.mutateAsync({
-        accountId,
+        accountId: relationship.ownerAccountId,
         relationshipId: relationship.id,
       });
       onOpenChange(false);

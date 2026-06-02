@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { business, businessEntity, clientAccount } from '@/db/migrations/schema';
-import { eq } from 'drizzle-orm';
+import { business, businessAccount, businessEntity, clientAccount } from '@/db/migrations/schema';
+import { eq, or, inArray } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(
@@ -31,6 +31,18 @@ export async function GET(
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
+    // Find business IDs linked via junction table for this account
+    const linkedBusinessIds = await db
+      .select({ businessId: businessAccount.businessId })
+      .from(businessAccount)
+      .where(eq(businessAccount.accountId, accountId));
+
+    const linkedIds = linkedBusinessIds.map((r) => r.businessId);
+
+    const whereClause = linkedIds.length > 0
+      ? or(eq(business.accountId, accountId.toString()), inArray(business.id, linkedIds))
+      : eq(business.accountId, accountId.toString());
+
     const businesses = await db
       .select({
         id: business.id,
@@ -54,7 +66,7 @@ export async function GET(
       })
       .from(business)
       .leftJoin(businessEntity, eq(business.entityId, businessEntity.id))
-      .where(eq(business.accountId, accountId.toString()));
+      .where(whereClause);
 
     return NextResponse.json(businesses);
   } catch (error) {
@@ -120,6 +132,14 @@ export async function POST(
         createdAt: new Date().toISOString(),
       })
       .returning();
+
+    // Seed junction table with primary owner
+    await db.insert(businessAccount).values({
+      businessId: newBusiness[0].id,
+      accountId: accountId,
+      createdBy: body.createdBy,
+      createdAt: new Date().toISOString(),
+    });
 
     return NextResponse.json(newBusiness[0], { status: 201 });
   } catch (error) {

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Business, CreateBusinessInput, UpdateBusinessInput } from '@/lib/types/business';
+import type { Business, BusinessAccountLink, CreateBusinessInput, UpdateBusinessInput } from '@/lib/types/business';
 
 // Types
 export interface FetchAllBusinessesParams {
@@ -30,6 +30,7 @@ export const businessKeys = {
     [...businessKeys.all, 'all-businesses', params] as const,
   details: () => [...businessKeys.all, 'detail'] as const,
   detail: (businessId: number) => [...businessKeys.details(), businessId] as const,
+  accounts: (businessId: number) => [...businessKeys.all, 'accounts', businessId] as const,
 };
 
 // API Functions
@@ -139,6 +140,43 @@ async function deleteBusiness(
   return response.json();
 }
 
+async function fetchBusinessAccounts(businessId: number): Promise<BusinessAccountLink[]> {
+  const response = await fetch(`/api/businesses/${businessId}/accounts`);
+  if (!response.ok) throw new Error('Failed to fetch business accounts');
+  return response.json();
+}
+
+async function addBusinessAccount(
+  businessId: number,
+  accountId: number,
+  createdBy: string
+): Promise<BusinessAccountLink> {
+  const response = await fetch(`/api/businesses/${businessId}/accounts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accountId, createdBy }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to add account to business');
+  }
+  return response.json();
+}
+
+async function removeBusinessAccount(
+  businessId: number,
+  accountId: number
+): Promise<{ message: string }> {
+  const response = await fetch(`/api/businesses/${businessId}/accounts/${accountId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to remove account from business');
+  }
+  return response.json();
+}
+
 // Hooks
 async function fetchBusinessCreators(): Promise<string[]> {
   const response = await fetch('/api/businesses/creators');
@@ -234,6 +272,60 @@ export function useDeleteBusiness() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: businessKeys.list(variables.accountId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: businessKeys.detail(variables.businessId),
+      });
+    },
+  });
+}
+
+export function useBusinessAccounts(businessId: number) {
+  return useQuery({
+    queryKey: businessKeys.accounts(businessId),
+    queryFn: () => fetchBusinessAccounts(businessId),
+    enabled: !!businessId,
+  });
+}
+
+export function useAddBusinessAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      businessId,
+      accountId,
+      createdBy,
+    }: {
+      businessId: number;
+      accountId: number;
+      createdBy: string;
+    }) => addBusinessAccount(businessId, accountId, createdBy),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: businessKeys.accounts(variables.businessId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: businessKeys.detail(variables.businessId),
+      });
+    },
+  });
+}
+
+export function useRemoveBusinessAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      businessId,
+      accountId,
+    }: {
+      businessId: number;
+      accountId: number;
+    }) => removeBusinessAccount(businessId, accountId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: businessKeys.accounts(variables.businessId),
       });
       queryClient.invalidateQueries({
         queryKey: businessKeys.detail(variables.businessId),

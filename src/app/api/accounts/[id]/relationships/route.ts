@@ -31,29 +31,42 @@ export async function GET(
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    const relationships = await db
-      .select({
-        id: clientAccountRelation.id,
-        accountId: clientAccountRelation.accountId,
-        relatedAccountId: clientAccountRelation.relatedAccountId,
-        relationship: clientAccountRelation.relationship,
-        createdAt: clientAccountRelation.createdAt,
-        createdBy: clientAccountRelation.createdBy,
-        updatedAt: clientAccountRelation.updatedAt,
-        updatedBy: clientAccountRelation.updatedBy,
-        relatedAccount: {
-          id: clientAccount.id,
-          firstName: clientAccount.firstName,
-          lastName: clientAccount.lastName,
-          dateOfBirth: clientAccount.dateOfBirth,
-        },
-      })
+    const selectShape = {
+      id: clientAccountRelation.id,
+      accountId: clientAccountRelation.accountId,
+      relatedAccountId: clientAccountRelation.relatedAccountId,
+      relationship: clientAccountRelation.relationship,
+      createdAt: clientAccountRelation.createdAt,
+      createdBy: clientAccountRelation.createdBy,
+      updatedAt: clientAccountRelation.updatedAt,
+      updatedBy: clientAccountRelation.updatedBy,
+      relatedAccount: {
+        id: clientAccount.id,
+        firstName: clientAccount.firstName,
+        lastName: clientAccount.lastName,
+        dateOfBirth: clientAccount.dateOfBirth,
+      },
+    };
+
+    // Relationships where this account is the primary (accountId = X)
+    const direct = await db
+      .select(selectShape)
       .from(clientAccountRelation)
-      .leftJoin(
-        clientAccount,
-        eq(clientAccountRelation.relatedAccountId, clientAccount.id)
-      )
+      .leftJoin(clientAccount, eq(clientAccountRelation.relatedAccountId, clientAccount.id))
       .where(eq(clientAccountRelation.accountId, accountId));
+
+    // Relationships where this account is the related side (relatedAccountId = X)
+    // Join on accountId to get the OTHER account's info for display
+    const inverse = await db
+      .select(selectShape)
+      .from(clientAccountRelation)
+      .leftJoin(clientAccount, eq(clientAccountRelation.accountId, clientAccount.id))
+      .where(eq(clientAccountRelation.relatedAccountId, accountId));
+
+    const relationships = [
+      ...direct.map((r) => ({ ...r, ownerAccountId: r.accountId! })),
+      ...inverse.map((r) => ({ ...r, ownerAccountId: r.accountId! })),
+    ];
 
     return NextResponse.json(relationships);
   } catch (error) {

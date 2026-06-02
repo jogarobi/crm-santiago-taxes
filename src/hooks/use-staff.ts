@@ -129,6 +129,20 @@ async function deleteStaff(id: number): Promise<void> {
   return response.json();
 }
 
+async function fetchCurrentStaff(): Promise<Staff | null> {
+  const response = await fetch('/api/staff/me');
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error('Failed to fetch current staff');
+  return response.json();
+}
+
+export function useCurrentStaff() {
+  return useQuery({
+    queryKey: [...staffKeys.all, 'me'] as const,
+    queryFn: fetchCurrentStaff,
+  });
+}
+
 export function useStaff(params?: UseStaffParams) {
   return useQuery({
     queryKey: staffKeys.list(params),

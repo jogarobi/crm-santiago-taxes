@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { useStats, type StatsPeriod } from '@/hooks/use-stats';
+import { useAccounts } from '@/hooks/use-accounts';
 import {
   Loader2,
   Users,
   Building2,
   CheckCircle2,
   Calendar,
+  DownloadIcon,
 } from 'lucide-react';
 import {
   ChartContainer,
@@ -38,13 +40,120 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 
 const COLORS = ['#7c3aed', '#a78bfa', '#c4b5fd', '#ddd6fe', '#ede9fe'];
 
+function formatPhone(phone: string | null | undefined) {
+  if (!phone) return null;
+  const cleaned = phone.replace(/\D/g, '');
+  if (cleaned.length === 10)
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+  if (cleaned.length === 11 && cleaned[0] === '1')
+    return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+  return phone;
+}
+
+
 export default function ReportsPage() {
   const [period, setPeriod] = useState<StatsPeriod>('all');
   const { data: stats, isLoading } = useStats({ period });
+
+  type NewClientsPreset = 'today' | 'this_week' | 'this_month' | 'custom';
+  const [newClientsPreset, setNewClientsPreset] = useState<NewClientsPreset>('this_month');
+  const [newClientsCustomFrom, setNewClientsCustomFrom] = useState('');
+  const [newClientsCustomTo, setNewClientsCustomTo] = useState('');
+
+  function getNewClientsDateRange(): { dateFrom?: string; dateTo?: string } {
+    const now = new Date();
+    if (newClientsPreset === 'today') {
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      return { dateFrom: start.toISOString(), dateTo: end.toISOString() };
+    }
+    if (newClientsPreset === 'this_week') {
+      const day = now.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
+      const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6, 23, 59, 59, 999);
+      return { dateFrom: monday.toISOString(), dateTo: sunday.toISOString() };
+    }
+    if (newClientsPreset === 'this_month') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      return { dateFrom: start.toISOString(), dateTo: end.toISOString() };
+    }
+    return {
+      dateFrom: newClientsCustomFrom ? new Date(newClientsCustomFrom).toISOString() : undefined,
+      dateTo: newClientsCustomTo ? new Date(newClientsCustomTo + 'T23:59:59.999').toISOString() : undefined,
+    };
+  }
+
+  const newClientsDateRange = getNewClientsDateRange();
+
+  const { data: newClientsResponse, isLoading: newClientsLoading } = useAccounts({
+    ...newClientsDateRange,
+    pageSize: 500,
+    pageIndex: 0,
+  });
+
+  const newClients = newClientsResponse?.data ?? [];
+  const newClientsTotal = newClientsResponse?.meta?.total ?? 0;
+
+  const presetLabels: Record<NewClientsPreset, string> = {
+    today: 'Today',
+    this_week: 'This Week',
+    this_month: 'This Month',
+    custom: 'Custom',
+  };
+
+  function downloadBusinessesCSV() {
+    const headers = ['Business Name', 'Established Date', 'Years in Business'];
+    const rows = stats?.businessesDueList.map((b) => {
+      const established = b.establishedDate ? new Date(b.establishedDate) : null;
+      const years = established ? new Date().getFullYear() - established.getFullYear() : '';
+      return [
+        b.registeredName,
+        established ? format(established, 'MM/dd/yyyy') : '',
+        years,
+      ];
+    }) ?? [];
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `businesses-due-${format(new Date(), 'MMMM-yyyy').toLowerCase()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadNewClientsCSV() {
+    const headers = ['ID', 'First Name', 'Last Name', 'Date of Birth', 'SSN (Last 4)', 'Phone', 'Created By', 'Created On'];
+    const rows = newClients.map((c) => [
+      c.id,
+      c.firstName,
+      c.lastName,
+      c.dateOfBirth || '',
+      c.ssnLastFour || '',
+      formatPhone(c.phoneNumber) || '',
+      c.createdBy,
+      c.createdAt ? format(new Date(c.createdAt), 'MM/dd/yyyy') : '',
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `new-clients-${newClientsPreset}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   if (isLoading) {
     return (
@@ -175,6 +284,115 @@ export default function ReportsPage() {
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+      {/* New Clients Report */}
+      <Card className='bg-white shadow-none'>
+        <CardHeader>
+          <div className='flex items-center justify-between gap-4'>
+            <CardTitle>New Clients</CardTitle>
+            <div className='flex items-center gap-2 flex-wrap'>
+              {(['today', 'this_week', 'this_month', 'custom'] as NewClientsPreset[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => {
+                    setNewClientsPreset(p);
+                    if (p !== 'custom') {
+                      setNewClientsCustomFrom('');
+                      setNewClientsCustomTo('');
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                    newClientsPreset === p
+                      ? 'bg-purple text-white border-purple'
+                      : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300 hover:text-neutral-900'
+                  }`}
+                >
+                  {presetLabels[p]}
+                </button>
+              ))}
+              {newClientsPreset === 'custom' && (
+                <>
+                  <input
+                    type='date'
+                    value={newClientsCustomFrom}
+                    onChange={(e) => setNewClientsCustomFrom(e.target.value)}
+                    className='text-sm border border-neutral-200 rounded-md px-2 py-1.5 text-neutral-700 focus:outline-none focus:ring-1 focus:ring-purple'
+                  />
+                  <span className='text-neutral-400 text-sm'>to</span>
+                  <input
+                    type='date'
+                    value={newClientsCustomTo}
+                    min={newClientsCustomFrom}
+                    onChange={(e) => setNewClientsCustomTo(e.target.value)}
+                    className='text-sm border border-neutral-200 rounded-md px-2 py-1.5 text-neutral-700 focus:outline-none focus:ring-1 focus:ring-purple'
+                  />
+                </>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className='flex items-center justify-between'>
+            {newClientsLoading ? (
+              <div className='flex items-center gap-3'>
+                <Loader2 className='w-5 h-5 animate-spin text-purple' />
+                <span className='text-neutral-500 text-sm'>Loading...</span>
+              </div>
+            ) : (
+              <div className='flex items-baseline gap-2'>
+                <span className='text-4xl font-bold text-purple'>{newClientsTotal.toLocaleString()}</span>
+                <span className='text-neutral-500 text-sm'>
+                  client{newClientsTotal !== 1 ? 's' : ''} registered in this period
+                </span>
+              </div>
+            )}
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={downloadNewClientsCSV}
+              disabled={newClientsLoading || newClientsTotal === 0}
+              className='flex items-center gap-2'
+            >
+              <DownloadIcon className='w-4 h-4' />
+              Download CSV
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Businesses Due for Tax Filing This Month */}
+      <Card className='bg-white shadow-none'>
+        <CardHeader>
+          <CardTitle>Businesses Due for Tax Filing</CardTitle>
+          <CardDescription>
+            Annual report deadlines in {format(new Date(), 'MMMM yyyy')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-baseline gap-2'>
+              <span className='text-4xl font-bold text-purple'>
+                {(stats?.businessesDueList.length ?? 0).toLocaleString()}
+              </span>
+              <span className='text-neutral-500 text-sm'>
+                {(stats?.businessesDueList.length ?? 0) !== 1 ? 'businesses' : 'business'} due this month
+              </span>
+            </div>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={downloadBusinessesCSV}
+              disabled={!stats || stats.businessesDueList.length === 0}
+              className='flex items-center gap-2'
+            >
+              <DownloadIcon className='w-4 h-4' />
+              Download CSV
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
       </div>
 
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
@@ -343,60 +561,6 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      {/* Businesses Due for Tax Filing This Month */}
-      {stats.businessesDueList.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Businesses Due for Tax Filing This Month</CardTitle>
-            <CardDescription>
-              Businesses with tax filing deadlines in{' '}
-              {format(new Date(), 'MMMM yyyy')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className='space-y-3'>
-              {stats.businessesDueList.map((business) => {
-                const establishedDate = business.establishedDate
-                  ? new Date(business.establishedDate)
-                  : null;
-                const years = establishedDate
-                  ? new Date().getFullYear() - establishedDate.getFullYear()
-                  : 0;
-
-                return (
-                  <div
-                    key={business.id}
-                    className='flex items-center justify-between p-4 border rounded-lg hover:bg-neutral-50 transition-colors'
-                  >
-                    <div className='flex items-center gap-3'>
-                      <div className='h-10 w-10 rounded-full bg-purple/10 flex items-center justify-center'>
-                        <Building2 className='h-5 w-5 text-purple' />
-                      </div>
-                      <div>
-                        <p className='font-semibold text-[15px]'>
-                          {business.registeredName}
-                        </p>
-                        <p className='text-sm text-neutral-500'>
-                          Established:{' '}
-                          {establishedDate
-                            ? format(establishedDate, 'MMMM d, yyyy')
-                            : 'N/A'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className='text-right'>
-                      <p className='font-semibold text-purple'>
-                        {years} {years === 1 ? 'year' : 'years'}
-                      </p>
-                      <p className='text-xs text-neutral-500'>in business</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
