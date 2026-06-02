@@ -109,6 +109,7 @@ import { CancelAppointmentDialog } from '@/components/CancelAppointmentDialog';
 import { LogTouchpointDialog } from '@/components/LogTouchpointDialog';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import { TasksList } from '@/components/TasksList';
+import { LoginsTab } from '@/components/LoginsTab';
 import clsx from 'clsx';
 import type { Note } from '@/lib/types/note';
 import type { Business } from '@/lib/types/business';
@@ -648,6 +649,9 @@ export default function AccountDetailPage({ params }: Props) {
 
           <TabsTrigger className='py-5 cursor-pointer' value='relationships'>
             Relationships
+          </TabsTrigger>
+          <TabsTrigger className='py-5 cursor-pointer' value='logins'>
+            Logins
           </TabsTrigger>
         </TabsList>
 
@@ -1321,6 +1325,13 @@ export default function AccountDetailPage({ params }: Props) {
               </div>
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value='logins'>
+          <LoginsTab
+            accountId={accountId}
+            createdBy={session?.user?.name ?? 'unknown'}
+          />
         </TabsContent>
       </Tabs>
     </div>

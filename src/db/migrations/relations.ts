@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { clientAccount, clientAccountRelation, businessEntity, business, activityType, activity, user, staff, appointment, account, invitation, organization, member, session, note, task, clientAccountContact, businessAccount } from "./schema";
+import { clientAccount, clientAccountRelation, businessEntity, business, activityType, activity, user, staff, appointment, account, invitation, organization, member, session, note, task, clientAccountContact, businessAccount, clientLogin } from "./schema";
 
 export const clientAccountRelationRelations = relations(clientAccountRelation, ({one}) => ({
 	clientAccount_relatedAccountId: one(clientAccount, {
@@ -28,6 +28,7 @@ export const clientAccountRelations = relations(clientAccount, ({many}) => ({
 	notes: many(note),
 	tasks: many(task),
 	clientAccountContacts: many(clientAccountContact),
+	clientLogins: many(clientLogin),
 }));
 
 export const businessRelations = relations(business, ({one, many}) => ({
@@ -162,6 +163,13 @@ export const clientAccountContactRelations = relations(clientAccountContact, ({o
 	clientAccount: one(clientAccount, {
 		fields: [clientAccountContact.accountId],
 		references: [clientAccount.id]
+	}),
+}));
+
+export const clientLoginRelations = relations(clientLogin, ({one}) => ({
+	clientAccount: one(clientAccount, {
+		fields: [clientLogin.accountId],
+		references: [clientAccount.id],
 	}),
 }));
 

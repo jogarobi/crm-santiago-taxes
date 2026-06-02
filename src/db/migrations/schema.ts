@@ -277,6 +277,20 @@ export const clientAccountContact = sqliteTable("ClientAccountContact", {
 	updatedBy: text(),
 });
 
+export const clientLogin = sqliteTable("ClientLogin", {
+	id: integer().primaryKey({ autoIncrement: true }),
+	accountId: integer().notNull().references(() => clientAccount.id, { onDelete: "cascade" }),
+	label: text().notNull(),
+	username: text().notNull(),
+	encryptedPassword: text().notNull(),
+	url: text(),
+	notes: text(),
+	createdAt: text().default("(DATETIME('NOW'))"),
+	createdBy: text().notNull(),
+	updatedAt: text(),
+	updatedBy: text(),
+});
+
 export const businessAccount = sqliteTable("BusinessAccount", {
 	id: integer().primaryKey({ autoIncrement: true }),
 	businessId: integer().notNull().references(() => business.id, { onDelete: "cascade" }),
