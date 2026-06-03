@@ -252,8 +252,8 @@ async function fetchAvailability(
       query: {
         filter: {
           startAtRange: {
-            startAt: `${selectedDate}T00:00:00.000Z`,
-            endAt: `${selectedDate}T23:59:00.000Z`,
+            startAt: new Date(`${selectedDate}T00:00:00`).toISOString(),
+            endAt: new Date(`${selectedDate}T23:59:59`).toISOString(),
           },
           segmentFilters: segments.map((s) => ({
             serviceVariationId: s.serviceVariationId,
@@ -265,7 +265,7 @@ async function fetchAvailability(
   });
 
   if (!response.ok) {
-    throw new Error('Failed to fetch availability');
+    return [];
   }
 
   const data = await response.json();

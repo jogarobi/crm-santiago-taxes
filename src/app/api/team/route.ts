@@ -8,14 +8,16 @@ export async function GET() {
     const activeStaff = await db
       .select()
       .from(staff)
-      .where(eq(staff.status, 'ACTIVE'));
+      .where(eq(staff.status, 'active'));
 
-    const teamMembers = activeStaff.map((member) => ({
-      id: member.squareId,
-      givenName: member.firstName,
-      familyName: member.lastName,
-      status: member.status,
-    }));
+    const teamMembers = activeStaff
+      .filter((member) => member.squareId)
+      .map((member) => ({
+        id: member.squareId,
+        givenName: member.firstName,
+        familyName: member.lastName,
+        status: member.status,
+      }));
 
     return NextResponse.json({
       success: true,

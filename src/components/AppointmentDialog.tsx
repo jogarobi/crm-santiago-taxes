@@ -150,12 +150,17 @@ export function AppointmentDialog({
   const { data: teamMembers = [] } = useTeamMembers();
   const { data: currentStaff } = useCurrentStaff();
 
-  // Set default team member to current user once staff data loads
+  // Set default team member to current user once staff data loads, and sync segments
   useEffect(() => {
     if (currentStaff?.squareId && !selectedTeamMemberId) {
       setSelectedTeamMemberId(currentStaff.squareId);
+      setSelectedSegments((prev) =>
+        prev.map((s) => ({ ...s, teamMemberId: currentStaff.squareId! })),
+      );
     } else if (teamMembers.length > 0 && !selectedTeamMemberId) {
-      setSelectedTeamMemberId(teamMembers[0].id || '');
+      const id = teamMembers[0].id || '';
+      setSelectedTeamMemberId(id);
+      setSelectedSegments((prev) => prev.map((s) => ({ ...s, teamMemberId: id })));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStaff, teamMembers]);
@@ -321,7 +326,13 @@ export function AppointmentDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) resetForm();
+        onOpenChange(isOpen);
+      }}
+    >
       <DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
         <DialogHeader className='mb-3'>
           <DialogTitle className='text-xl'>Schedule appointment</DialogTitle>
@@ -457,7 +468,7 @@ export function AppointmentDialog({
               Staff Member
             </Label>
             <Select
-              value={selectedTeamMemberId}
+              value={selectedTeamMemberId || undefined}
               onValueChange={handleTeamMemberChange}
               disabled={teamMembers.length === 0}
             >
