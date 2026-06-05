@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { rolePermission } from '@/db/migrations/schema';
 import { and, eq } from 'drizzle-orm';
+import { cache } from 'react';
 
 // Define all available resources and actions
 export type Resource =
@@ -67,13 +68,14 @@ const DEFAULT_PERMISSIONS: Record<Role, PermissionCheck> = {
   },
 };
 
-export async function getSession() {
+// cache() deduplicates calls within a single request — avoids redundant DB reads
+// when getSession() is called from requireAuth(), getUserRole(), hasPermission(), etc.
+export const getSession = cache(async () => {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
-
   return session;
-}
+});
 
 export async function requireAuth() {
   const session = await getSession();
@@ -93,18 +95,14 @@ export async function requireGuest() {
   }
 }
 
-/**
- * Get the user's role from the session
- */
-async function getUserRole(): Promise<Role> {
+// cache() deduplicates role lookups within a single request
+const getUserRole = cache(async (): Promise<Role> => {
   try {
-    // Try to get role from Better Auth organization membership
     const session = await getSession();
     if (!session?.session?.activeOrganizationId) {
       return 'staff';
     }
 
-    // Get the member record to find the role
     const { member } = await import('@/db/migrations/schema');
     const memberRecord = await db
       .select()
@@ -127,80 +125,43 @@ async function getUserRole(): Promise<Role> {
     console.error('Error fetching user role:', error);
   }
 
-  return 'staff'; // default role
-}
+  return 'staff';
+});
 
-/**
- * Check if a specific permission exists in the database
- * Returns the permission setting from DB, or null if not found
- */
-async function checkDatabasePermission(
-  role: string,
-  resource: string,
-  action: string
-): Promise<boolean | null> {
+// Fetch all DB permissions for a role in one query, cached per request
+const getRoleDbPermissions = cache(async (role: string) => {
   try {
-    const result = await db
+    const rows = await db
       .select()
       .from(rolePermission)
-      .where(
-        and(
-          eq(rolePermission.role, role),
-          eq(rolePermission.resource, resource),
-          eq(rolePermission.action, action)
-        )
-      )
-      .limit(1);
-
-    if (result.length > 0) {
-      return Boolean(result[0].enabled);
-    }
-
-    return null; // No database record, use default
-  } catch (error) {
-    console.error('Error checking database permission:', error);
-    return null;
+      .where(eq(rolePermission.role, role));
+    return new Map(rows.map((r) => [`${r.resource}:${r.action}`, Boolean(r.enabled)]));
+  } catch {
+    return new Map<string, boolean>();
   }
-}
+});
 
-/**
- * Check permissions using database-first approach with default fallback
- */
 async function checkPermissions(
   role: Role,
   permissions: PermissionCheck
 ): Promise<boolean> {
-  // Check each resource and action
+  const dbPermMap = await getRoleDbPermissions(role);
+
   for (const [resource, actions] of Object.entries(permissions)) {
     if (!actions || actions.length === 0) continue;
 
     for (const action of actions) {
-      // Check database first
-      const dbPermission = await checkDatabasePermission(
-        role,
-        resource,
-        action
-      );
-
-      if (dbPermission !== null) {
-        // Database has explicit permission setting
-        if (!dbPermission) {
-          return false; // Permission explicitly disabled
-        }
-        continue; // Permission enabled, check next
-      }
-
-      // No database record, use default permissions
-      const defaultPerms = DEFAULT_PERMISSIONS[role];
-      const resourcePerms = defaultPerms[resource as Resource];
-
-      if (!resourcePerms || !resourcePerms.includes(action as Action)) {
-        return false; // No default permission
+      const key = `${resource}:${action}`;
+      if (dbPermMap.has(key)) {
+        if (!dbPermMap.get(key)) return false;
+      } else {
+        const resourcePerms = DEFAULT_PERMISSIONS[role][resource as Resource];
+        if (!resourcePerms?.includes(action as Action)) return false;
       }
     }
   }
 
-  return true; // All permissions passed
+  return true;
 }
 
 /**

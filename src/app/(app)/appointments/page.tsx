@@ -27,6 +27,7 @@ import {
   TriangleAlertIcon,
   ChevronDownIcon,
   ArrowLeft,
+  RefreshCwIcon,
 } from 'lucide-react';
 import {
   Dialog,
@@ -44,7 +45,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Appointment } from '@/lib/types/appointment';
 import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
-import { useSyncAppointment } from '@/hooks/use-appointments';
+import { useSyncAppointment, useSyncFromSquare } from '@/hooks/use-appointments';
 import { CreateClientDialog } from '@/components/CreateClientDialog';
 import { LinkClientDialog } from '@/components/LinkClientDialog';
 import { AppointmentDialog } from '@/components/AppointmentDialog';
@@ -78,6 +79,7 @@ export default function Appointments() {
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<Date | null>(null);
   const syncAppointment = useSyncAppointment();
+  const syncFromSquare = useSyncFromSquare();
   const today = useMemo(() => new Date(), []);
 
   const { data: currentUser } = useCurrentUser();
@@ -298,6 +300,10 @@ export default function Appointments() {
     refetch();
   };
 
+  const handleSyncFromSquare = useCallback(async () => {
+    await syncFromSquare.mutateAsync();
+  }, [syncFromSquare]);
+
   const handleDateChange = useCallback((date: Date) => {
     setCurrentDate(new Date(date));
   }, []);
@@ -400,31 +406,46 @@ export default function Appointments() {
             onDateChange={handleDateChange}
             onViewChange={handleViewChange}
             headerActions={
-              isOwner &&
-              staffWithSquareId.length > 0 && (
-                <Select
-                  value={selectedStaffId}
-                  onValueChange={setSelectedStaffId}
+              <div className='flex items-center gap-2 mr-4'>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={handleSyncFromSquare}
+                  disabled={syncFromSquare.isPending}
+                  className='h-9 text-sm'
                 >
-                  <SelectTrigger className='mr-4 h-10 data-[size=default]:h-9'>
-                    <SelectValue placeholder='Select staff member' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='all' className='h-10'>
-                      All Staff
-                    </SelectItem>
-                    {staffWithSquareId.map((staff) => (
-                      <SelectItem
-                        className='h-10'
-                        key={staff.id}
-                        value={staff.squareId!}
-                      >
-                        {staff.firstName} {staff.lastName}
+                  <RefreshCwIcon
+                    className={clsx('w-4 h-4 mr-1', {
+                      'animate-spin': syncFromSquare.isPending,
+                    })}
+                  />
+                  {syncFromSquare.isPending ? 'Syncing...' : 'Sync next week'}
+                </Button>
+                {isOwner && staffWithSquareId.length > 0 && (
+                  <Select
+                    value={selectedStaffId}
+                    onValueChange={setSelectedStaffId}
+                  >
+                    <SelectTrigger className='h-10 data-[size=default]:h-9'>
+                      <SelectValue placeholder='Select staff member' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='all' className='h-10'>
+                        All Staff
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )
+                      {staffWithSquareId.map((staff) => (
+                        <SelectItem
+                          className='h-10'
+                          key={staff.id}
+                          value={staff.squareId!}
+                        >
+                          {staff.firstName} {staff.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
             }
           />
         </div>

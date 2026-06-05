@@ -414,3 +414,21 @@ export function useAppointmentCount() {
     queryFn: fetchAppointmentCount,
   });
 }
+
+export function useSyncFromSquare() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/appointments/sync', { method: 'POST' });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Sync failed');
+      }
+      return response.json() as Promise<{ success: boolean; synced: number; weekStart: string; weekEnd: string }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: appointmentKeys.lists() });
+    },
+  });
+}
