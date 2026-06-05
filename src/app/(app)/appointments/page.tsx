@@ -45,7 +45,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Appointment } from '@/lib/types/appointment';
 import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
-import { useSyncAppointment, useSyncFromSquare } from '@/hooks/use-appointments';
+import {
+  useSyncAppointment,
+  useSyncFromSquare,
+} from '@/hooks/use-appointments';
 import { CreateClientDialog } from '@/components/CreateClientDialog';
 import { LinkClientDialog } from '@/components/LinkClientDialog';
 import { AppointmentDialog } from '@/components/AppointmentDialog';
@@ -167,8 +170,18 @@ export default function Appointments() {
   });
 
   const events = useMemo(() => {
-    return transformAppointmentsToCalendarEvents(appointments || []);
-  }, [appointments]);
+    const list = appointments || [];
+    if (selectedStaffId === 'all') {
+      return transformAppointmentsToCalendarEvents(list);
+    }
+    const staffMember = staffWithSquareId.find(
+      (s) => s.squareId === selectedStaffId,
+    );
+    const filtered = staffMember
+      ? list.filter((apt) => apt.staffId === staffMember.id)
+      : list;
+    return transformAppointmentsToCalendarEvents(filtered);
+  }, [appointments, selectedStaffId, staffWithSquareId]);
 
   const { data: catalogItems } = useCatalogList();
 
@@ -419,7 +432,7 @@ export default function Appointments() {
                       'animate-spin': syncFromSquare.isPending,
                     })}
                   />
-                  {syncFromSquare.isPending ? 'Syncing...' : 'Sync'}
+                  {syncFromSquare.isPending ? 'Syncing...' : 'Sync with Square'}
                 </Button>
                 {isOwner && staffWithSquareId.length > 0 && (
                   <Select

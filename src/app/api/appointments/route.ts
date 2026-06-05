@@ -55,6 +55,7 @@ export async function GET(request: Request) {
       accountSquareId: apt.accountSquareId || undefined,
       accountName: apt.accountName || undefined,
       service: apt.service || undefined,
+      staffId: apt.staffId ?? null,
       customerId: apt.accountSquareId || undefined,
       creatorType: apt.creatorType,
       createdBy: apt.createdBy || undefined,

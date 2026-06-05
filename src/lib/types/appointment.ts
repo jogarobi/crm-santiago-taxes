@@ -28,6 +28,7 @@ export type Appointment = Partial<Booking> & {
   accountName?: string;
   service?: string;
   durationMinutes?: number;
+  staffId?: number | null;
   customerId?: string;
   customerNote?: string;
   appointmentSegments?: Booking['appointmentSegments'];
