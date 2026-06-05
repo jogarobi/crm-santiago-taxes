@@ -419,8 +419,12 @@ export function useSyncFromSquare() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
-      const response = await fetch('/api/appointments/sync', { method: 'POST' });
+    mutationFn: async (dateRange?: { startAtMin: string; startAtMax: string }) => {
+      const response = await fetch('/api/appointments/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dateRange ?? {}),
+      });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.error || 'Sync failed');

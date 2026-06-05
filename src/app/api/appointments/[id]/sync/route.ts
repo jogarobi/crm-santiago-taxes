@@ -2,14 +2,15 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { appointment, clientAccount } from '@/db/migrations/schema';
 import { eq, or } from 'drizzle-orm';
-import { requirePermission } from '@/lib/auth-utils';
+import { requirePermission, actorFromSession } from '@/lib/auth-utils';
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission({ appointment: ['update'] });
+    const { session } = await requirePermission({ appointment: ['update'] });
+    const actor = actorFromSession(session);
 
     const { id } = await params;
     const body = await request.json();
@@ -27,7 +28,7 @@ export async function PATCH(
       .set({
         accountId: body.accountId,
         updatedAt: new Date().toISOString(),
-        updatedBy: 'system',
+        updatedBy: actor,
       })
       .where(
         or(
@@ -51,7 +52,7 @@ export async function PATCH(
         .set({
           squareId: body.customerId,
           updatedAt: new Date().toISOString(),
-          updatedBy: 'system',
+          updatedBy: actor,
         })
         .where(eq(clientAccount.id, body.accountId));
     }

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { service } from '@/db/migrations/schema';
 import { eq } from 'drizzle-orm';
-import { requirePermission } from '@/lib/auth-utils';
+import { requirePermission, actorFromSession } from '@/lib/auth-utils';
 
 export async function GET(
   _request: Request,
@@ -122,7 +122,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission({ service: ['delete'] });
+    const { session } = await requirePermission({ service: ['delete'] });
+    const actor = actorFromSession(session);
 
     const { id } = await params;
     const serviceId = parseInt(id);
@@ -153,7 +154,7 @@ export async function DELETE(
       .set({
         isActive: 0,
         updatedAt: new Date().toISOString(),
-        updatedBy: 'system',
+        updatedBy: actor,
       })
       .where(eq(service.id, serviceId));
 

@@ -165,6 +165,13 @@ async function checkPermissions(
 }
 
 /**
+ * Returns the best available identifier for the current user (email, then name, then fallback).
+ */
+export function actorFromSession(session: { user: { email?: string | null; name?: string | null } }): string {
+  return session.user.email || session.user.name || 'unknown';
+}
+
+/**
  * Require specific permissions or redirect to 403
  */
 export async function requirePermission(permissions: PermissionCheck) {

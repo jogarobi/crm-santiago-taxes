@@ -6,10 +6,10 @@ import {
   AppointmentErrorResponse,
   AppointmentResponse,
 } from '@/lib/types/appointment';
-import { and, asc, eq, gte, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, lte, notInArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { AppointmentSegment } from 'square';
-import { requirePermission } from '@/lib/auth-utils';
+import { requirePermission, actorFromSession } from '@/lib/auth-utils';
 
 export async function GET(request: Request) {
   try {
@@ -20,7 +20,11 @@ export async function GET(request: Request) {
     const startAtMax = searchParams.get('start_at_max') || undefined;
     const accountId = searchParams.get('account_id') || undefined;
 
-    const conditions = [];
+    const CANCELLED_STATUSES = ['CANCELLED_BY_CUSTOMER', 'CANCELLED_BY_SELLER', 'DECLINED'];
+
+    const conditions = [
+      notInArray(appointment.status, CANCELLED_STATUSES),
+    ];
 
     if (startAtMin) {
       conditions.push(gte(appointment.startAt, startAtMin));
@@ -83,7 +87,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requirePermission({ appointment: ['create'] });
+    const { session } = await requirePermission({ appointment: ['create'] });
+    const actor = actorFromSession(session);
 
     const locationId = process.env.SQUARE_LOCATION_ID!;
     const body = await request.json();
@@ -166,7 +171,7 @@ export async function POST(request: Request) {
           service: body.serviceName,
           accountSquareId: body.customerId || '',
           creatorType: 'SYSTEM',
-          createdBy: 'CRM',
+          createdBy: actor,
           createdAt: new Date().toISOString(),
         });
       } catch (dbError) {

@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { appointment, clientAccount, staff } from '@/db/migrations/schema';
 import { eq } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import type * as Square from 'square';
 
 async function resolveServiceName(serviceVariationId: string): Promise<string | null> {
   try {
@@ -42,48 +43,62 @@ async function resolveStaffId(teamMemberId: string): Promise<number | null> {
   }
 }
 
-export async function POST() {
+const CANCELLED_STATUSES = new Set([
+  'CANCELLED_BY_CUSTOMER',
+  'CANCELLED_BY_SELLER',
+  'DECLINED',
+]);
+
+export async function POST(request: Request) {
   try {
     await requirePermission({ appointment: ['read'] });
 
     const locationId = process.env.SQUARE_LOCATION_ID!;
 
-    // Calculate next week Sunday → Saturday
-    const now = new Date();
-    const daysUntilSunday = 7 - now.getDay();
-    const startOfNextWeek = new Date(now);
-    startOfNextWeek.setDate(now.getDate() + daysUntilSunday);
-    startOfNextWeek.setHours(0, 0, 0, 0);
+    const body = await request.json().catch(() => ({}));
+    let startAt: string;
+    let endAt: string;
 
-    const endOfNextWeek = new Date(startOfNextWeek);
-    endOfNextWeek.setDate(startOfNextWeek.getDate() + 6);
-    endOfNextWeek.setHours(23, 59, 59, 999);
+    if (body.startAtMin && body.startAtMax) {
+      startAt = body.startAtMin;
+      endAt = body.startAtMax;
+    } else {
+      // Default: current week Sunday → Saturday
+      const now = new Date();
+      const start = new Date(now);
+      start.setDate(now.getDate() - now.getDay());
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+      startAt = start.toISOString();
+      endAt = end.toISOString();
+    }
 
-    const response = await square.bookings.list({
+    const page = await square.bookings.list({
       locationId,
-      startAtMin: startOfNextWeek.toISOString(),
-      startAtMax: endOfNextWeek.toISOString(),
+      startAtMin: startAt,
+      startAtMax: endAt,
       limit: 100,
     });
 
-    // Handle both SDK response shapes
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = response as any;
-    const bookings: unknown[] = raw.result?.bookings ?? raw.bookings ?? [];
+    const bookings: Square.Booking[] = [];
+    for await (const booking of page) {
+      bookings.push(booking);
+    }
 
     let synced = 0;
 
-    for (const booking of bookings as Record<string, unknown>[]) {
+    for (const booking of bookings) {
       if (!booking.id) continue;
 
-      const bookingId = booking.id as string;
-      const customerId = booking.customerId as string | undefined;
-      const status = (booking.status as string | undefined) ?? 'PENDING';
-      const startAt = (booking.startAt as string | undefined) ?? new Date().toISOString();
-      const creatorDetails = booking.creatorDetails as Record<string, string> | undefined;
-      const segments = booking.appointmentSegments as Array<Record<string, unknown>> | undefined;
-      const segment = segments?.[0];
-      const durationMinutes = (segment?.durationMinutes as number | undefined) ?? 60;
+      const bookingId = booking.id;
+      const customerId = booking.customerId;
+      const status = booking.status ?? 'PENDING';
+      const startAt = booking.startAt ?? new Date().toISOString();
+      const creatorDetails = booking.creatorDetails;
+      const segment = booking.appointmentSegments?.[0];
+      const durationMinutes = segment?.durationMinutes ?? 60;
       const endAt = new Date(new Date(startAt).getTime() + durationMinutes * 60000).toISOString();
 
       // Resolve customer
@@ -106,8 +121,8 @@ export async function POST() {
       }
 
       // Resolve service and staff
-      const serviceVariationId = segment?.serviceVariationId as string | undefined;
-      const teamMemberId = segment?.teamMemberId as string | undefined;
+      const serviceVariationId = segment?.serviceVariationId;
+      const teamMemberId = segment?.teamMemberId;
       const serviceName = serviceVariationId ? await resolveServiceName(serviceVariationId) : null;
       const staffId = teamMemberId ? await resolveStaffId(teamMemberId) : null;
 
@@ -130,6 +145,7 @@ export async function POST() {
       const existing = await db.select().from(appointment).where(eq(appointment.squareId, bookingId)).limit(1);
 
       if (existing.length === 0) {
+        if (CANCELLED_STATUSES.has(status)) continue;
         await db.insert(appointment).values({
           ...values,
           createdAt: new Date().toISOString(),
@@ -145,8 +161,8 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       synced,
-      weekStart: startOfNextWeek.toISOString(),
-      weekEnd: endOfNextWeek.toISOString(),
+      weekStart: startAt,
+      weekEnd: endAt,
     });
   } catch (error) {
     console.error('Error syncing appointments from Square:', error);

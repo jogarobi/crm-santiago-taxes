@@ -301,8 +301,8 @@ export default function Appointments() {
   };
 
   const handleSyncFromSquare = useCallback(async () => {
-    await syncFromSquare.mutateAsync();
-  }, [syncFromSquare]);
+    await syncFromSquare.mutateAsync(dateRange);
+  }, [syncFromSquare, dateRange]);
 
   const handleDateChange = useCallback((date: Date) => {
     setCurrentDate(new Date(date));
@@ -419,7 +419,7 @@ export default function Appointments() {
                       'animate-spin': syncFromSquare.isPending,
                     })}
                   />
-                  {syncFromSquare.isPending ? 'Syncing...' : 'Sync next week'}
+                  {syncFromSquare.isPending ? 'Syncing...' : 'Sync'}
                 </Button>
                 {isOwner && staffWithSquareId.length > 0 && (
                   <Select
