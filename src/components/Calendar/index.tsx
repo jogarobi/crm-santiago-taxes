@@ -377,8 +377,11 @@ const Calendar: React.FC<CalendarProps> = ({
                             return (
                               <div
                                 key={event.id}
-                                className='bg-purple-100 text-purple-800 p-1.5 rounded text-xs cursor-pointer hover:bg-purple-200 absolute left-1 right-1 z-10 overflow-hidden flex flex-col justify-start'
-                                style={{ height: `${height}px` }}
+                                className='text-white p-1.5 rounded text-xs cursor-pointer hover:opacity-90 absolute left-1 right-1 z-10 overflow-hidden flex flex-col justify-start'
+                                style={{
+                                  height: `${height}px`,
+                                  backgroundColor: event.color || '#7c3aed',
+                                }}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onEventClick?.(event);
@@ -554,26 +557,26 @@ const Calendar: React.FC<CalendarProps> = ({
         <div className='flex items-center space-x-2'>
           {headerActions}
           <Button
-            variant={view === 'day' ? 'default' : 'outline'}
+            variant='outline'
             size='sm'
             onClick={() => onViewChange('day')}
-            className={view === 'day' ? 'bg-purple' : ''}
+            className={view === 'day' ? 'bg-white text-purple shadow-sm' : ''}
           >
             Day
           </Button>
           <Button
-            variant={view === 'week' ? 'default' : 'outline'}
+            variant='outline'
             size='sm'
             onClick={() => onViewChange('week')}
-            className={view === 'week' ? 'bg-purple' : ''}
+            className={view === 'week' ? 'bg-white text-purple shadow-sm' : ''}
           >
             Week
           </Button>
           <Button
-            variant={view === 'month' ? 'default' : 'outline'}
+            variant='outline'
             size='sm'
             onClick={() => onViewChange('month')}
-            className={view === 'month' ? 'bg-purple' : ''}
+            className={view === 'month' ? 'bg-white text-purple shadow-sm' : ''}
           >
             Month
           </Button>

@@ -56,6 +56,46 @@ async function resolveStaffId(teamMemberId: string): Promise<number | null> {
   }
 }
 
+async function resolveStaffName(teamMemberId: string): Promise<string | null> {
+  try {
+    const { data: existing } = await supabaseAdmin
+      .from('Staff')
+      .select('firstName, lastName')
+      .eq('squareId', teamMemberId)
+      .maybeSingle();
+    if (existing) {
+      return `${existing.firstName ?? ''} ${existing.lastName ?? ''}`.trim() || null;
+    }
+
+    const result = await square.teamMembers.get({ teamMemberId });
+    const member = result.teamMember;
+    if (!member) return null;
+    return (
+      `${member.givenName ?? ''} ${member.familyName ?? ''}`.trim() || null
+    );
+  } catch {
+    return null;
+  }
+}
+
+// Resolve a human-readable name for whoever actually booked the appointment,
+// based on the creator details Square returns on the booking.
+async function resolveBookedBy(
+  creatorDetails: Square.BookingCreatorDetails | undefined,
+  customerName: string | null
+): Promise<string> {
+  const creatorType = creatorDetails?.creatorType;
+  if (creatorType === 'TEAM_MEMBER' && creatorDetails?.teamMemberId) {
+    return (
+      (await resolveStaffName(creatorDetails.teamMemberId)) || 'Staff member'
+    );
+  }
+  if (creatorType === 'CUSTOMER') {
+    return customerName || 'Customer';
+  }
+  return customerName || 'Customer';
+}
+
 const CANCELLED_STATUSES = new Set([
   'CANCELLED_BY_CUSTOMER',
   'CANCELLED_BY_SELLER',
@@ -148,6 +188,7 @@ export async function POST(request: Request) {
         ? await resolveServiceName(serviceVariationId)
         : null;
       const staffId = teamMemberId ? await resolveStaffId(teamMemberId) : null;
+      const bookedBy = await resolveBookedBy(creatorDetails, accountName);
 
       const values = {
         squareId: bookingId,
@@ -161,6 +202,7 @@ export async function POST(request: Request) {
         accountName: accountName ?? '',
         service: serviceName ?? '',
         creatorType: creatorDetails?.creatorType || 'CUSTOMER',
+        createdBy: bookedBy,
         updatedAt: new Date().toISOString(),
         updatedBy: 'SQUARE_SYNC',
       };
@@ -177,7 +219,6 @@ export async function POST(request: Request) {
           ...values,
           id: await nextId('Appointments'),
           createdAt: new Date().toISOString(),
-          createdBy: 'SQUARE_SYNC',
         });
       } else {
         await supabaseAdmin

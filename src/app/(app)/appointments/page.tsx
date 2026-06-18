@@ -526,7 +526,7 @@ export default function Appointments() {
   const staffSelector =
     isOwner && staffWithSquareId.length > 0 ? (
       <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
-        <SelectTrigger className='h-10 data-[size=default]:h-9'>
+        <SelectTrigger className='h-10 bg-white data-[size=default]:h-9'>
           <SelectValue placeholder='Select staff member' />
         </SelectTrigger>
         <SelectContent>
@@ -543,13 +543,13 @@ export default function Appointments() {
     ) : null;
 
   const viewToggle = (
-    <div className='flex items-center rounded-md border border-neutral-200 p-0.5'>
+    <div className='flex items-center rounded-md border border-neutral-200 bg-white p-0.5'>
       <button
         onClick={() => setDisplayMode('calendar')}
         className={clsx(
           'flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors',
           displayMode === 'calendar'
-            ? 'bg-purple text-white'
+            ? 'bg-white text-purple shadow-sm'
             : 'text-neutral-600 hover:text-neutral-900',
         )}
       >
@@ -561,7 +561,7 @@ export default function Appointments() {
         className={clsx(
           'flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors',
           displayMode === 'list'
-            ? 'bg-purple text-white'
+            ? 'bg-white text-purple shadow-sm'
             : 'text-neutral-600 hover:text-neutral-900',
         )}
       >
@@ -573,7 +573,7 @@ export default function Appointments() {
 
   const legend =
     legendStaff.length > 0 ? (
-      <div className='flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1'>
+      <div className='flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1 py-2'>
         {legendStaff.map((staff) => (
           <div key={staff.id} className='flex items-center gap-1.5'>
             <span
@@ -593,7 +593,10 @@ export default function Appointments() {
       <div className='h-screen'>
         {displayMode === 'calendar' ? (
           <div className='h-[calc(100vh-120px)] pt-2 flex flex-col gap-2'>
-            {legend}
+            <div className='flex items-center justify-between gap-3'>
+              {legend || <div />}
+              {viewToggle}
+            </div>
             <div className='flex-1 min-h-0'>
               <Calendar
                 events={events}
@@ -608,7 +611,6 @@ export default function Appointments() {
                 onViewChange={handleViewChange}
                 headerActions={
                   <div className='flex items-center gap-2 mr-4'>
-                    {viewToggle}
                     {syncButton}
                     {staffSelector}
                   </div>
@@ -651,7 +653,7 @@ export default function Appointments() {
                   value={currentView}
                   onValueChange={(v: CalendarView) => setCurrentView(v)}
                 >
-                  <SelectTrigger className='h-9 w-[110px]'>
+                  <SelectTrigger className='w-[110px] bg-white'>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -679,74 +681,85 @@ export default function Appointments() {
                   <p className='text-sm'>No appointments in this period</p>
                 </div>
               ) : (
-                <div className='flex flex-col gap-2'>
+                <div className='flex flex-col gap-5'>
                   {listAppointments.map((appointment) => {
                     const { date, time } = formatDateTime(
                       appointment.startAt || '',
                       appointment.endAt,
                     );
                     return (
-                      <button
+                      <div
                         key={appointment.id}
                         onClick={() => {
                           setSelectedAppointment(appointment);
                           setIsDialogOpen(true);
                         }}
-                        className='flex items-center gap-3 text-left border rounded-lg p-3 hover:bg-neutral-50 transition-colors'
+                        className='block bg-white border rounded-lg p-4 hover:shadow-xs transition-shadow cursor-pointer'
                         style={{
                           borderLeftColor: getStaffColor(appointment.staffId),
                           borderLeftWidth: 4,
                         }}
                       >
-                        <div className='flex-1 min-w-0'>
-                          <div className='flex items-center gap-2'>
-                            <span className='font-medium text-neutral-900 truncate'>
-                              {appointment.service || 'Appointment'}
-                            </span>
-                            {!appointment.accountId && (
-                              <AlertTriangleIcon className='w-4 h-4 text-amber-600 shrink-0' />
-                            )}
-                            {appointment.status && (
-                              <Badge
-                                variant='secondary'
-                                className={clsx(
-                                  getStatusColor(appointment.status),
-                                  'text-xs',
+                        <div className='flex items-start justify-between'>
+                          <div className='flex-1 min-w-0'>
+                            <div className='flex items-center gap-3 justify-between mb-2'>
+                              <div className='flex items-center gap-2 min-w-0'>
+                                <div className='font-semibold text-neutral-900 truncate'>
+                                  {appointment.service || 'Appointment'}
+                                </div>
+                                {!appointment.accountId && (
+                                  <AlertTriangleIcon className='w-4 h-4 text-amber-600 shrink-0' />
                                 )}
-                              >
-                                {capitalizeFirst(appointment.status)}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className='flex items-center gap-4 text-sm text-neutral-600 mt-1 flex-wrap'>
-                            <span className='flex items-center gap-1'>
-                              <CalendarIcon className='w-3.5 h-3.5' />
-                              {date}
-                            </span>
-                            <span className='flex items-center gap-1'>
-                              <ClockIcon className='w-3.5 h-3.5' />
-                              {time}
-                            </span>
-                            {appointment.accountName && (
-                              <span className='flex items-center gap-1'>
-                                <UserIcon className='w-3.5 h-3.5' />
-                                {appointment.accountName}
+                              </div>
+                              {appointment.status && (
+                                <Badge
+                                  variant='secondary'
+                                  className={clsx(
+                                    getStatusColor(appointment.status),
+                                    'text-[13px] font-medium shrink-0',
+                                  )}
+                                >
+                                  {capitalizeFirst(appointment.status)}
+                                </Badge>
+                              )}
+                            </div>
+
+                            <div className='mb-3 flex items-center gap-3 flex-wrap'>
+                              {appointment.accountName && (
+                                <span className='text-[15px] text-neutral-700'>
+                                  {appointment.accountName}
+                                </span>
+                              )}
+                              <span className='flex items-center gap-1.5 text-[15px] text-neutral-700'>
+                                <span
+                                  className='inline-block w-2.5 h-2.5 rounded-full'
+                                  style={{
+                                    backgroundColor: getStaffColor(
+                                      appointment.staffId,
+                                    ),
+                                  }}
+                                />
+                                {staffNameById(appointment.staffId)}
                               </span>
-                            )}
-                            <span className='flex items-center gap-1.5'>
-                              <span
-                                className='inline-block w-2.5 h-2.5 rounded-full'
-                                style={{
-                                  backgroundColor: getStaffColor(
-                                    appointment.staffId,
-                                  ),
-                                }}
-                              />
-                              {staffNameById(appointment.staffId)}
-                            </span>
+                            </div>
+
+                            <div className='flex items-center justify-between'>
+                              <div className='flex items-center gap-2'>
+                                <CalendarIcon className='w-4 h-4 text-neutral-500' />
+                                <span className='text-sm font-medium text-neutral-500'>
+                                  {date}
+                                </span>
+                              </div>
+                              <div className='flex items-center gap-2'>
+                                <ClockIcon className='w-4 h-4 text-neutral-500' />
+                                <span className='text-sm text-neutral-600'>
+                                  {time}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
