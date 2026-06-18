@@ -8,28 +8,32 @@ type LoginRow = {
   clientId: number | null;
   label: string;
   username: string;
+  url: string | null;
+  note: string | null;
   createdAt: string;
   createdBy: string;
   updatedAt: string | null;
   updatedBy: string | null;
 };
 
-// The Supabase Logins table has no url/notes columns; they are surfaced as null
-// to preserve the existing API shape.
+// DB column is `note` (singular); the API contract uses `notes`.
 function mapLogin(r: LoginRow) {
   return {
     id: r.id,
     accountId: r.clientId,
     label: r.label,
     username: r.username,
-    url: null,
-    notes: null,
+    url: r.url,
+    notes: r.note,
     createdAt: r.createdAt,
     createdBy: r.createdBy,
     updatedAt: r.updatedAt,
     updatedBy: r.updatedBy,
   };
 }
+
+const SELECT =
+  'id, clientId, label, username, url, note, createdAt, createdBy, updatedAt, updatedBy';
 
 export async function GET(
   _request: Request,
@@ -47,7 +51,7 @@ export async function GET(
 
     const { data, error } = await supabaseAdmin
       .from('Logins')
-      .select('id, clientId, label, username, createdAt, createdBy, updatedAt, updatedBy')
+      .select(SELECT)
       .eq('clientId', accountId);
 
     if (error) throw error;
@@ -104,10 +108,12 @@ export async function POST(
         label: body.label,
         username: body.username,
         password: encrypt(body.password),
+        url: body.url || null,
+        note: body.notes || null,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
       })
-      .select('id, clientId, label, username, createdAt, createdBy, updatedAt, updatedBy')
+      .select(SELECT)
       .single();
 
     if (error) throw error;

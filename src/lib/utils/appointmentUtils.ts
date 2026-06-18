@@ -2,7 +2,8 @@ import { Appointment } from '@/lib/types/appointment';
 import { CalendarEvent } from '@/components/Calendar/types';
 
 export function transformAppointmentsToCalendarEvents(
-  appointments: Appointment[]
+  appointments: Appointment[],
+  getColor?: (appointment: Appointment) => string
 ): CalendarEvent[] {
   return appointments
     .filter(
@@ -41,7 +42,9 @@ export function transformAppointmentsToCalendarEvents(
         description: appointment.service || undefined,
         location: undefined, // Square appointments don't typically have location in the response
         status: appointment.status,
-        color: getStatusColor(appointment.status),
+        color: getColor
+          ? getColor(appointment)
+          : getStatusColor(appointment.status),
       };
     });
 }

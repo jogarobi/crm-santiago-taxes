@@ -45,6 +45,9 @@ import { format } from 'date-fns';
 
 const COLORS = ['#7c3aed', '#a78bfa', '#c4b5fd', '#ddd6fe', '#ede9fe'];
 
+// Date the practice began tracking new clients in the CRM.
+const NEW_CLIENTS_START = new Date(2026, 5, 18); // Thursday, June 18, 2026
+
 function formatPhone(phone: string | null | undefined) {
   if (!phone) return null;
   const cleaned = phone.replace(/\D/g, '');
@@ -60,29 +63,42 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState<StatsPeriod>('all');
   const { data: stats, isLoading } = useStats({ period });
 
-  type NewClientsPreset = 'today' | 'this_week' | 'this_month' | 'custom';
-  const [newClientsPreset, setNewClientsPreset] = useState<NewClientsPreset>('this_month');
+  type NewClientsPreset =
+    | 'since_launch'
+    | 'today'
+    | 'this_week'
+    | 'this_month'
+    | 'custom';
+  const [newClientsPreset, setNewClientsPreset] = useState<NewClientsPreset>('since_launch');
   const [newClientsCustomFrom, setNewClientsCustomFrom] = useState('');
   const [newClientsCustomTo, setNewClientsCustomTo] = useState('');
 
   function getNewClientsDateRange(): { dateFrom?: string; dateTo?: string } {
     const now = new Date();
+    // Clients existed before the launch date (bulk import) are not "new", so the
+    // window never starts earlier than NEW_CLIENTS_START.
+    const floorToLaunch = (d: Date) =>
+      d < NEW_CLIENTS_START ? NEW_CLIENTS_START : d;
+    if (newClientsPreset === 'since_launch') {
+      // All clients registered on/after the launch date, up to now.
+      return { dateFrom: NEW_CLIENTS_START.toISOString() };
+    }
     if (newClientsPreset === 'today') {
       const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-      return { dateFrom: start.toISOString(), dateTo: end.toISOString() };
+      return { dateFrom: floorToLaunch(start).toISOString(), dateTo: end.toISOString() };
     }
     if (newClientsPreset === 'this_week') {
       const day = now.getDay();
       const diff = day === 0 ? -6 : 1 - day;
       const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
       const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6, 23, 59, 59, 999);
-      return { dateFrom: monday.toISOString(), dateTo: sunday.toISOString() };
+      return { dateFrom: floorToLaunch(monday).toISOString(), dateTo: sunday.toISOString() };
     }
     if (newClientsPreset === 'this_month') {
       const start = new Date(now.getFullYear(), now.getMonth(), 1);
       const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      return { dateFrom: start.toISOString(), dateTo: end.toISOString() };
+      return { dateFrom: floorToLaunch(start).toISOString(), dateTo: end.toISOString() };
     }
     return {
       dateFrom: newClientsCustomFrom ? new Date(newClientsCustomFrom).toISOString() : undefined,
@@ -102,6 +118,7 @@ export default function ReportsPage() {
   const newClientsTotal = newClientsResponse?.meta?.total ?? 0;
 
   const presetLabels: Record<NewClientsPreset, string> = {
+    since_launch: 'Since Jun 18, 2026',
     today: 'Today',
     this_week: 'This Week',
     this_month: 'This Month',
@@ -293,7 +310,7 @@ export default function ReportsPage() {
           <div className='flex items-center justify-between gap-4'>
             <CardTitle>New Clients</CardTitle>
             <div className='flex items-center gap-2 flex-wrap'>
-              {(['today', 'this_week', 'this_month', 'custom'] as NewClientsPreset[]).map((p) => (
+              {(['since_launch', 'today', 'this_week', 'this_month', 'custom'] as NewClientsPreset[]).map((p) => (
                 <button
                   key={p}
                   onClick={() => {

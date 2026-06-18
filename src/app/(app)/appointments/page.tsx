@@ -28,6 +28,9 @@ import {
   ChevronDownIcon,
   ArrowLeft,
   RefreshCwIcon,
+  List as ListIcon,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import {
   Dialog,
@@ -65,9 +68,26 @@ import {
 import { useStaff } from '@/hooks/use-staff';
 import { useCurrentUser } from '@/hooks/use-current-user';
 
+const STAFF_COLORS = [
+  '#7c3aed',
+  '#2563eb',
+  '#059669',
+  '#d97706',
+  '#db2777',
+  '#0891b2',
+  '#65a30d',
+  '#dc2626',
+  '#9333ea',
+  '#0d9488',
+];
+const UNASSIGNED_COLOR = '#6B7280';
+
+type DisplayMode = 'calendar' | 'list';
+
 export default function Appointments() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState<CalendarView>('week');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('calendar');
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -158,6 +178,14 @@ export default function Appointments() {
     };
   }, [currentDate, currentView]);
 
+  const rangeLabel = useMemo(() => {
+    if (currentView === 'day') return format(currentDate, 'EEEE, MMMM d, yyyy');
+    if (currentView === 'month') return format(currentDate, 'MMMM yyyy');
+    const start = startOfWeek(currentDate, { weekStartsOn: 0 });
+    const end = endOfWeek(currentDate, { weekStartsOn: 0 });
+    return `${format(start, 'MMM d')} – ${format(end, 'MMM d, yyyy')}`;
+  }, [currentDate, currentView]);
+
   const {
     data: appointments,
     isLoading,
@@ -169,19 +197,79 @@ export default function Appointments() {
     startAtMax: dateRange.startAtMax,
   });
 
-  const events = useMemo(() => {
+  // Stable color per staff member (by id), used to tint appointment blocks.
+  const staffColorMap = useMemo(() => {
+    const map = new Map<number, string>();
+    (staffData?.data ?? []).forEach((staff, index) => {
+      map.set(staff.id, STAFF_COLORS[index % STAFF_COLORS.length]);
+    });
+    return map;
+  }, [staffData]);
+
+  const getStaffColor = useCallback(
+    (staffId?: number | null) => {
+      if (staffId == null) return UNASSIGNED_COLOR;
+      return staffColorMap.get(staffId) ?? UNASSIGNED_COLOR;
+    },
+    [staffColorMap],
+  );
+
+  const staffNameById = useCallback(
+    (staffId?: number | null) => {
+      if (staffId == null) return 'Unassigned';
+      const staff = staffData?.data?.find((s) => s.id === staffId);
+      return staff ? `${staff.firstName} ${staff.lastName}` : 'Unassigned';
+    },
+    [staffData],
+  );
+
+  // Appointments narrowed to the selected staff member (or all).
+  const filteredAppointments = useMemo(() => {
     const list = appointments || [];
-    if (selectedStaffId === 'all') {
-      return transformAppointmentsToCalendarEvents(list);
-    }
+    if (selectedStaffId === 'all') return list;
     const staffMember = staffWithSquareId.find(
       (s) => s.squareId === selectedStaffId,
     );
-    const filtered = staffMember
+    return staffMember
       ? list.filter((apt) => apt.staffId === staffMember.id)
       : list;
-    return transformAppointmentsToCalendarEvents(filtered);
   }, [appointments, selectedStaffId, staffWithSquareId]);
+
+  const events = useMemo(
+    () =>
+      transformAppointmentsToCalendarEvents(filteredAppointments, (apt) =>
+        getStaffColor(apt.staffId),
+      ),
+    [filteredAppointments, getStaffColor],
+  );
+
+  // Active (non-cancelled) appointments sorted chronologically for list view.
+  const listAppointments = useMemo(
+    () =>
+      [...filteredAppointments]
+        .filter(
+          (a) =>
+            a.startAt &&
+            a.status !== 'CANCELLED_BY_CUSTOMER' &&
+            a.status !== 'CANCELLED_BY_SELLER',
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.startAt || '').getTime() -
+            new Date(b.startAt || '').getTime(),
+        ),
+    [filteredAppointments],
+  );
+
+  // Which staff appear in the current view, for the color legend.
+  const legendStaff = useMemo(() => {
+    const ids = new Set(
+      filteredAppointments
+        .map((a) => a.staffId)
+        .filter((id): id is number => id != null),
+    );
+    return (staffData?.data ?? []).filter((s) => ids.has(s.id));
+  }, [filteredAppointments, staffData]);
 
   const { data: catalogItems } = useCatalogList();
 
@@ -325,6 +413,21 @@ export default function Appointments() {
     setCurrentView(view);
   }, []);
 
+  // Shift the current date by one unit of the active view (for list-mode nav).
+  const shiftDate = useCallback(
+    (direction: 1 | -1) => {
+      setCurrentDate((prev) => {
+        const next = new Date(prev);
+        if (currentView === 'day') next.setDate(next.getDate() + direction);
+        else if (currentView === 'week')
+          next.setDate(next.getDate() + 7 * direction);
+        else next.setMonth(next.getMonth() + direction);
+        return next;
+      });
+    },
+    [currentView],
+  );
+
   const handleTimeSlotClick = useCallback((dateTime: Date) => {
     setSelectedTimeSlot(new Date(dateTime));
     setIsBookingDialogOpen(true);
@@ -403,65 +506,254 @@ export default function Appointments() {
     );
   }
 
+  const syncButton = (
+    <Button
+      variant='outline'
+      size='sm'
+      onClick={handleSyncFromSquare}
+      disabled={syncFromSquare.isPending}
+      className='h-9 text-sm'
+    >
+      <RefreshCwIcon
+        className={clsx('w-4 h-4 mr-1', {
+          'animate-spin': syncFromSquare.isPending,
+        })}
+      />
+      {syncFromSquare.isPending ? 'Syncing...' : 'Sync with Square'}
+    </Button>
+  );
+
+  const staffSelector =
+    isOwner && staffWithSquareId.length > 0 ? (
+      <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
+        <SelectTrigger className='h-10 data-[size=default]:h-9'>
+          <SelectValue placeholder='Select staff member' />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value='all' className='h-10'>
+            All Staff
+          </SelectItem>
+          {staffWithSquareId.map((staff) => (
+            <SelectItem className='h-10' key={staff.id} value={staff.squareId!}>
+              {staff.firstName} {staff.lastName}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    ) : null;
+
+  const viewToggle = (
+    <div className='flex items-center rounded-md border border-neutral-200 p-0.5'>
+      <button
+        onClick={() => setDisplayMode('calendar')}
+        className={clsx(
+          'flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors',
+          displayMode === 'calendar'
+            ? 'bg-purple text-white'
+            : 'text-neutral-600 hover:text-neutral-900',
+        )}
+      >
+        <CalendarIcon className='w-4 h-4' />
+        Calendar
+      </button>
+      <button
+        onClick={() => setDisplayMode('list')}
+        className={clsx(
+          'flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors',
+          displayMode === 'list'
+            ? 'bg-purple text-white'
+            : 'text-neutral-600 hover:text-neutral-900',
+        )}
+      >
+        <ListIcon className='w-4 h-4' />
+        List
+      </button>
+    </div>
+  );
+
+  const legend =
+    legendStaff.length > 0 ? (
+      <div className='flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1'>
+        {legendStaff.map((staff) => (
+          <div key={staff.id} className='flex items-center gap-1.5'>
+            <span
+              className='inline-block w-3 h-3 rounded-full'
+              style={{ backgroundColor: getStaffColor(staff.id) }}
+            />
+            <span className='text-xs text-neutral-600'>
+              {staff.firstName} {staff.lastName}
+            </span>
+          </div>
+        ))}
+      </div>
+    ) : null;
+
   return (
     <>
       <div className='h-screen'>
-        <div className='h-[calc(100vh-120px)] pt-2'>
-          <Calendar
-            events={events}
-            view={currentView}
-            currentDate={currentDate}
-            availableSlots={availableSlots}
-            onEventClick={handleEventClick}
-            onDateClick={handleDateClick}
-            onEventCreate={handleEventCreate}
-            onTimeSlotClick={handleTimeSlotClick}
-            onDateChange={handleDateChange}
-            onViewChange={handleViewChange}
-            headerActions={
-              <div className='flex items-center gap-2 mr-4'>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={handleSyncFromSquare}
-                  disabled={syncFromSquare.isPending}
-                  className='h-9 text-sm'
-                >
-                  <RefreshCwIcon
-                    className={clsx('w-4 h-4 mr-1', {
-                      'animate-spin': syncFromSquare.isPending,
-                    })}
-                  />
-                  {syncFromSquare.isPending ? 'Syncing...' : 'Sync with Square'}
-                </Button>
-                {isOwner && staffWithSquareId.length > 0 && (
-                  <Select
-                    value={selectedStaffId}
-                    onValueChange={setSelectedStaffId}
+        {displayMode === 'calendar' ? (
+          <div className='h-[calc(100vh-120px)] pt-2 flex flex-col gap-2'>
+            {legend}
+            <div className='flex-1 min-h-0'>
+              <Calendar
+                events={events}
+                view={currentView}
+                currentDate={currentDate}
+                availableSlots={availableSlots}
+                onEventClick={handleEventClick}
+                onDateClick={handleDateClick}
+                onEventCreate={handleEventCreate}
+                onTimeSlotClick={handleTimeSlotClick}
+                onDateChange={handleDateChange}
+                onViewChange={handleViewChange}
+                headerActions={
+                  <div className='flex items-center gap-2 mr-4'>
+                    {viewToggle}
+                    {syncButton}
+                    {staffSelector}
+                  </div>
+                }
+              />
+            </div>
+          </div>
+        ) : (
+          <div className='h-[calc(100vh-120px)] pt-2 flex flex-col gap-3'>
+            <div className='flex items-center justify-between gap-3 flex-wrap'>
+              <div className='flex items-center gap-2 flex-wrap'>
+                {viewToggle}
+                <div className='flex items-center gap-1'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='h-9 w-9 p-0'
+                    onClick={() => shiftDate(-1)}
                   >
-                    <SelectTrigger className='h-10 data-[size=default]:h-9'>
-                      <SelectValue placeholder='Select staff member' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='all' className='h-10'>
-                        All Staff
-                      </SelectItem>
-                      {staffWithSquareId.map((staff) => (
-                        <SelectItem
-                          className='h-10'
-                          key={staff.id}
-                          value={staff.squareId!}
-                        >
-                          {staff.firstName} {staff.lastName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                    <ChevronLeft className='w-4 h-4' />
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='h-9'
+                    onClick={() => setCurrentDate(new Date())}
+                  >
+                    Today
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='h-9 w-9 p-0'
+                    onClick={() => shiftDate(1)}
+                  >
+                    <ChevronRight className='w-4 h-4' />
+                  </Button>
+                </div>
+                <Select
+                  value={currentView}
+                  onValueChange={(v: CalendarView) => setCurrentView(v)}
+                >
+                  <SelectTrigger className='h-9 w-[110px]'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='day'>Day</SelectItem>
+                    <SelectItem value='week'>Week</SelectItem>
+                    <SelectItem value='month'>Month</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className='text-sm font-medium text-neutral-700'>
+                  {rangeLabel}
+                </span>
               </div>
-            }
-          />
-        </div>
+              <div className='flex items-center gap-2'>
+                {syncButton}
+                {staffSelector}
+              </div>
+            </div>
+
+            {legend}
+
+            <div className='flex-1 min-h-0 overflow-y-auto'>
+              {listAppointments.length === 0 ? (
+                <div className='flex flex-col items-center justify-center h-full text-neutral-500'>
+                  <CalendarIcon className='w-6 h-6 mb-3' />
+                  <p className='text-sm'>No appointments in this period</p>
+                </div>
+              ) : (
+                <div className='flex flex-col gap-2'>
+                  {listAppointments.map((appointment) => {
+                    const { date, time } = formatDateTime(
+                      appointment.startAt || '',
+                      appointment.endAt,
+                    );
+                    return (
+                      <button
+                        key={appointment.id}
+                        onClick={() => {
+                          setSelectedAppointment(appointment);
+                          setIsDialogOpen(true);
+                        }}
+                        className='flex items-center gap-3 text-left border rounded-lg p-3 hover:bg-neutral-50 transition-colors'
+                        style={{
+                          borderLeftColor: getStaffColor(appointment.staffId),
+                          borderLeftWidth: 4,
+                        }}
+                      >
+                        <div className='flex-1 min-w-0'>
+                          <div className='flex items-center gap-2'>
+                            <span className='font-medium text-neutral-900 truncate'>
+                              {appointment.service || 'Appointment'}
+                            </span>
+                            {!appointment.accountId && (
+                              <AlertTriangleIcon className='w-4 h-4 text-amber-600 shrink-0' />
+                            )}
+                            {appointment.status && (
+                              <Badge
+                                variant='secondary'
+                                className={clsx(
+                                  getStatusColor(appointment.status),
+                                  'text-xs',
+                                )}
+                              >
+                                {capitalizeFirst(appointment.status)}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className='flex items-center gap-4 text-sm text-neutral-600 mt-1 flex-wrap'>
+                            <span className='flex items-center gap-1'>
+                              <CalendarIcon className='w-3.5 h-3.5' />
+                              {date}
+                            </span>
+                            <span className='flex items-center gap-1'>
+                              <ClockIcon className='w-3.5 h-3.5' />
+                              {time}
+                            </span>
+                            {appointment.accountName && (
+                              <span className='flex items-center gap-1'>
+                                <UserIcon className='w-3.5 h-3.5' />
+                                {appointment.accountName}
+                              </span>
+                            )}
+                            <span className='flex items-center gap-1.5'>
+                              <span
+                                className='inline-block w-2.5 h-2.5 rounded-full'
+                                style={{
+                                  backgroundColor: getStaffColor(
+                                    appointment.staffId,
+                                  ),
+                                }}
+                              />
+                              {staffNameById(appointment.staffId)}
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

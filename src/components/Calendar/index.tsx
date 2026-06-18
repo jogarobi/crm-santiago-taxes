@@ -186,8 +186,8 @@ const Calendar: React.FC<CalendarProps> = ({
                     return (
                       <div
                         key={event.id}
-                        className='bg-purple-100 text-purple-800 p-1.5 rounded text-xs cursor-pointer hover:bg-purple-200 absolute left-1 right-1 z-10 overflow-hidden flex flex-col justify-start'
-                        style={{ height: `${height}px` }}
+                        className='text-white p-1.5 rounded text-xs cursor-pointer hover:opacity-90 absolute left-1 right-1 z-10 overflow-hidden flex flex-col justify-start'
+                        style={{ height: `${height}px`, backgroundColor: event.color || '#7c3aed' }}
                         onClick={(e) => {
                           e.stopPropagation();
                           onEventClick?.(event);
@@ -480,7 +480,8 @@ const Calendar: React.FC<CalendarProps> = ({
                   {dayEvents.slice(0, 3).map((event) => (
                     <div
                       key={event.id}
-                      className='bg-purple-100 text-purple-800 p-1 rounded text-xs cursor-pointer hover:bg-purple-200'
+                      className='text-white p-1 rounded text-xs cursor-pointer hover:opacity-90'
+                      style={{ backgroundColor: event.color || '#7c3aed' }}
                       onClick={(e) => {
                         e.stopPropagation();
                         onEventClick?.(event);

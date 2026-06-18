@@ -11,20 +11,23 @@ type LoginRow = {
   clientId: number | null;
   label: string;
   username: string;
+  url: string | null;
+  note: string | null;
   createdAt: string;
   createdBy: string;
   updatedAt: string | null;
   updatedBy: string | null;
 };
 
+// DB column is `note` (singular); the API contract uses `notes`.
 function mapLogin(r: LoginRow) {
   return {
     id: r.id,
     accountId: r.clientId,
     label: r.label,
     username: r.username,
-    url: null,
-    notes: null,
+    url: r.url,
+    notes: r.note,
     createdAt: r.createdAt,
     createdBy: r.createdBy,
     updatedAt: r.updatedAt,
@@ -33,7 +36,7 @@ function mapLogin(r: LoginRow) {
 }
 
 const SELECT =
-  'id, clientId, label, username, createdAt, createdBy, updatedAt, updatedBy';
+  'id, clientId, label, username, url, note, createdAt, createdBy, updatedAt, updatedBy';
 
 export async function PUT(
   request: Request,
@@ -62,6 +65,8 @@ export async function PUT(
     if (body.label !== undefined) updateData.label = body.label;
     if (body.username !== undefined) updateData.username = body.username;
     if (body.password) updateData.password = encrypt(body.password);
+    if (body.url !== undefined) updateData.url = body.url || null;
+    if (body.notes !== undefined) updateData.note = body.notes || null;
 
     const { data, error } = await supabaseAdmin
       .from('Logins')

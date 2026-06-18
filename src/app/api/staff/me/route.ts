@@ -10,13 +10,25 @@ export async function GET() {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const { data, error } = await supabaseAdmin
+    // Match on the linked userId first, then fall back to the login email
+    // (case-insensitive) since a Staff row's userId may be unset or stale.
+    let { data, error } = await supabaseAdmin
       .from('Staff')
       .select('*')
       .eq('userId', session.user.id)
       .maybeSingle();
 
     if (error) throw error;
+
+    if (!data && session.user.email) {
+      ({ data, error } = await supabaseAdmin
+        .from('Staff')
+        .select('*')
+        .ilike('email', session.user.email)
+        .maybeSingle());
+
+      if (error) throw error;
+    }
 
     if (!data) {
       return NextResponse.json(

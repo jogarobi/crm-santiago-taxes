@@ -108,6 +108,7 @@ export default function Sidebar() {
   } | null>(null);
   const [isPending, setIsPending] = useState(true);
   const [userRole, setUserRole] = useState<string>('Member');
+  const [staffName, setStaffName] = useState<string | null>(null);
   const [isLoadingRole, setIsLoadingRole] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -152,26 +153,37 @@ export default function Sidebar() {
   }, [supabase]);
 
   useEffect(() => {
-    async function fetchRole() {
+    async function fetchUserInfo() {
       if (session?.user) {
         setIsLoadingRole(true);
         try {
-          const res = await fetch('/api/user/me');
-          if (res.ok) {
-            const data = await res.json();
+          const [roleRes, staffRes] = await Promise.all([
+            fetch('/api/user/me'),
+            fetch('/api/staff/me'),
+          ]);
+
+          if (roleRes.ok) {
+            const data = await roleRes.json();
             if (data.role) {
               setUserRole(data.role);
             }
           }
+
+          // Prefer the name from the linked Staff record for display.
+          if (staffRes.ok) {
+            const staff = await staffRes.json();
+            const fullName = `${staff.firstName ?? ''} ${staff.lastName ?? ''}`.trim();
+            setStaffName(fullName || null);
+          }
         } catch (error) {
-          console.error('Failed to fetch role:', error);
+          console.error('Failed to fetch user info:', error);
           setUserRole('Member');
         } finally {
           setIsLoadingRole(false);
         }
       }
     }
-    fetchRole();
+    fetchUserInfo();
   }, [session?.user]);
 
   const handleSignOut = async () => {
@@ -283,11 +295,11 @@ export default function Sidebar() {
                   <SidebarMenuButton className='px-3'>
                     <div className='flex items-center gap-3'>
                       <span className='inline-block p-2 rounded-full bg-purple text-white text-xs font-semibold'>
-                        {getInitials(session.user.name)}
+                        {getInitials(staffName ?? session.user.name)}
                       </span>
                       <div className='flex-1 min-w-0'>
                         <p className='text-sm font-semibold text-zinc-800 truncate'>
-                          {session.user.name}
+                          {staffName ?? session.user.name}
                         </p>
                         <p className='text-muted-foreground text-xs truncate'>
                           {isLoadingRole
