@@ -18,7 +18,7 @@ import { useCreateTask } from '@/hooks/use-tasks';
 import { useStaff } from '@/hooks/use-staff';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useAllBusinesses } from '@/hooks/use-businesses';
-import { authClient } from '@/app/api/clients';
+import { useSessionUser } from '@/lib/use-session-user';
 import type { Account } from '@/lib/types/account';
 import type { Business } from '@/lib/types/business';
 
@@ -38,7 +38,7 @@ export function CreateTaskDialog({
   businessId: propBusinessId,
 }: CreateTaskDialogProps) {
   const createTask = useCreateTask();
-  const { data: session } = authClient.useSession();
+  const session = useSessionUser();
   const { data: staffResponse, isLoading: isLoadingStaff } = useStaff({
     pageSize: 100,
   });

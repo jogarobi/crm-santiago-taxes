@@ -1,9 +1,5 @@
-import { auth } from '@/lib/auth';
-import { headers } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { db } from '@/lib/db';
-import { rolePermission } from '@/db/migrations/schema';
-import { and, eq } from 'drizzle-orm';
 import { cache } from 'react';
 
 // Define all available resources and actions
@@ -68,13 +64,47 @@ const DEFAULT_PERMISSIONS: Record<Role, PermissionCheck> = {
   },
 };
 
-// cache() deduplicates calls within a single request — avoids redundant DB reads
-// when getSession() is called from requireAuth(), getUserRole(), hasPermission(), etc.
+function normalizeRole(value: unknown): Role {
+  if (typeof value === 'string') {
+    const role = value.toLowerCase();
+    if (role === 'owner' || role === 'admin' || role === 'staff') {
+      return role;
+    }
+  }
+  return 'staff';
+}
+
+// cache() deduplicates calls within a single request — avoids redundant auth
+// lookups when getSession() is called from requireAuth(), getUserRole(), etc.
 export const getSession = cache(async () => {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  return session;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return null;
+  }
+
+  const appMetadata = user.app_metadata ?? {};
+  const userMetadata = user.user_metadata ?? {};
+
+  // Role lives in Supabase auth metadata (set via the service role on staff
+  // creation). app_metadata is preferred since users cannot edit it themselves.
+  const role = normalizeRole(appMetadata.role ?? userMetadata.role);
+
+  return {
+    user: {
+      id: user.id,
+      email: user.email ?? '',
+      name:
+        (userMetadata.name as string | undefined) ??
+        (userMetadata.full_name as string | undefined) ??
+        user.email ??
+        '',
+    },
+    role,
+  };
 });
 
 export async function requireAuth() {
@@ -95,69 +125,13 @@ export async function requireGuest() {
   }
 }
 
-// cache() deduplicates role lookups within a single request
-const getUserRole = cache(async (): Promise<Role> => {
-  try {
-    const session = await getSession();
-    if (!session?.session?.activeOrganizationId) {
-      return 'staff';
-    }
-
-    const { member } = await import('@/db/migrations/schema');
-    const memberRecord = await db
-      .select()
-      .from(member)
-      .where(
-        and(
-          eq(member.userId, session.user.id),
-          eq(member.organizationId, session.session.activeOrganizationId)
-        )
-      )
-      .limit(1);
-
-    if (memberRecord.length > 0 && memberRecord[0].role) {
-      const role = memberRecord[0].role.toLowerCase();
-      if (role === 'owner' || role === 'admin' || role === 'staff') {
-        return role as Role;
-      }
-    }
-  } catch (error) {
-    console.error('Error fetching user role:', error);
-  }
-
-  return 'staff';
-});
-
-// Fetch all DB permissions for a role in one query, cached per request
-const getRoleDbPermissions = cache(async (role: string) => {
-  try {
-    const rows = await db
-      .select()
-      .from(rolePermission)
-      .where(eq(rolePermission.role, role));
-    return new Map(rows.map((r) => [`${r.resource}:${r.action}`, Boolean(r.enabled)]));
-  } catch {
-    return new Map<string, boolean>();
-  }
-});
-
-async function checkPermissions(
-  role: Role,
-  permissions: PermissionCheck
-): Promise<boolean> {
-  const dbPermMap = await getRoleDbPermissions(role);
-
+function checkPermissions(role: Role, permissions: PermissionCheck): boolean {
   for (const [resource, actions] of Object.entries(permissions)) {
     if (!actions || actions.length === 0) continue;
 
+    const resourcePerms = DEFAULT_PERMISSIONS[role][resource as Resource];
     for (const action of actions) {
-      const key = `${resource}:${action}`;
-      if (dbPermMap.has(key)) {
-        if (!dbPermMap.get(key)) return false;
-      } else {
-        const resourcePerms = DEFAULT_PERMISSIONS[role][resource as Resource];
-        if (!resourcePerms?.includes(action as Action)) return false;
-      }
+      if (!resourcePerms?.includes(action as Action)) return false;
     }
   }
 
@@ -167,7 +141,9 @@ async function checkPermissions(
 /**
  * Returns the best available identifier for the current user (email, then name, then fallback).
  */
-export function actorFromSession(session: { user: { email?: string | null; name?: string | null } }): string {
+export function actorFromSession(session: {
+  user: { email?: string | null; name?: string | null };
+}): string {
   return session.user.email || session.user.name || 'unknown';
 }
 
@@ -176,11 +152,9 @@ export function actorFromSession(session: { user: { email?: string | null; name?
  */
 export async function requirePermission(permissions: PermissionCheck) {
   const session = await requireAuth();
-  const userRole = await getUserRole();
+  const userRole = session.role;
 
-  const hasAccess = await checkPermissions(userRole, permissions);
-
-  if (!hasAccess) {
+  if (!checkPermissions(userRole, permissions)) {
     redirect('/403');
   }
 
@@ -199,88 +173,14 @@ export async function hasPermission(
     return false;
   }
 
-  const userRole = await getUserRole();
-  return await checkPermissions(userRole, permissions);
+  return checkPermissions(session.role, permissions);
 }
 
 /**
- * Get all permissions for a role from database and defaults
+ * Get all permissions for a role from the in-code permission matrix.
  */
 export async function getRolePermissions(
   role: Role
 ): Promise<PermissionCheck> {
-  try {
-    const dbPerms = await db
-      .select()
-      .from(rolePermission)
-      .where(eq(rolePermission.role, role));
-
-    // Start with default permissions
-    const permissions: PermissionCheck = JSON.parse(
-      JSON.stringify(DEFAULT_PERMISSIONS[role])
-    );
-
-    // Override with database permissions
-    for (const perm of dbPerms) {
-      const resource = perm.resource as Resource;
-      const action = perm.action as Action;
-
-      if (!permissions[resource]) {
-        permissions[resource] = [];
-      }
-
-      if (perm.enabled && !permissions[resource]!.includes(action)) {
-        permissions[resource]!.push(action);
-      } else if (!perm.enabled) {
-        permissions[resource] = permissions[resource]!.filter(
-          (a) => a !== action
-        );
-      }
-    }
-
-    return permissions;
-  } catch (error) {
-    console.error('Error getting role permissions:', error);
-    return DEFAULT_PERMISSIONS[role];
-  }
-}
-
-/**
- * Initialize default permissions in the database
- */
-export async function initializeDefaultPermissions() {
-  try {
-    for (const [role, resources] of Object.entries(DEFAULT_PERMISSIONS)) {
-      for (const [resource, actions] of Object.entries(resources)) {
-        for (const action of actions) {
-          // Check if permission already exists
-          const existing = await db
-            .select()
-            .from(rolePermission)
-            .where(
-              and(
-                eq(rolePermission.role, role),
-                eq(rolePermission.resource, resource),
-                eq(rolePermission.action, action)
-              )
-            )
-            .limit(1);
-
-          if (existing.length === 0) {
-            await db.insert(rolePermission).values({
-              role,
-              resource,
-              action,
-              enabled: 1,
-              createdAt: new Date().toISOString(),
-            });
-          }
-        }
-      }
-    }
-    return { success: true };
-  } catch (error) {
-    console.error('Error initializing permissions:', error);
-    return { success: false, error };
-  }
+  return DEFAULT_PERMISSIONS[role];
 }

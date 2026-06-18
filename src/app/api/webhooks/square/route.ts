@@ -1,15 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { square } from '@/app/api/clients';
-import { db } from '@/lib/db';
-import {
-  appointment,
-  clientAccount,
-  log,
-  staff,
-  activity,
-  activityType,
-} from '@/db/migrations/schema';
-import { eq } from 'drizzle-orm';
+import { supabaseAdmin, nextId } from '@/lib/supabase/admin';
 
 type SquareWebhookEvent = {
   merchant_id: string;
@@ -27,66 +18,87 @@ async function getOrCreateActivityType(
   name: string,
   icon: string
 ): Promise<number> {
-  const existingType = await db
-    .select()
-    .from(activityType)
-    .where(eq(activityType.name, name))
-    .limit(1);
+  const { data: existing } = await supabaseAdmin
+    .from('ActitityTypes')
+    .select('id')
+    .eq('name', name)
+    .maybeSingle();
 
-  if (existingType.length > 0) {
-    return existingType[0].id;
-  }
+  if (existing) return existing.id;
 
-  const result = await db
-    .insert(activityType)
-    .values({
+  const { data: created, error } = await supabaseAdmin
+    .from('ActitityTypes')
+    .insert({
+      id: await nextId('ActitityTypes'),
       name,
       icon,
       createdAt: new Date().toISOString(),
       createdBy: 'SYSTEM',
     })
-    .returning();
+    .select('id')
+    .single();
 
-  return result[0].id;
+  if (error) throw error;
+  return created.id;
 }
 
 async function resolveStaffId(teamMemberId: string): Promise<number | null> {
   try {
-    const staffMember = await db
-      .select()
-      .from(staff)
-      .where(eq(staff.squareId, teamMemberId))
-      .limit(1);
+    const { data: staffMember } = await supabaseAdmin
+      .from('Staff')
+      .select('id')
+      .eq('squareId', teamMemberId)
+      .maybeSingle();
 
-    if (staffMember.length > 0) return staffMember[0].id;
+    if (staffMember) return staffMember.id;
 
     const result = await square.teamMembers.get({ teamMemberId });
     if (!result.teamMember) return null;
 
-    const staffResult = await db.insert(staff).values({
-      squareId: result.teamMember.id || '',
-      title: result.teamMember.wageSetting?.jobAssignments?.[0]?.jobTitle || 'Staff',
-      status: result.teamMember.status || 'INACTIVE',
-      firstName: result.teamMember.givenName || 'Unknown',
-      lastName: result.teamMember.familyName || 'Unknown',
-      createdAt: new Date().toISOString(),
-      createdBy: 'SQUARE_WEBHOOK',
-    });
-    return staffResult.lastInsertRowid ? Number(staffResult.lastInsertRowid) : null;
+    const { data: inserted, error } = await supabaseAdmin
+      .from('Staff')
+      .insert({
+        id: await nextId('Staff'),
+        squareId: result.teamMember.id || '',
+        title:
+          result.teamMember.wageSetting?.jobAssignments?.[0]?.jobTitle ||
+          'Staff',
+        status: result.teamMember.status || 'INACTIVE',
+        firstName: result.teamMember.givenName || 'Unknown',
+        lastName: result.teamMember.familyName || 'Unknown',
+        createdAt: new Date().toISOString(),
+        createdBy: 'SQUARE_WEBHOOK',
+      })
+      .select('id')
+      .single();
+
+    if (error) return null;
+    return inserted.id;
   } catch (error) {
-    console.error(`Failed to resolve staff for teamMemberId ${teamMemberId}:`, error);
+    console.error(
+      `Failed to resolve staff for teamMemberId ${teamMemberId}:`,
+      error
+    );
     return null;
   }
 }
 
-async function resolveCreatedBy(creatorDetails?: { teamMemberId?: string; customerId?: string; creatorType?: string }): Promise<string | null> {
+async function resolveCreatedBy(creatorDetails?: {
+  teamMemberId?: string;
+  customerId?: string;
+  creatorType?: string;
+}): Promise<string | null> {
   try {
     if (creatorDetails?.teamMemberId) {
-      const result = await square.teamMembers.get({ teamMemberId: creatorDetails.teamMemberId });
+      const result = await square.teamMembers.get({
+        teamMemberId: creatorDetails.teamMemberId,
+      });
       const tm = result.teamMember;
       if (tm) return `${tm.givenName || ''} ${tm.familyName || ''}`.trim() || null;
     } else if (creatorDetails?.customerId) {
-      const result = await square.customers.get({ customerId: creatorDetails.customerId });
+      const result = await square.customers.get({
+        customerId: creatorDetails.customerId,
+      });
       const c = result.customer;
       if (c) return `${c.givenName || ''} ${c.familyName || ''}`.trim() || null;
     }
@@ -96,7 +108,9 @@ async function resolveCreatedBy(creatorDetails?: { teamMemberId?: string; custom
   return null;
 }
 
-async function resolveServiceName(serviceVariationId: string): Promise<string | null> {
+async function resolveServiceName(
+  serviceVariationId: string
+): Promise<string | null> {
   try {
     const catalogResponse = await square.catalog.object.get({
       objectId: serviceVariationId,
@@ -106,7 +120,10 @@ async function resolveServiceName(serviceVariationId: string): Promise<string | 
     const serviceObject = relatedObjects.find((obj) => obj.type === 'ITEM');
     return serviceObject?.itemData?.name || null;
   } catch (error) {
-    console.error(`Failed to retrieve service ${serviceVariationId} from Square:`, error);
+    console.error(
+      `Failed to retrieve service ${serviceVariationId} from Square:`,
+      error
+    );
     return null;
   }
 }
@@ -137,30 +154,37 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
       }
 
       // Resolve customer
-      let dbAccount = null;
+      let clientId: number | null = null;
       let accountName: string | null = null;
       if (booking.customerId) {
-        const accounts = await db
-          .select()
-          .from(clientAccount)
-          .where(eq(clientAccount.squareId, booking.customerId))
-          .limit(1);
-        dbAccount = accounts[0] || null;
+        const { data: dbAccount } = await supabaseAdmin
+          .from('Clients')
+          .select('id, firstName, lastName')
+          .eq('squareId', booking.customerId)
+          .maybeSingle();
 
         if (dbAccount) {
+          clientId = dbAccount.id;
           accountName = `${dbAccount.firstName} ${dbAccount.lastName}`;
         } else {
           try {
-            const customerResponse = await square.customers.get({ customerId: booking.customerId });
+            const customerResponse = await square.customers.get({
+              customerId: booking.customerId,
+            });
             const customer = customerResponse.customer;
-            if (customer) accountName = `${customer.givenName || ''} ${customer.familyName || ''}`.trim() || null;
+            if (customer)
+              accountName =
+                `${customer.givenName || ''} ${customer.familyName || ''}`.trim() ||
+                null;
           } catch (error) {
-            console.error(`Failed to fetch customer ${booking.customerId} from Square:`, error);
+            console.error(
+              `Failed to fetch customer ${booking.customerId} from Square:`,
+              error
+            );
           }
         }
       }
 
-      // Resolve service name and staff
       const segment = booking.appointmentSegments?.[0];
       const serviceName = segment?.serviceVariationId
         ? await resolveServiceName(segment.serviceVariationId)
@@ -169,128 +193,121 @@ async function handleBookingEvent(event: SquareWebhookEvent) {
         ? await resolveStaffId(segment.teamMemberId)
         : null;
 
-      const createdBy = await resolveCreatedBy(booking.creatorDetails as Parameters<typeof resolveCreatedBy>[0]);
+      const createdBy = await resolveCreatedBy(
+        booking.creatorDetails as Parameters<typeof resolveCreatedBy>[0]
+      );
 
       const startAt = booking.startAt || new Date().toISOString();
       const durationMinutes = segment?.durationMinutes || 60;
-      const endAt = new Date(new Date(startAt).getTime() + durationMinutes * 60000).toISOString();
+      const endAt = new Date(
+        new Date(startAt).getTime() + durationMinutes * 60000
+      ).toISOString();
 
-      if (event.type === 'booking.created') {
-        const newAppointment = await db
-          .insert(appointment)
-          .values({
-            squareId: booking.id,
-            accountSquareId: booking.customerId || 'N/A',
-            status: booking.status || 'PENDING',
-            startAt,
-            endAt,
-            durationMinutes,
-            staffId,
-            accountId: dbAccount?.id || null,
-            accountName,
-            service: serviceName,
-            creatorType: booking.creatorDetails?.creatorType || 'CUSTOMER',
-            createdBy,
+      const baseValues = {
+        squareId: booking.id,
+        clientSquareId: booking.customerId || 'N/A',
+        status: booking.status || 'PENDING',
+        startAt,
+        endAt,
+        durationMinutes,
+        staffId: staffId ?? 0,
+        clientId,
+        accountName: accountName ?? '',
+        service: serviceName ?? '',
+        creatorType: booking.creatorDetails?.creatorType || 'CUSTOMER',
+      };
+
+      const { data: existing } = await supabaseAdmin
+        .from('Appointments')
+        .select('id')
+        .eq('squareId', booking.id)
+        .maybeSingle();
+
+      if (event.type === 'booking.created' || !existing) {
+        const { data: newAppt } = await supabaseAdmin
+          .from('Appointments')
+          .insert({
+            ...baseValues,
+            id: await nextId('Appointments'),
+            createdBy: createdBy || 'SQUARE_WEBHOOK',
             createdAt: new Date().toISOString(),
           })
-          .returning();
+          .select('id')
+          .single();
 
-        console.log('✅ Appointment created:', newAppointment[0]?.id);
+        console.log('✅ Appointment created:', newAppt?.id);
 
-        try {
-          const activityTypeId = await getOrCreateActivityType('Appointment', 'Calendar');
-          const withPerson = booking.creatorDetails?.creatorType === 'TEAM_MEMBER'
-            ? (accountName || 'a customer')
-            : (createdBy || 'staff');
-          await db.insert(activity).values({
-            accountId: dbAccount?.id || null,
-            typeId: activityTypeId,
-            title: `${createdBy || 'Someone'} booked an appointment with ${withPerson}${serviceName ? ` for ${serviceName}` : ''}`,
-            createdAt: new Date().toISOString(),
-            createdBy: createdBy || 'SQUARE_WEBHOOK',
-            entity: 'appointment',
-            entityId: newAppointment[0]?.id || null,
-          });
-        } catch (error) {
-          console.error('Failed to create activity:', error);
+        if (event.type === 'booking.created') {
+          try {
+            const activityTypeId = await getOrCreateActivityType(
+              'Appointment',
+              'Calendar'
+            );
+            const withPerson =
+              booking.creatorDetails?.creatorType === 'TEAM_MEMBER'
+                ? accountName || 'a customer'
+                : createdBy || 'staff';
+            await supabaseAdmin.from('Activities').insert({
+              id: await nextId('Activities'),
+              clientId,
+              typeId: activityTypeId,
+              title: `${createdBy || 'Someone'} booked an appointment with ${withPerson}${serviceName ? ` for ${serviceName}` : ''}`,
+              createdAt: new Date().toISOString(),
+              createdBy: createdBy || 'SQUARE_WEBHOOK',
+              entity: 'appointment',
+              entityId: newAppt?.id ?? null,
+            });
+          } catch (error) {
+            console.error('Failed to create activity:', error);
+          }
         }
       } else {
-        // booking.updated
-        const existing = await db
-          .select()
-          .from(appointment)
-          .where(eq(appointment.squareId, booking.id))
-          .limit(1);
-
-        if (existing.length === 0) {
-          // Upsert if not found
-          const newAppt = await db
-            .insert(appointment)
-            .values({
-              squareId: booking.id,
-              accountSquareId: booking.customerId || 'N/A',
-              status: booking.status || 'PENDING',
-              startAt,
-              endAt,
-              durationMinutes,
-              accountId: dbAccount?.id || null,
-              accountName,
-              service: serviceName,
-              staffId,
-              creatorType: booking.creatorDetails?.creatorType || 'CUSTOMER',
-              createdBy,
-              createdAt: new Date().toISOString(),
-            })
-            .returning();
-          console.log('✅ Appointment created (from update event):', newAppt[0]?.id);
-        } else {
-          await db
-            .update(appointment)
-            .set({
-              status: booking.status || 'PENDING',
-              startAt,
-              endAt,
-              durationMinutes,
-              accountId: dbAccount?.id || null,
-              accountName,
-              service: serviceName,
-              staffId,
-              updatedBy: createdBy,
-              updatedAt: new Date().toISOString(),
-            })
-            .where(eq(appointment.squareId, booking.id));
-          console.log('✅ Appointment updated:', booking.id);
-        }
+        await supabaseAdmin
+          .from('Appointments')
+          .update({
+            ...baseValues,
+            updatedBy: createdBy,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('squareId', booking.id);
+        console.log('✅ Appointment updated:', booking.id);
       }
       break;
     }
 
     case 'booking.cancelled': {
-      const appointmentToCancel = await db
-        .select()
-        .from(appointment)
-        .where(eq(appointment.squareId, bookingId))
-        .limit(1);
+      const { data: appointmentToCancel } = await supabaseAdmin
+        .from('Appointments')
+        .select('*')
+        .eq('squareId', bookingId)
+        .maybeSingle();
 
-      await db
-        .update(appointment)
-        .set({ status: 'CANCELLED', updatedBy: 'SQUARE_WEBHOOK', updatedAt: new Date().toISOString() })
-        .where(eq(appointment.squareId, bookingId));
+      await supabaseAdmin
+        .from('Appointments')
+        .update({
+          status: 'CANCELLED',
+          updatedBy: 'SQUARE_WEBHOOK',
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('squareId', bookingId);
 
       console.log('✅ Appointment cancelled:', bookingId);
 
-      if (appointmentToCancel.length > 0) {
+      if (appointmentToCancel) {
         try {
-          const activityTypeId = await getOrCreateActivityType('Appointment Cancelled', 'X');
-          const appt = appointmentToCancel[0];
-          await db.insert(activity).values({
-            accountId: appt.accountId || null,
+          const activityTypeId = await getOrCreateActivityType(
+            'Appointment Cancelled',
+            'X'
+          );
+          await supabaseAdmin.from('Activities').insert({
+            id: await nextId('Activities'),
+            clientId: appointmentToCancel.clientId ?? null,
             typeId: activityTypeId,
-            title: `Appointment${appt.service ? ` for ${appt.service}` : ''} with ${appt.accountName || 'customer'} was cancelled`,
+            title: `Appointment${appointmentToCancel.service ? ` for ${appointmentToCancel.service}` : ''} with ${appointmentToCancel.accountName || 'customer'} was cancelled`,
             createdAt: new Date().toISOString(),
             createdBy: 'SQUARE_WEBHOOK',
             entity: 'appointment',
-            entityId: appt.id || null,
+            entityId: appointmentToCancel.id ?? null,
           });
         } catch (error) {
           console.error('Failed to create cancellation activity:', error);
@@ -313,33 +330,38 @@ async function handleCustomerEvent(event: SquareWebhookEvent) {
   switch (event.type) {
     case 'customer.created':
       console.log('New customer created:', event.data.id);
-      // TODO: Sync customer to local database
       break;
-
     case 'customer.updated':
       console.log('Customer updated:', event.data.id);
-      // TODO: Update local customer record
       break;
-
     case 'customer.deleted':
       console.log('Customer deleted:', event.data.id);
-      // TODO: Handle customer deletion
       break;
-
     default:
       console.log(`Unhandled customer event type: ${event.type}`);
   }
 }
 
-async function writeLog(statusCode: number, message: string, eventType: string, eventId: string, payload: string) {
+async function writeLog(
+  statusCode: number,
+  message: string,
+  eventType: string,
+  eventId: string,
+  payload: string
+) {
   try {
-    await db.insert(log).values({
+    let parsedPayload: unknown = payload;
+    try {
+      parsedPayload = JSON.parse(payload);
+    } catch {
+      /* keep raw string */
+    }
+    await supabaseAdmin.from('Logs').insert({
       statusCode,
       message,
       eventType,
       eventId,
-      paylaod: payload,
-      createdBy: 'SQUARE_WEBHOOK',
+      payload: parsedPayload as never,
       createdAt: new Date().toISOString(),
     });
   } catch (logError) {
@@ -365,7 +387,13 @@ export async function POST(request: NextRequest) {
   const signatureKey = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
   if (!signatureKey) {
     console.error('SQUARE_WEBHOOK_SIGNATURE_KEY not configured');
-    await writeLog(500, 'SQUARE_WEBHOOK_SIGNATURE_KEY env var not set', 'unknown', 'unknown', body);
+    await writeLog(
+      500,
+      'SQUARE_WEBHOOK_SIGNATURE_KEY env var not set',
+      'unknown',
+      'unknown',
+      body
+    );
     return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
   }
 
@@ -398,8 +426,10 @@ export async function POST(request: NextRequest) {
       webhookEvent.event_id,
       body
     );
-    // Return 200 so Square does not retry and create duplicate records
-    return NextResponse.json({ received: true, error: 'Processing failed — logged' });
+    return NextResponse.json({
+      received: true,
+      error: 'Processing failed — logged',
+    });
   }
 
   return NextResponse.json({ received: true });

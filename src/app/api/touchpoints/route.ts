@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { activity, activityType, service } from '@/db/migrations/schema';
-import { eq, desc, and, gte, lte } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin, nextId } from '@/lib/supabase/admin';
 
 export async function GET(request: Request) {
   try {
@@ -23,71 +21,81 @@ export async function GET(request: Request) {
       );
     }
 
-    const conditions = [];
+    let query = supabaseAdmin
+      .from('Activities')
+      .select('id, clientId, businessId, typeId, title, entity, entityId, createdAt, createdBy');
 
     if (accountId) {
       const accountIdInt = parseInt(accountId);
       if (isNaN(accountIdInt)) {
-        return NextResponse.json(
-          { error: 'Invalid account ID' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
       }
-      conditions.push(eq(activity.accountId, accountIdInt));
+      query = query.eq('clientId', accountIdInt);
     }
 
     if (businessId) {
       const businessIdInt = parseInt(businessId);
       if (isNaN(businessIdInt)) {
-        return NextResponse.json(
-          { error: 'Invalid business ID' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Invalid business ID' }, { status: 400 });
       }
-      conditions.push(eq(activity.businessId, businessIdInt));
+      query = query.eq('businessId', businessIdInt);
     }
 
-    if (dateFrom) {
-      conditions.push(gte(activity.createdAt, dateFrom));
-    }
-    if (dateTo) {
-      conditions.push(lte(activity.createdAt, dateTo));
+    if (dateFrom) query = query.gte('createdAt', dateFrom);
+    if (dateTo) query = query.lte('createdAt', dateTo);
+
+    const { data, error } = await query
+      .order('createdAt', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+
+    const rows = data ?? [];
+
+    // Resolve activity type names/icons (no FK relationship to embed).
+    const typeIds = Array.from(new Set(rows.map((r) => r.typeId)));
+    const typeMap = new Map<number, { name: string; icon: string }>();
+    if (typeIds.length > 0) {
+      const { data: types } = await supabaseAdmin
+        .from('ActitityTypes')
+        .select('id, name, icon')
+        .in('id', typeIds);
+      for (const t of types ?? []) typeMap.set(t.id, { name: t.name, icon: t.icon });
     }
 
-    const whereClause = conditions.length > 1
-      ? and(...conditions)
-      : conditions.length === 1
-      ? conditions[0]
-      : undefined;
-
-    // Get touchpoints (activities) with their types and optional service info
-    const touchpoints = await db
-      .select({
-        id: activity.id,
-        accountId: activity.accountId,
-        businessId: activity.businessId,
-        typeId: activity.typeId,
-        typeName: activityType.name,
-        typeIcon: activityType.icon,
-        title: activity.title,
-        serviceId: activity.entityId,
-        serviceName: service.name,
-        createdAt: activity.createdAt,
-        createdBy: activity.createdBy,
-      })
-      .from(activity)
-      .leftJoin(activityType, eq(activity.typeId, activityType.id))
-      .leftJoin(
-        service,
-        and(
-          eq(activity.entity, 'service'),
-          eq(activity.entityId, service.id)
-        )
+    // Resolve service names for service-entity touchpoints.
+    const serviceIds = Array.from(
+      new Set(
+        rows
+          .filter((r) => r.entity === 'service' && r.entityId != null)
+          .map((r) => r.entityId as number)
       )
-      .where(whereClause)
-      .orderBy(desc(activity.createdAt))
-      .limit(limit)
-      .offset(offset);
+    );
+    const serviceMap = new Map<number, string | null>();
+    if (serviceIds.length > 0) {
+      const { data: services } = await supabaseAdmin
+        .from('Services')
+        .select('id, name')
+        .in('id', serviceIds);
+      for (const s of services ?? []) serviceMap.set(s.id, s.name);
+    }
+
+    const touchpoints = rows.map((r) => ({
+      id: r.id,
+      accountId: r.clientId,
+      businessId: r.businessId,
+      typeId: r.typeId,
+      typeName: typeMap.get(r.typeId)?.name ?? null,
+      typeIcon: typeMap.get(r.typeId)?.icon ?? null,
+      title: r.title,
+      serviceId: r.entityId,
+      serviceName:
+        r.entity === 'service' && r.entityId != null
+          ? serviceMap.get(r.entityId) ?? null
+          : null,
+      createdAt: r.createdAt,
+      createdBy: r.createdBy,
+    }));
 
     return NextResponse.json({
       success: true,
@@ -109,48 +117,57 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    if ((!body.accountId && !body.businessId) || !body.type || !body.note || !body.createdBy) {
+    if (
+      (!body.accountId && !body.businessId) ||
+      !body.type ||
+      !body.note ||
+      !body.createdBy
+    ) {
       return NextResponse.json(
-        { error: 'Missing required fields: (accountId or businessId), type, note, createdBy' },
+        {
+          error:
+            'Missing required fields: (accountId or businessId), type, note, createdBy',
+        },
         { status: 400 }
       );
     }
 
-    // Get the typeId from activityType table
-    const typeResult = await db
-      .select()
-      .from(activityType)
-      .where(eq(activityType.name, body.type))
-      .limit(1);
+    const { data: typeRow, error: typeError } = await supabaseAdmin
+      .from('ActitityTypes')
+      .select('id')
+      .eq('name', body.type)
+      .maybeSingle();
 
-    if (typeResult.length === 0) {
+    if (typeError) throw typeError;
+    if (!typeRow) {
       return NextResponse.json(
         { error: `Invalid touchpoint type: ${body.type}` },
         { status: 400 }
       );
     }
 
-    const typeId = typeResult[0].id;
-
-    // Create activity record
-    const newTouchpoint = await db
-      .insert(activity)
-      .values({
-        accountId: body.accountId ? parseInt(body.accountId) : null,
+    const { data, error } = await supabaseAdmin
+      .from('Activities')
+      .insert({
+        id: await nextId('Activities'),
+        clientId: body.accountId ? parseInt(body.accountId) : null,
         businessId: body.businessId ? parseInt(body.businessId) : null,
-        typeId: typeId,
+        typeId: typeRow.id,
         title: body.note,
         entity: body.serviceId ? 'service' : null,
         entityId: body.serviceId ? parseInt(body.serviceId) : null,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
       })
-      .returning();
+      .select()
+      .single();
+
+    if (error) throw error;
 
     return NextResponse.json(
       {
         success: true,
-        touchpoint: newTouchpoint[0],
+        touchpoint: { ...data, accountId: data.clientId },
       },
       { status: 201 }
     );

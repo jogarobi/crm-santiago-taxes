@@ -1,28 +1,8 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { account, clientLogin } from '@/db/migrations/schema';
-import { eq, and } from 'drizzle-orm';
-import { auth } from '@/lib/auth';
+import { createClient } from '@supabase/supabase-js';
+import { getSession } from '@/lib/auth-utils';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { decrypt } from '@/lib/encrypt';
-import { scryptAsync } from '@noble/hashes/scrypt.js';
-import { hexToBytes } from '@noble/hashes/utils.js';
-
-async function verifyUserPassword(hash: string, password: string): Promise<boolean> {
-  const [salt, key] = hash.split(':');
-  if (!salt || !key) return false;
-  const derived = await scryptAsync(password.normalize('NFKC'), salt, {
-    N: 16384,
-    r: 16,
-    p: 1,
-    dkLen: 64,
-    maxmem: 128 * 16384 * 16 * 2,
-  });
-  const expected = hexToBytes(key);
-  if (derived.length !== expected.length) return false;
-  let result = 0;
-  for (let i = 0; i < derived.length; i++) result |= derived[i] ^ expected[i];
-  return result === 0;
-}
 
 export async function POST(
   request: Request,
@@ -30,70 +10,65 @@ export async function POST(
 ) {
   try {
     const { id, loginId } = await params;
-    const accountId = parseInt(id);
+    const clientId = parseInt(id);
     const loginIdInt = parseInt(loginId);
 
-    if (isNaN(accountId) || isNaN(loginIdInt)) {
+    if (isNaN(clientId) || isNaN(loginIdInt)) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
     const body = await request.json();
     if (!body.password) {
-      return NextResponse.json({ error: 'Password is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Password is required' },
+        { status: 400 }
+      );
     }
 
-    // Get the current session user
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session?.user) {
+    const session = await getSession();
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Look up the user's credential account to get the password hash
-    const credentialAccount = await db
-      .select({ password: account.password })
-      .from(account)
-      .where(
-        and(
-          eq(account.userId, session.user.id),
-          eq(account.providerId, 'credential')
-        )
-      )
-      .limit(1);
-
-    if (credentialAccount.length === 0 || !credentialAccount[0].password) {
-      return NextResponse.json({ error: 'Cannot verify password' }, { status: 400 });
-    }
-
-    const isValid = await verifyUserPassword(
-      credentialAccount[0].password,
-      body.password
+    // Re-verify the current user's password using a throwaway client so we
+    // don't disturb the active session cookies.
+    const verifier = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    if (!isValid) {
+    const { error: signInError } = await verifier.auth.signInWithPassword({
+      email: session.user.email,
+      password: body.password,
+    });
+
+    if (signInError) {
       return NextResponse.json({ error: 'Incorrect password' }, { status: 403 });
     }
 
-    // Fetch and decrypt the stored credential
-    const loginRecord = await db
-      .select({ encryptedPassword: clientLogin.encryptedPassword })
-      .from(clientLogin)
-      .where(
-        and(
-          eq(clientLogin.id, loginIdInt),
-          eq(clientLogin.accountId, accountId)
-        )
-      )
-      .limit(1);
+    // Fetch and decrypt the stored credential.
+    const { data: loginRecord, error } = await supabaseAdmin
+      .from('Logins')
+      .select('password')
+      .eq('id', loginIdInt)
+      .eq('clientId', clientId)
+      .maybeSingle();
 
-    if (loginRecord.length === 0) {
+    if (error) throw error;
+
+    if (!loginRecord) {
       return NextResponse.json({ error: 'Login not found' }, { status: 404 });
     }
 
-    const password = decrypt(loginRecord[0].encryptedPassword);
+    const password = decrypt(loginRecord.password);
 
     return NextResponse.json({ password });
   } catch (error) {
     console.error('Error revealing login password:', error);
-    return NextResponse.json({ error: 'Failed to reveal password' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to reveal password' },
+      { status: 500 }
+    );
   }
 }

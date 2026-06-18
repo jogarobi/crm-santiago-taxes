@@ -1,40 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { headers } from 'next/headers';
+import { type NextRequest } from 'next/server';
+import { updateSession } from '@/lib/supabase/middleware';
 
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  const isAuthPage = pathname.startsWith('/login');
-  const isProtectedRoute =
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/clients') ||
-    pathname.startsWith('/appointments') ||
-    pathname.startsWith('/catalog') ||
-    pathname.startsWith('/team');
-
-  if (isAuthPage && session) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  if (isProtectedRoute && !session) {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  return NextResponse.next();
+  // Refreshes the Supabase session and redirects unauthenticated users to
+  // /login. Keeps auth cookies in sync across server components and routes.
+  return await updateSession(request);
 }
 
 export const config = {
   matcher: [
-    '/dashboard/:path*',
-    '/clients/:path*',
-    '/appointments/:path*',
-    '/catalog/:path*',
-    '/team/:path*',
-    '/login',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - image assets
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };

@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { service } from '@/db/migrations/schema';
-import { eq } from 'drizzle-orm';
 import { requirePermission, actorFromSession } from '@/lib/auth-utils';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import type { Database } from '@/db/db.types';
+
+type ServiceUpdate = Database['public']['Tables']['Services']['Update'];
 
 export async function GET(
   _request: Request,
@@ -15,29 +16,21 @@ export async function GET(
     const serviceId = parseInt(id);
 
     if (isNaN(serviceId)) {
-      return NextResponse.json(
-        { error: 'Invalid service ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid service ID' }, { status: 400 });
     }
 
-    const result = await db
-      .select()
-      .from(service)
-      .where(eq(service.id, serviceId))
-      .limit(1);
+    const { data, error } = await supabaseAdmin
+      .from('Services')
+      .select('*')
+      .eq('id', serviceId)
+      .maybeSingle();
 
-    if (result.length === 0) {
-      return NextResponse.json(
-        { error: 'Service not found' },
-        { status: 404 }
-      );
+    if (error) throw error;
+    if (!data) {
+      return NextResponse.json({ error: 'Service not found' }, { status: 404 });
     }
 
-    return NextResponse.json({
-      success: true,
-      service: result[0],
-    });
+    return NextResponse.json({ success: true, service: data });
   } catch (error) {
     console.error('Error fetching service:', error);
     return NextResponse.json(
@@ -59,10 +52,7 @@ export async function PUT(
     const body = await request.json();
 
     if (isNaN(serviceId)) {
-      return NextResponse.json(
-        { error: 'Invalid service ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid service ID' }, { status: 400 });
     }
 
     if (!body.updatedBy) {
@@ -72,42 +62,26 @@ export async function PUT(
       );
     }
 
-    const existingService = await db
-      .select()
-      .from(service)
-      .where(eq(service.id, serviceId))
-      .limit(1);
-
-    if (existingService.length === 0) {
-      return NextResponse.json(
-        { error: 'Service not found' },
-        { status: 404 }
-      );
-    }
-
-    const updateData: any = {
+    const updateData: ServiceUpdate = {
       updatedBy: body.updatedBy,
       updatedAt: new Date().toISOString(),
     };
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.isActive !== undefined) updateData.isActive = body.isActive;
 
-    if (body.name !== undefined) {
-      updateData.name = body.name;
+    const { data, error } = await supabaseAdmin
+      .from('Services')
+      .update(updateData)
+      .eq('id', serviceId)
+      .select()
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) {
+      return NextResponse.json({ error: 'Service not found' }, { status: 404 });
     }
 
-    if (body.isActive !== undefined) {
-      updateData.isActive = body.isActive;
-    }
-
-    const updatedService = await db
-      .update(service)
-      .set(updateData)
-      .where(eq(service.id, serviceId))
-      .returning();
-
-    return NextResponse.json({
-      success: true,
-      service: updatedService[0],
-    });
+    return NextResponse.json({ success: true, service: data });
   } catch (error) {
     console.error('Error updating service:', error);
     return NextResponse.json(
@@ -129,34 +103,31 @@ export async function DELETE(
     const serviceId = parseInt(id);
 
     if (isNaN(serviceId)) {
-      return NextResponse.json(
-        { error: 'Invalid service ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid service ID' }, { status: 400 });
     }
 
-    const existingService = await db
-      .select()
-      .from(service)
-      .where(eq(service.id, serviceId))
-      .limit(1);
+    const { data: existing, error: fetchError } = await supabaseAdmin
+      .from('Services')
+      .select('id')
+      .eq('id', serviceId)
+      .maybeSingle();
 
-    if (existingService.length === 0) {
-      return NextResponse.json(
-        { error: 'Service not found' },
-        { status: 404 }
-      );
+    if (fetchError) throw fetchError;
+    if (!existing) {
+      return NextResponse.json({ error: 'Service not found' }, { status: 404 });
     }
 
-    // Soft delete by setting isActive to false
-    await db
-      .update(service)
-      .set({
+    // Soft delete by setting isActive to 0.
+    const { error } = await supabaseAdmin
+      .from('Services')
+      .update({
         isActive: 0,
         updatedAt: new Date().toISOString(),
         updatedBy: actor,
       })
-      .where(eq(service.id, serviceId));
+      .eq('id', serviceId);
+
+    if (error) throw error;
 
     return NextResponse.json(
       { success: true, message: 'Service deleted successfully' },

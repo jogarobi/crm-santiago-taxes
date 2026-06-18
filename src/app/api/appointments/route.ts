@@ -1,15 +1,19 @@
 import { square } from '@/app/api/clients';
-import { clientAccount, appointment } from '@/db/migrations/schema';
-import { db } from '@/lib/db';
+import { supabaseAdmin, nextId } from '@/lib/supabase/admin';
 import {
   Appointment,
   AppointmentErrorResponse,
   AppointmentResponse,
 } from '@/lib/types/appointment';
-import { and, asc, eq, gte, lte, notInArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { AppointmentSegment } from 'square';
 import { requirePermission, actorFromSession } from '@/lib/auth-utils';
+
+const CANCELLED_STATUSES = [
+  'CANCELLED_BY_CUSTOMER',
+  'CANCELLED_BY_SELLER',
+  'DECLINED',
+];
 
 export async function GET(request: Request) {
   try {
@@ -20,43 +24,33 @@ export async function GET(request: Request) {
     const startAtMax = searchParams.get('start_at_max') || undefined;
     const accountId = searchParams.get('account_id') || undefined;
 
-    const CANCELLED_STATUSES = ['CANCELLED_BY_CUSTOMER', 'CANCELLED_BY_SELLER', 'DECLINED'];
+    let query = supabaseAdmin
+      .from('Appointments')
+      .select('*')
+      .not('status', 'in', `(${CANCELLED_STATUSES.join(',')})`);
 
-    const conditions = [
-      notInArray(appointment.status, CANCELLED_STATUSES),
-    ];
+    if (startAtMin) query = query.gte('startAt', startAtMin);
+    if (startAtMax) query = query.lte('startAt', startAtMax);
+    if (accountId) query = query.eq('clientId', parseInt(accountId));
 
-    if (startAtMin) {
-      conditions.push(gte(appointment.startAt, startAtMin));
-    }
-
-    if (startAtMax) {
-      conditions.push(lte(appointment.startAt, startAtMax));
-    }
-
-    if (accountId) {
-      conditions.push(eq(appointment.accountId, parseInt(accountId)));
-    }
-
-    const dbAppointments = await db
-      .select()
-      .from(appointment)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(asc(appointment.startAt))
+    const { data, error } = await query
+      .order('startAt', { ascending: true })
       .limit(limit);
 
-    const serializedAppointments: Appointment[] = dbAppointments.map((apt) => ({
+    if (error) throw error;
+
+    const serializedAppointments: Appointment[] = (data ?? []).map((apt) => ({
       id: apt.squareId || apt.id?.toString() || '',
-      accountId: apt.accountId,
+      accountId: apt.clientId,
       status: apt.status,
       startAt: apt.startAt,
       endAt: apt.endAt,
       durationMinutes: apt.durationMinutes || undefined,
-      accountSquareId: apt.accountSquareId || undefined,
+      accountSquareId: apt.clientSquareId || undefined,
       accountName: apt.accountName || undefined,
       service: apt.service || undefined,
       staffId: apt.staffId ?? null,
-      customerId: apt.accountSquareId || undefined,
+      customerId: apt.clientSquareId || undefined,
       creatorType: apt.creatorType,
       createdBy: apt.createdBy || undefined,
       createdAt: apt.createdAt || undefined,
@@ -130,54 +124,63 @@ export async function POST(request: Request) {
       )
     );
 
-    // Save appointment to Turso database
     // @ts-expect-error - Square SDK types may vary
     const booking = response.result?.booking || response.booking;
     if (booking?.id) {
       try {
-        // Calculate endAt time
         const startAt = new Date(booking.startAt || body.startAt);
         const durationMinutes =
           booking.appointmentSegments?.[0]?.durationMinutes || 30;
         const endAt = new Date(startAt.getTime() + durationMinutes * 60000);
 
-        // Get account info if customerId is provided
-        let accountId: number | undefined;
-        let accountName: string | undefined;
+        // Resolve client info from the Square customer id.
+        let clientId: number | null = null;
+        let accountName = '';
         if (body.customerId) {
-          const accountResult = await db
-            .select()
-            .from(clientAccount)
-            .where(eq(clientAccount.squareId, body.customerId))
-            .limit(1);
-
-          if (accountResult.length > 0) {
-            accountId = accountResult[0].id || undefined;
-            const firstName = accountResult[0].firstName;
-            const lastName = accountResult[0].lastName;
-            if (firstName && lastName) {
-              accountName = `${firstName} ${lastName}`;
+          const { data: client } = await supabaseAdmin
+            .from('Clients')
+            .select('id, firstName, lastName')
+            .eq('squareId', body.customerId)
+            .maybeSingle();
+          if (client) {
+            clientId = client.id;
+            if (client.firstName && client.lastName) {
+              accountName = `${client.firstName} ${client.lastName}`;
             }
           }
         }
 
-        await db.insert(appointment).values({
+        // Resolve staff from the booking's team member (Staff.squareId).
+        let staffId = 0;
+        const teamMemberId = booking.appointmentSegments?.[0]?.teamMemberId;
+        if (teamMemberId) {
+          const { data: staffRow } = await supabaseAdmin
+            .from('Staff')
+            .select('id')
+            .eq('squareId', teamMemberId)
+            .maybeSingle();
+          if (staffRow) staffId = staffRow.id;
+        }
+
+        await supabaseAdmin.from('Appointments').insert({
+          id: await nextId('Appointments'),
           squareId: booking.id,
           status: booking.status || 'PENDING',
           startAt: startAt.toISOString(),
           endAt: endAt.toISOString(),
           durationMinutes,
-          accountId,
+          clientId,
           accountName,
-          service: body.serviceName,
-          accountSquareId: body.customerId || '',
+          service: body.serviceName || '',
+          clientSquareId: body.customerId || '',
+          staffId,
           creatorType: 'SYSTEM',
           createdBy: actor,
           createdAt: new Date().toISOString(),
         });
       } catch (dbError) {
         console.error('Error saving appointment to database:', dbError);
-        // Don't fail the request if database save fails
+        // Don't fail the request if database save fails.
       }
     }
 

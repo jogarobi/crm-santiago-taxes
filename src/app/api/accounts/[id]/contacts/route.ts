@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { clientAccountContact, clientAccount } from '@/db/migrations/schema';
-import { eq } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin, nextId } from '@/lib/supabase/admin';
 
 export async function GET(
   _request: Request,
@@ -15,30 +13,28 @@ export async function GET(
     const accountId = parseInt(id);
 
     if (isNaN(accountId)) {
-      return NextResponse.json(
-        { error: 'Invalid account ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
     }
 
-    // Check if account exists
-    const accountResult = await db
-      .select()
-      .from(clientAccount)
-      .where(eq(clientAccount.id, accountId))
-      .limit(1);
+    const { data: account, error: accountError } = await supabaseAdmin
+      .from('Clients')
+      .select('id')
+      .eq('id', accountId)
+      .maybeSingle();
 
-    if (accountResult.length === 0) {
+    if (accountError) throw accountError;
+    if (!account) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    // Get contacts for the account
-    const contacts = await db
-      .select()
-      .from(clientAccountContact)
-      .where(eq(clientAccountContact.accountId, accountId));
+    const { data, error } = await supabaseAdmin
+      .from('Contacts')
+      .select('*')
+      .eq('clientId', accountId);
 
-    return NextResponse.json(contacts);
+    if (error) throw error;
+
+    return NextResponse.json(data ?? []);
   } catch (error) {
     console.error('Error fetching account contacts:', error);
     return NextResponse.json(
@@ -60,15 +56,15 @@ export async function POST(
     const body = await request.json();
 
     if (isNaN(accountId)) {
-      return NextResponse.json(
-        { error: 'Invalid account ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
     }
 
     if (!body.createdBy || !body.contactType || !body.contactValue) {
       return NextResponse.json(
-        { error: 'Missing required fields: contactType, contactValue, createdBy' },
+        {
+          error:
+            'Missing required fields: contactType, contactValue, createdBy',
+        },
         { status: 400 }
       );
     }
@@ -80,29 +76,33 @@ export async function POST(
       );
     }
 
-    // Check if account exists
-    const accountResult = await db
-      .select()
-      .from(clientAccount)
-      .where(eq(clientAccount.id, accountId))
-      .limit(1);
+    const { data: account, error: accountError } = await supabaseAdmin
+      .from('Clients')
+      .select('id')
+      .eq('id', accountId)
+      .maybeSingle();
 
-    if (accountResult.length === 0) {
+    if (accountError) throw accountError;
+    if (!account) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    const newContact = await db
-      .insert(clientAccountContact)
-      .values({
-        accountId,
+    const { data, error } = await supabaseAdmin
+      .from('Contacts')
+      .insert({
+        id: await nextId('Contacts'),
+        clientId: accountId,
         contactType: body.contactType,
         contactValue: body.contactValue,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
       })
-      .returning();
+      .select()
+      .single();
 
-    return NextResponse.json(newContact[0], { status: 201 });
+    if (error) throw error;
+
+    return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error('Error creating account contact:', error);
     return NextResponse.json(

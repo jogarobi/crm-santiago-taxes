@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { business, businessAccount } from '@/db/migrations/schema';
-import { eq, and, ne } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export async function DELETE(
   _request: Request,
@@ -22,73 +20,39 @@ export async function DELETE(
       );
     }
 
-    const businessRecord = await db
-      .select({ id: business.id, accountId: business.accountId })
-      .from(business)
-      .where(eq(business.id, businessIdInt))
-      .limit(1);
+    const { data: links, error: linksError } = await supabaseAdmin
+      .from('ClientBusiness')
+      .select('id, clientId')
+      .eq('businessId', businessIdInt);
 
-    if (businessRecord.length === 0) {
-      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
-    }
+    if (linksError) throw linksError;
 
-    const link = await db
-      .select({ id: businessAccount.id })
-      .from(businessAccount)
-      .where(
-        and(
-          eq(businessAccount.businessId, businessIdInt),
-          eq(businessAccount.accountId, accountIdInt)
-        )
-      )
-      .limit(1);
-
-    if (link.length === 0) {
+    const link = (links ?? []).find((l) => l.clientId === accountIdInt);
+    if (!link) {
       return NextResponse.json(
         { error: 'Account is not associated with this business' },
         { status: 404 }
       );
     }
 
-    const isPrimary = parseInt(businessRecord[0].accountId) === accountIdInt;
-
-    if (isPrimary) {
-      // Find another linked account to promote to primary
-      const nextAccount = await db
-        .select({ accountId: businessAccount.accountId })
-        .from(businessAccount)
-        .where(
-          and(
-            eq(businessAccount.businessId, businessIdInt),
-            ne(businessAccount.accountId, accountIdInt)
-          )
-        )
-        .limit(1);
-
-      if (nextAccount.length === 0) {
-        return NextResponse.json(
-          { error: 'Cannot remove the only person linked to this business' },
-          { status: 400 }
-        );
-      }
-
-      // Promote the next account to primary owner
-      await db
-        .update(business)
-        .set({ accountId: nextAccount[0].accountId.toString() })
-        .where(eq(business.id, businessIdInt));
+    if ((links ?? []).length <= 1) {
+      return NextResponse.json(
+        { error: 'Cannot remove the only person linked to this business' },
+        { status: 400 }
+      );
     }
 
-    await db
-      .delete(businessAccount)
-      .where(
-        and(
-          eq(businessAccount.businessId, businessIdInt),
-          eq(businessAccount.accountId, accountIdInt)
-        )
-      );
+    const { error } = await supabaseAdmin
+      .from('ClientBusiness')
+      .delete()
+      .eq('businessId', businessIdInt)
+      .eq('clientId', accountIdInt);
 
-    return NextResponse.json({ message: 'Account removed from business successfully' });
+    if (error) throw error;
+
+    return NextResponse.json({
+      message: 'Account removed from business successfully',
+    });
   } catch (error) {
     console.error('Error removing account from business:', error);
     return NextResponse.json(

@@ -1,8 +1,40 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { task, staff, clientAccount, business } from '@/db/migrations/schema';
-import { eq, desc, like, and, count, sql, gte, lte } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin, nextId } from '@/lib/supabase/admin';
+
+type TaskRow = {
+  id: number;
+  clientId: number | null;
+  businessId: number | null;
+  content: string;
+  status: string;
+  staffId: number;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+  Clients?: { firstName: string; lastName: string } | null;
+  Businesses?: { name: string } | null;
+};
+
+function mapTask(r: TaskRow) {
+  return {
+    id: r.id,
+    accountId: r.clientId,
+    businessId: r.businessId,
+    content: r.content,
+    status: r.status,
+    assignedTo: r.staffId != null ? String(r.staffId) : null,
+    createdAt: r.createdAt,
+    createdBy: r.createdBy,
+    updatedAt: r.updatedAt,
+    updatedBy: r.updatedBy,
+    accountName: r.Clients
+      ? `${r.Clients.firstName} ${r.Clients.lastName}`
+      : null,
+    businessName: r.Businesses?.name ?? null,
+  };
+}
 
 export async function GET(request: Request) {
   try {
@@ -19,23 +51,21 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '100');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // Build where conditions
-    const conditions = [];
+    let query = supabaseAdmin
+      .from('Tasks')
+      .select('*, Clients(firstName, lastName), Businesses(name)', {
+        count: 'exact',
+      });
 
-    // If user is not an owner, filter tasks to only show their assigned tasks
+    // Non-owners only see tasks assigned to their staff record.
     if (role !== 'owner' && session?.user?.email) {
-      // Find the staff record for the current user
-      const staffRecord = await db
-        .select()
-        .from(staff)
-        .where(eq(staff.email, session.user.email.toLowerCase()))
-        .limit(1);
+      const { data: staffRecord } = await supabaseAdmin
+        .from('Staff')
+        .select('id')
+        .eq('email', session.user.email.toLowerCase())
+        .maybeSingle();
 
-      if (staffRecord.length > 0) {
-        // Filter tasks assigned to this staff member
-        conditions.push(eq(task.assignedTo, staffRecord[0].id.toString()));
-      } else {
-        // If no staff record found, return empty results
+      if (!staffRecord) {
         return NextResponse.json({
           success: true,
           tasks: [],
@@ -44,88 +74,38 @@ export async function GET(request: Request) {
           hasMore: false,
         });
       }
+      query = query.eq('staffId', staffRecord.id);
     }
 
     if (accountId) {
       const accountIdInt = parseInt(accountId);
-      if (isNaN(accountIdInt)) {
-        return NextResponse.json(
-          { error: 'Invalid account ID' },
-          { status: 400 },
-        );
-      }
-      conditions.push(eq(task.accountId, accountIdInt));
+      if (isNaN(accountIdInt))
+        return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
+      query = query.eq('clientId', accountIdInt);
     }
 
     if (businessId) {
       const businessIdInt = parseInt(businessId);
-      if (isNaN(businessIdInt)) {
-        return NextResponse.json(
-          { error: 'Invalid business ID' },
-          { status: 400 },
-        );
-      }
-      conditions.push(eq(task.businessId, businessIdInt));
+      if (isNaN(businessIdInt))
+        return NextResponse.json({ error: 'Invalid business ID' }, { status: 400 });
+      query = query.eq('businessId', businessIdInt);
     }
 
-    if (status) {
-      conditions.push(eq(task.status, status));
-    }
+    if (status) query = query.eq('status', status);
+    if (assignedTo) query = query.eq('staffId', parseInt(assignedTo));
+    if (search && search.trim())
+      query = query.ilike('content', `%${search.trim()}%`);
+    if (dateFrom) query = query.gte('createdAt', dateFrom);
+    if (dateTo) query = query.lte('createdAt', dateTo);
 
-    if (assignedTo) {
-      conditions.push(eq(task.assignedTo, assignedTo));
-    }
+    const { data, error, count } = await query
+      .order('createdAt', { ascending: false })
+      .range(offset, offset + limit - 1);
 
-    if (search && search.trim()) {
-      conditions.push(like(task.content, `%${search.trim()}%`));
-    }
+    if (error) throw error;
 
-    if (dateFrom) {
-      conditions.push(gte(task.createdAt, dateFrom));
-    }
-
-    if (dateTo) {
-      conditions.push(lte(task.createdAt, dateTo));
-    }
-
-    const whereClause =
-      conditions.length > 1
-        ? and(...conditions)
-        : conditions.length === 1
-          ? conditions[0]
-          : undefined;
-
-    // Get total count
-    const totalResult = await db
-      .select({ count: count() })
-      .from(task)
-      .where(whereClause);
-
-    const total = totalResult[0]?.count || 0;
-
-    // Get paginated tasks with joined account/business names
-    const tasks = await db
-      .select({
-        id: task.id,
-        accountId: task.accountId,
-        businessId: task.businessId,
-        content: task.content,
-        status: task.status,
-        assignedTo: task.assignedTo,
-        createdAt: task.createdAt,
-        createdBy: task.createdBy,
-        updatedAt: task.updatedAt,
-        updatedBy: task.updatedBy,
-        accountName: sql<string | null>`CASE WHEN ${clientAccount.firstName} IS NOT NULL THEN ${clientAccount.firstName} || ' ' || ${clientAccount.lastName} ELSE NULL END`,
-        businessName: business.registeredName,
-      })
-      .from(task)
-      .leftJoin(clientAccount, eq(task.accountId, clientAccount.id))
-      .leftJoin(business, eq(task.businessId, business.id))
-      .where(whereClause)
-      .orderBy(desc(task.createdAt))
-      .limit(limit)
-      .offset(offset);
+    const tasks = (data ?? []).map((r) => mapTask(r as TaskRow));
+    const total = count ?? 0;
 
     return NextResponse.json({
       success: true,
@@ -136,16 +116,12 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error fetching tasks:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch tasks' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    // Check if user has permission to create tasks
     await requirePermission({ task: ['create'] });
 
     const body = await request.json();
@@ -153,52 +129,54 @@ export async function POST(request: Request) {
     if (!body.content || !body.createdBy) {
       return NextResponse.json(
         { error: 'Missing required fields: content, createdBy' },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     const accountIdInt = body.accountId ? parseInt(body.accountId) : null;
     const businessIdInt = body.businessId ? parseInt(body.businessId) : null;
 
-    if (body.accountId && isNaN(Number(accountIdInt))) {
+    if (body.accountId && isNaN(Number(accountIdInt)))
+      return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
+    if (body.businessId && isNaN(Number(businessIdInt)))
+      return NextResponse.json({ error: 'Invalid business ID' }, { status: 400 });
+
+    const staffId = body.assignedTo
+      ? parseInt(body.assignedTo)
+      : body.staffId
+        ? parseInt(body.staffId)
+        : null;
+
+    if (staffId == null || isNaN(staffId)) {
       return NextResponse.json(
-        { error: 'Invalid account ID' },
-        { status: 400 },
+        { error: 'Missing required field: assignedTo (staff)' },
+        { status: 400 }
       );
     }
 
-    if (body.businessId && isNaN(Number(businessIdInt))) {
-      return NextResponse.json(
-        { error: 'Invalid business ID' },
-        { status: 400 },
-      );
-    }
-
-    const newTask = await db
-      .insert(task)
-      .values({
-        accountId: accountIdInt,
+    const { data, error } = await supabaseAdmin
+      .from('Tasks')
+      .insert({
+        id: await nextId('Tasks'),
+        clientId: accountIdInt,
         businessId: businessIdInt,
         content: body.content,
         status: body.status || 'todo',
-        assignedTo: body.assignedTo || null,
+        staffId,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
       })
-      .returning();
+      .select()
+      .single();
+
+    if (error) throw error;
 
     return NextResponse.json(
-      {
-        success: true,
-        task: newTask[0],
-      },
-      { status: 201 },
+      { success: true, task: mapTask(data as TaskRow) },
+      { status: 201 }
     );
   } catch (error) {
     console.error('Error creating task:', error);
-    return NextResponse.json(
-      { error: 'Failed to create task' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to create task' }, { status: 500 });
   }
 }

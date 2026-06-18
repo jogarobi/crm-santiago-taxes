@@ -1,8 +1,48 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { clientAccountRelation, clientAccount } from '@/db/migrations/schema';
-import { eq } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import type { Database } from '@/db/db.types';
+
+type RelationUpdate = Database['public']['Tables']['ClientRelatives']['Update'];
+
+type RelationRow = {
+  id: number;
+  clientId: number;
+  relatedClientId: number;
+  relationship: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+};
+
+function mapRelation(r: RelationRow) {
+  return {
+    id: r.id,
+    accountId: r.clientId,
+    relatedAccountId: r.relatedClientId,
+    relationship: r.relationship,
+    createdAt: r.createdAt,
+    createdBy: r.createdBy,
+    updatedAt: r.updatedAt,
+    updatedBy: r.updatedBy,
+  };
+}
+
+async function getOwnedRelation(
+  relationshipId: number,
+  accountId: number
+): Promise<{ row: RelationRow | null; wrongOwner: boolean }> {
+  const { data } = await supabaseAdmin
+    .from('ClientRelatives')
+    .select('*')
+    .eq('id', relationshipId)
+    .maybeSingle();
+
+  if (!data) return { row: null, wrongOwner: false };
+  if (data.clientId !== accountId) return { row: null, wrongOwner: true };
+  return { row: data as RelationRow, wrongOwner: false };
+}
 
 export async function GET(
   _request: Request,
@@ -22,39 +62,24 @@ export async function GET(
       );
     }
 
-    // Check if account exists
-    const accountResult = await db
-      .select()
-      .from(clientAccount)
-      .where(eq(clientAccount.id, accountId))
-      .limit(1);
-
-    if (accountResult.length === 0) {
-      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+    const { row, wrongOwner } = await getOwnedRelation(
+      relationshipIdInt,
+      accountId
+    );
+    if (wrongOwner) {
+      return NextResponse.json(
+        { error: 'Relationship does not belong to this account' },
+        { status: 403 }
+      );
     }
-
-    const result = await db
-      .select()
-      .from(clientAccountRelation)
-      .where(eq(clientAccountRelation.id, relationshipIdInt))
-      .limit(1);
-
-    if (result.length === 0) {
+    if (!row) {
       return NextResponse.json(
         { error: 'Account relationship not found' },
         { status: 404 }
       );
     }
 
-    // Verify the relationship belongs to this account
-    if (result[0].accountId !== accountId) {
-      return NextResponse.json(
-        { error: 'Relationship does not belong to this account' },
-        { status: 403 }
-      );
-    }
-
-    return NextResponse.json(result[0]);
+    return NextResponse.json(mapRelation(row));
   } catch (error) {
     console.error('Error fetching account relationship:', error);
     return NextResponse.json(
@@ -90,50 +115,42 @@ export async function PUT(
       );
     }
 
-    // Check if account exists
-    const accountResult = await db
-      .select()
-      .from(clientAccount)
-      .where(eq(clientAccount.id, accountId))
-      .limit(1);
-
-    if (accountResult.length === 0) {
-      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+    const { row, wrongOwner } = await getOwnedRelation(
+      relationshipIdInt,
+      accountId
+    );
+    if (wrongOwner) {
+      return NextResponse.json(
+        { error: 'Relationship does not belong to this account' },
+        { status: 403 }
+      );
     }
-
-    const existingRelationship = await db
-      .select()
-      .from(clientAccountRelation)
-      .where(eq(clientAccountRelation.id, relationshipIdInt))
-      .limit(1);
-
-    if (existingRelationship.length === 0) {
+    if (!row) {
       return NextResponse.json(
         { error: 'Account relationship not found' },
         { status: 404 }
       );
     }
 
-    // Verify the relationship belongs to this account
-    if (existingRelationship[0].accountId !== accountId) {
-      return NextResponse.json(
-        { error: 'Relationship does not belong to this account' },
-        { status: 403 }
-      );
-    }
+    const updateData: RelationUpdate = {
+      updatedBy: body.updatedBy,
+      updatedAt: new Date().toISOString(),
+    };
+    if (body.relatedAccountId !== undefined)
+      updateData.relatedClientId = Number(body.relatedAccountId);
+    if (body.relationship !== undefined)
+      updateData.relationship = body.relationship;
 
-    const updatedRelationship = await db
-      .update(clientAccountRelation)
-      .set({
-        relatedAccountId: body.relatedAccountId,
-        relationship: body.relationship,
-        updatedBy: body.updatedBy,
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(clientAccountRelation.id, relationshipIdInt))
-      .returning();
+    const { data, error } = await supabaseAdmin
+      .from('ClientRelatives')
+      .update(updateData)
+      .eq('id', relationshipIdInt)
+      .select()
+      .single();
 
-    return NextResponse.json(updatedRelationship[0]);
+    if (error) throw error;
+
+    return NextResponse.json(mapRelation(data as RelationRow));
   } catch (error) {
     console.error('Error updating account relationship:', error);
     return NextResponse.json(
@@ -161,41 +178,29 @@ export async function DELETE(
       );
     }
 
-    // Check if account exists
-    const accountResult = await db
-      .select()
-      .from(clientAccount)
-      .where(eq(clientAccount.id, accountId))
-      .limit(1);
-
-    if (accountResult.length === 0) {
-      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+    const { row, wrongOwner } = await getOwnedRelation(
+      relationshipIdInt,
+      accountId
+    );
+    if (wrongOwner) {
+      return NextResponse.json(
+        { error: 'Relationship does not belong to this account' },
+        { status: 403 }
+      );
     }
-
-    const existingRelationship = await db
-      .select()
-      .from(clientAccountRelation)
-      .where(eq(clientAccountRelation.id, relationshipIdInt))
-      .limit(1);
-
-    if (existingRelationship.length === 0) {
+    if (!row) {
       return NextResponse.json(
         { error: 'Account relationship not found' },
         { status: 404 }
       );
     }
 
-    // Verify the relationship belongs to this account
-    if (existingRelationship[0].accountId !== accountId) {
-      return NextResponse.json(
-        { error: 'Relationship does not belong to this account' },
-        { status: 403 }
-      );
-    }
+    const { error } = await supabaseAdmin
+      .from('ClientRelatives')
+      .delete()
+      .eq('id', relationshipIdInt);
 
-    await db
-      .delete(clientAccountRelation)
-      .where(eq(clientAccountRelation.id, relationshipIdInt));
+    if (error) throw error;
 
     return NextResponse.json(
       { message: 'Account relationship deleted successfully' },

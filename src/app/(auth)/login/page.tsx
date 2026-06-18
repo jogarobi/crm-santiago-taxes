@@ -4,7 +4,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import Image from 'next/image';
 import { useState } from 'react';
-import { authClient } from '@/app/api/clients';
+import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
@@ -46,46 +46,20 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    const { error } = await authClient.signIn.email(
-      {
-        email,
-        password,
-        callbackURL: '/',
-      },
-      {
-        onRequest: () => {
-          setLoading(true);
-        },
-        onSuccess: async () => {
-          // Set Santiago Taxes as active organization
-          try {
-            const orgs = await authClient.organization.list();
-            const santiagoTaxes = orgs?.data?.find(
-              (org) => org.slug === 'santiago-taxes'
-            );
-
-            if (santiagoTaxes) {
-              await authClient.organization.setActive({
-                organizationId: santiagoTaxes.id,
-              });
-            }
-          } catch (orgError) {
-            console.error('Failed to set active organization:', orgError);
-          }
-
-          router.push('/');
-        },
-        onError: (ctx) => {
-          setError(ctx.error.message);
-          setLoading(false);
-        },
-      }
-    );
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (error) {
       setError(error.message || 'An error occurred during login');
       setLoading(false);
+      return;
     }
+
+    router.push('/');
+    router.refresh();
   };
 
   const handleSubmit = (e: React.FormEvent) => {

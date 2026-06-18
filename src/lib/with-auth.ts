@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getSession, hasPermission } from '@/lib/auth-utils';
 
-export type AuthSession = NonNullable<
-  Awaited<ReturnType<typeof auth.api.getSession>>
->;
+export type AuthSession = NonNullable<Awaited<ReturnType<typeof getSession>>>;
 
 type AuthHandler = (
   req: Request,
@@ -25,7 +23,7 @@ type AuthWithPermissionsHandler = (
 
 export function withAuth(handler: AuthHandler) {
   return async (req: Request, context?: Record<string, unknown>) => {
-    const session = await auth.api.getSession({ headers: req.headers });
+    const session = await getSession();
 
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -40,20 +38,15 @@ export function withPermissions(
   handler: AuthWithPermissionsHandler
 ) {
   return async (req: Request, context?: Record<string, unknown>) => {
-    const session = await auth.api.getSession({ headers: req.headers });
+    const session = await getSession();
 
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    try {
-      await auth.api.hasPermission({
-        headers: req.headers,
-        body: {
-          permissions,
-        },
-      });
-    } catch {
+    const allowed = await hasPermission(permissions);
+
+    if (!allowed) {
       return NextResponse.json(
         { error: 'Forbidden', message: 'Insufficient permissions' },
         { status: 403 }
@@ -64,26 +57,12 @@ export function withPermissions(
   };
 }
 
-export async function getAuthSession(
-  req: Request
-): Promise<AuthSession | null> {
-  const session = await auth.api.getSession({ headers: req.headers });
-  return session;
+export async function getAuthSession(): Promise<AuthSession | null> {
+  return await getSession();
 }
 
 export async function checkPermission(
-  req: Request,
   permissions: PermissionCheck
 ): Promise<boolean> {
-  try {
-    await auth.api.hasPermission({
-      headers: req.headers,
-      body: {
-        permissions,
-      },
-    });
-    return true;
-  } catch {
-    return false;
-  }
+  return await hasPermission(permissions);
 }

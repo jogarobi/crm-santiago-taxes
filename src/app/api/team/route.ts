@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { staff } from '@/db/migrations/schema';
-import { eq } from 'drizzle-orm';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export async function GET() {
   try {
-    const activeStaff = await db
-      .select()
-      .from(staff)
-      .where(eq(staff.status, 'active'));
+    const { data, error } = await supabaseAdmin
+      .from('Staff')
+      .select('*')
+      .eq('status', 'active');
 
-    const teamMembers = activeStaff
+    if (error) throw error;
+
+    const teamMembers = (data ?? [])
       .filter((member) => member.squareId)
       .map((member) => ({
         id: member.squareId,

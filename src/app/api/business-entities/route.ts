@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { businessEntity } from '@/db/migrations/schema';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export async function GET() {
   try {
-    const entities = await db.select().from(businessEntity);
+    const { data, error } = await supabaseAdmin.from('BusinessTypes').select('*');
 
-    return NextResponse.json(entities);
+    if (error) throw error;
+
+    return NextResponse.json(data ?? []);
   } catch (error) {
     console.error('Error fetching business entities:', error);
     return NextResponse.json(

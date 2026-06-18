@@ -65,7 +65,7 @@ function getTimeUntilAnniversary(establishedDate: string): string {
   }
 }
 import { useAccount, useUpdateAccount } from '@/hooks/use-accounts';
-import { authClient } from '@/app/api/clients';
+import { useSessionUser } from '@/lib/use-session-user';
 import { useAccountContacts } from '@/hooks/use-account-contact';
 import { useAccountRelationships } from '@/hooks/use-account-relationships';
 import { useNotes } from '@/hooks/use-notes';
@@ -280,7 +280,7 @@ export default function AccountDetailPage({ params }: Props) {
   const [deleteClientDialogOpen, setDeleteClientDialogOpen] = useState(false);
   const [flagDialogOpen, setFlagDialogOpen] = useState(false);
   const updateAccount = useUpdateAccount();
-  const { data: session } = authClient.useSession();
+  const session = useSessionUser();
 
   const { data: clientServices } = useClientServices(accountId);
   const { data: allServicesData } = useServices({ isActive: true, limit: 100 });

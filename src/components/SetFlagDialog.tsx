@@ -7,7 +7,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { useUpdateAccount } from '@/hooks/use-accounts';
-import { authClient } from '@/app/api/clients';
+import { useSessionUser } from '@/lib/use-session-user';
 
 interface SetFlagDialogProps {
   open: boolean;
@@ -23,7 +23,7 @@ export function SetFlagDialog({
   currentFlag,
 }: SetFlagDialogProps) {
   const updateAccount = useUpdateAccount();
-  const { data: session } = authClient.useSession();
+  const session = useSessionUser();
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
 

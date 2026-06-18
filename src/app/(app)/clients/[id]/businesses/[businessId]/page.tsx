@@ -5,7 +5,7 @@ import { useBusiness, useBusinessAccounts, useAddBusinessAccount, useRemoveBusin
 import { useAccounts } from '@/hooks/use-accounts';
 import { useNotes } from '@/hooks/use-notes';
 import { useTouchpoints } from '@/hooks/use-touchpoints';
-import { authClient } from '@/app/api/clients';
+import { useSessionUser } from '@/lib/use-session-user';
 import {
   Building2Icon,
   ClockIcon,
@@ -196,7 +196,7 @@ export default function BusinessDetailPage({ params }: Props) {
   const accountId = parseInt(id);
   const businessIdInt = parseInt(businessId);
 
-  const { data: session } = authClient.useSession();
+  const session = useSessionUser();
 
   const {
     data: business,

@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { staff } from '@/db/migrations/schema';
-import { eq } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export async function POST(request: Request) {
   try {
@@ -17,17 +15,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // Find staff member by email and link to user
-    const result = await db
-      .update(staff)
-      .set({
+    const { data, error } = await supabaseAdmin
+      .from('Staff')
+      .update({
         userId: body.userId,
         updatedAt: new Date().toISOString(),
       })
-      .where(eq(staff.email, body.email))
-      .returning();
+      .eq('email', body.email)
+      .select();
 
-    if (result.length === 0) {
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
       return NextResponse.json(
         { error: 'No staff member found with that email' },
         { status: 404 }
@@ -36,7 +35,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      staff: result[0],
+      staff: data[0],
     });
   } catch (error) {
     console.error('Error linking user to staff:', error);

@@ -5,7 +5,7 @@ import { useTasks, useUpdateTask, useDeleteTask } from '@/hooks/use-tasks';
 import { useStaff } from '@/hooks/use-staff';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useAllBusinesses } from '@/hooks/use-businesses';
-import { authClient } from '@/app/api/clients';
+import { useSessionUser } from '@/lib/use-session-user';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -382,7 +382,7 @@ export default function TasksPage() {
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
 
-  const { data: session } = authClient.useSession();
+  const session = useSessionUser();
 
   useEffect(() => {
     document.title = 'Tasks | Santiago Taxes CRM';

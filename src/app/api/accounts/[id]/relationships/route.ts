@@ -1,8 +1,39 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { clientAccountRelation, clientAccount } from '@/db/migrations/schema';
-import { eq } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin, nextId } from '@/lib/supabase/admin';
+
+type ClientLite = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+} | null;
+
+type RelationRow = {
+  id: number;
+  clientId: number;
+  relatedClientId: number;
+  relationship: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+};
+
+function mapRelation(r: RelationRow, relatedAccount: ClientLite) {
+  return {
+    id: r.id,
+    accountId: r.clientId,
+    relatedAccountId: r.relatedClientId,
+    relationship: r.relationship,
+    createdAt: r.createdAt,
+    createdBy: r.createdBy,
+    updatedAt: r.updatedAt,
+    updatedBy: r.updatedBy,
+    relatedAccount,
+    ownerAccountId: r.clientId,
+  };
+}
 
 export async function GET(
   _request: Request,
@@ -15,57 +46,46 @@ export async function GET(
     const accountId = parseInt(id);
 
     if (isNaN(accountId)) {
-      return NextResponse.json(
-        { error: 'Invalid account ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
     }
 
-    const accountResult = await db
-      .select()
-      .from(clientAccount)
-      .where(eq(clientAccount.id, accountId))
-      .limit(1);
+    const { data: account, error: accountError } = await supabaseAdmin
+      .from('Clients')
+      .select('id')
+      .eq('id', accountId)
+      .maybeSingle();
 
-    if (accountResult.length === 0) {
+    if (accountError) throw accountError;
+    if (!account) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    const selectShape = {
-      id: clientAccountRelation.id,
-      accountId: clientAccountRelation.accountId,
-      relatedAccountId: clientAccountRelation.relatedAccountId,
-      relationship: clientAccountRelation.relationship,
-      createdAt: clientAccountRelation.createdAt,
-      createdBy: clientAccountRelation.createdBy,
-      updatedAt: clientAccountRelation.updatedAt,
-      updatedBy: clientAccountRelation.updatedBy,
-      relatedAccount: {
-        id: clientAccount.id,
-        firstName: clientAccount.firstName,
-        lastName: clientAccount.lastName,
-        dateOfBirth: clientAccount.dateOfBirth,
-      },
-    };
+    const [{ data: direct, error: directError }, { data: inverse, error: inverseError }] =
+      await Promise.all([
+        supabaseAdmin
+          .from('ClientRelatives')
+          .select(
+            '*, related:Clients!clientrelationships_relatedclientid_fkey(id, firstName, lastName, dateOfBirth)'
+          )
+          .eq('clientId', accountId),
+        supabaseAdmin
+          .from('ClientRelatives')
+          .select(
+            '*, owner:Clients!clientrelationships_clientid_fkey(id, firstName, lastName, dateOfBirth)'
+          )
+          .eq('relatedClientId', accountId),
+      ]);
 
-    // Relationships where this account is the primary (accountId = X)
-    const direct = await db
-      .select(selectShape)
-      .from(clientAccountRelation)
-      .leftJoin(clientAccount, eq(clientAccountRelation.relatedAccountId, clientAccount.id))
-      .where(eq(clientAccountRelation.accountId, accountId));
-
-    // Relationships where this account is the related side (relatedAccountId = X)
-    // Join on accountId to get the OTHER account's info for display
-    const inverse = await db
-      .select(selectShape)
-      .from(clientAccountRelation)
-      .leftJoin(clientAccount, eq(clientAccountRelation.accountId, clientAccount.id))
-      .where(eq(clientAccountRelation.relatedAccountId, accountId));
+    if (directError) throw directError;
+    if (inverseError) throw inverseError;
 
     const relationships = [
-      ...direct.map((r) => ({ ...r, ownerAccountId: r.accountId! })),
-      ...inverse.map((r) => ({ ...r, ownerAccountId: r.accountId! })),
+      ...(direct ?? []).map((r) =>
+        mapRelation(r as RelationRow, (r as { related: ClientLite }).related)
+      ),
+      ...(inverse ?? []).map((r) =>
+        mapRelation(r as RelationRow, (r as { owner: ClientLite }).owner)
+      ),
     ];
 
     return NextResponse.json(relationships);
@@ -90,10 +110,7 @@ export async function POST(
     const body = await request.json();
 
     if (isNaN(accountId)) {
-      return NextResponse.json(
-        { error: 'Invalid account ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
     }
 
     if (!body.relatedAccountId || !body.relationship || !body.createdBy) {
@@ -106,43 +123,41 @@ export async function POST(
       );
     }
 
-    // Check if account exists
-    const accountResult = await db
-      .select()
-      .from(clientAccount)
-      .where(eq(clientAccount.id, accountId))
-      .limit(1);
+    const { data: accounts, error: accountsError } = await supabaseAdmin
+      .from('Clients')
+      .select('id')
+      .in('id', [accountId, Number(body.relatedAccountId)]);
 
-    if (accountResult.length === 0) {
+    if (accountsError) throw accountsError;
+    const foundIds = new Set((accounts ?? []).map((a) => a.id));
+    if (!foundIds.has(accountId)) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
-
-    // Check if related account exists
-    const relatedAccountResult = await db
-      .select()
-      .from(clientAccount)
-      .where(eq(clientAccount.id, body.relatedAccountId))
-      .limit(1);
-
-    if (relatedAccountResult.length === 0) {
+    if (!foundIds.has(Number(body.relatedAccountId))) {
       return NextResponse.json(
         { error: 'Related account not found' },
         { status: 404 }
       );
     }
 
-    const newRelationship = await db
-      .insert(clientAccountRelation)
-      .values({
-        accountId,
-        relatedAccountId: body.relatedAccountId,
+    const { data, error } = await supabaseAdmin
+      .from('ClientRelatives')
+      .insert({
+        id: await nextId('ClientRelatives'),
+        clientId: accountId,
+        relatedClientId: Number(body.relatedAccountId),
         relationship: body.relationship,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
       })
-      .returning();
+      .select()
+      .single();
 
-    return NextResponse.json(newRelationship[0], { status: 201 });
+    if (error) throw error;
+
+    return NextResponse.json(mapRelation(data as RelationRow, null), {
+      status: 201,
+    });
   } catch (error) {
     console.error('Error creating account relationship:', error);
     return NextResponse.json(

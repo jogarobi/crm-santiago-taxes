@@ -36,8 +36,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from './ui/dropdown-menu';
-import { authClient } from '@/app/api/clients';
-import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { useState, useEffect, useMemo } from 'react';
 
 const items = [
   {
@@ -102,19 +102,66 @@ function getInitials(name: string): string {
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
+  const supabase = useMemo(() => createClient(), []);
+  const [session, setSession] = useState<{
+    user: { name: string; email: string };
+  } | null>(null);
+  const [isPending, setIsPending] = useState(true);
   const [userRole, setUserRole] = useState<string>('Member');
   const [isLoadingRole, setIsLoadingRole] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadUser() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!active) return;
+
+      if (user) {
+        const metadata = user.user_metadata ?? {};
+        setSession({
+          user: {
+            name:
+              (metadata.name as string | undefined) ??
+              (metadata.full_name as string | undefined) ??
+              user.email ??
+              '',
+            email: user.email ?? '',
+          },
+        });
+      } else {
+        setSession(null);
+      }
+      setIsPending(false);
+    }
+
+    loadUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => loadUser());
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   useEffect(() => {
     async function fetchRole() {
       if (session?.user) {
         setIsLoadingRole(true);
         try {
-          const result = await authClient.organization.getActiveMemberRole();
-          if (result?.data?.role) {
-            setUserRole(result.data.role);
+          const res = await fetch('/api/user/me');
+          if (res.ok) {
+            const data = await res.json();
+            if (data.role) {
+              setUserRole(data.role);
+            }
           }
         } catch (error) {
           console.error('Failed to fetch role:', error);
@@ -129,17 +176,16 @@ export default function Sidebar() {
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
-    await authClient.signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          router.push('/login');
-        },
-        onError: (ctx) => {
-          console.error('Sign out error:', ctx.error);
-          setIsSigningOut(false);
-        },
-      },
-    });
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error('Sign out error:', error);
+      setIsSigningOut(false);
+      return;
+    }
+
+    router.push('/login');
+    router.refresh();
   };
 
   return (

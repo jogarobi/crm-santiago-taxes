@@ -1,16 +1,11 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { activity, activityType } from '@/db/migrations/schema';
-import { eq, desc } from 'drizzle-orm';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('account_id');
-    const limit = Math.min(
-      parseInt(searchParams.get('limit') || '50'),
-      100
-    );
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
 
     if (!accountId) {
       return NextResponse.json(
@@ -19,22 +14,36 @@ export async function GET(request: Request) {
       );
     }
 
-    const activities = await db
-      .select({
-        id: activity.id,
-        title: activity.title,
-        createdAt: activity.createdAt,
-        createdBy: activity.createdBy,
-        entity: activity.entity,
-        entityId: activity.entityId,
-        typeName: activityType.name,
-        typeIcon: activityType.icon,
-      })
-      .from(activity)
-      .leftJoin(activityType, eq(activity.typeId, activityType.id))
-      .where(eq(activity.accountId, parseInt(accountId)))
-      .orderBy(desc(activity.createdAt))
+    const { data, error } = await supabaseAdmin
+      .from('Activities')
+      .select('id, title, createdAt, createdBy, entity, entityId, typeId')
+      .eq('clientId', parseInt(accountId))
+      .order('createdAt', { ascending: false })
       .limit(limit);
+
+    if (error) throw error;
+
+    const rows = data ?? [];
+    const typeIds = Array.from(new Set(rows.map((r) => r.typeId)));
+    const typeMap = new Map<number, { name: string; icon: string }>();
+    if (typeIds.length > 0) {
+      const { data: types } = await supabaseAdmin
+        .from('ActitityTypes')
+        .select('id, name, icon')
+        .in('id', typeIds);
+      for (const t of types ?? []) typeMap.set(t.id, { name: t.name, icon: t.icon });
+    }
+
+    const activities = rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      createdAt: r.createdAt,
+      createdBy: r.createdBy,
+      entity: r.entity,
+      entityId: r.entityId,
+      typeName: typeMap.get(r.typeId)?.name ?? null,
+      typeIcon: typeMap.get(r.typeId)?.icon ?? null,
+    }));
 
     return NextResponse.json({
       success: true,

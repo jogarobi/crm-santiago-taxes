@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { business, businessAccount, clientAccount } from '@/db/migrations/schema';
-import { eq, and } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin, nextId } from '@/lib/supabase/admin';
+
+type ClientLite = { id: number; firstName: string; lastName: string } | null;
 
 export async function GET(
   _request: Request,
@@ -18,32 +18,32 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid business ID' }, { status: 400 });
     }
 
-    const businessExists = await db
-      .select({ id: business.id })
-      .from(business)
-      .where(eq(business.id, businessIdInt))
-      .limit(1);
+    const { data: business, error: businessError } = await supabaseAdmin
+      .from('Businesses')
+      .select('id')
+      .eq('id', businessIdInt)
+      .maybeSingle();
 
-    if (businessExists.length === 0) {
+    if (businessError) throw businessError;
+    if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    const accounts = await db
-      .select({
-        id: businessAccount.id,
-        businessId: businessAccount.businessId,
-        accountId: businessAccount.accountId,
-        createdAt: businessAccount.createdAt,
-        createdBy: businessAccount.createdBy,
-        account: {
-          id: clientAccount.id,
-          firstName: clientAccount.firstName,
-          lastName: clientAccount.lastName,
-        },
-      })
-      .from(businessAccount)
-      .innerJoin(clientAccount, eq(businessAccount.accountId, clientAccount.id))
-      .where(eq(businessAccount.businessId, businessIdInt));
+    const { data, error } = await supabaseAdmin
+      .from('ClientBusiness')
+      .select('id, businessId, clientId, createdAt, createdBy, Clients(id, firstName, lastName)')
+      .eq('businessId', businessIdInt);
+
+    if (error) throw error;
+
+    const accounts = (data ?? []).map((row) => ({
+      id: row.id,
+      businessId: row.businessId,
+      accountId: row.clientId,
+      createdAt: row.createdAt,
+      createdBy: row.createdBy,
+      account: row.Clients as ClientLite,
+    }));
 
     return NextResponse.json(accounts);
   } catch (error) {
@@ -82,55 +82,56 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
     }
 
-    const businessExists = await db
-      .select({ id: business.id })
-      .from(business)
-      .where(eq(business.id, businessIdInt))
-      .limit(1);
-
-    if (businessExists.length === 0) {
+    const { data: business } = await supabaseAdmin
+      .from('Businesses')
+      .select('id')
+      .eq('id', businessIdInt)
+      .maybeSingle();
+    if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    const accountExists = await db
-      .select({ id: clientAccount.id })
-      .from(clientAccount)
-      .where(eq(clientAccount.id, accountIdInt))
-      .limit(1);
-
-    if (accountExists.length === 0) {
+    const { data: account } = await supabaseAdmin
+      .from('Clients')
+      .select('id')
+      .eq('id', accountIdInt)
+      .maybeSingle();
+    if (!account) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    const existing = await db
-      .select({ id: businessAccount.id })
-      .from(businessAccount)
-      .where(
-        and(
-          eq(businessAccount.businessId, businessIdInt),
-          eq(businessAccount.accountId, accountIdInt)
-        )
-      )
-      .limit(1);
+    const { data: existing } = await supabaseAdmin
+      .from('ClientBusiness')
+      .select('id')
+      .eq('businessId', businessIdInt)
+      .eq('clientId', accountIdInt)
+      .maybeSingle();
 
-    if (existing.length > 0) {
+    if (existing) {
       return NextResponse.json(
         { error: 'Account is already associated with this business' },
         { status: 409 }
       );
     }
 
-    const newLink = await db
-      .insert(businessAccount)
-      .values({
+    const { data, error } = await supabaseAdmin
+      .from('ClientBusiness')
+      .insert({
+        id: await nextId('ClientBusiness'),
         businessId: businessIdInt,
-        accountId: accountIdInt,
+        clientId: accountIdInt,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
       })
-      .returning();
+      .select()
+      .single();
 
-    return NextResponse.json(newLink[0], { status: 201 });
+    if (error) throw error;
+
+    return NextResponse.json(
+      { ...data, accountId: data.clientId },
+      { status: 201 }
+    );
   } catch (error) {
     console.error('Error adding account to business:', error);
     return NextResponse.json(

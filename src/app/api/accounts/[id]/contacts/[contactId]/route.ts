@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { clientAccountContact } from '@/db/migrations/schema';
-import { eq, and } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import type { Database } from '@/db/db.types';
+
+type ContactUpdate = Database['public']['Tables']['Contacts']['Update'];
 
 export async function PUT(
   request: Request,
@@ -27,44 +28,36 @@ export async function PUT(
       );
     }
 
-    const existing = await db
-      .select()
-      .from(clientAccountContact)
-      .where(
-        and(
-          eq(clientAccountContact.id, contactIdInt),
-          eq(clientAccountContact.accountId, accountId)
-        )
-      )
-      .limit(1);
-
-    if (existing.length === 0) {
-      return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
-    }
-
-    const updateData: Record<string, unknown> = {
+    const updateData: ContactUpdate = {
       updatedBy: body.updatedBy,
       updatedAt: new Date().toISOString(),
     };
+    if (body.contactType !== undefined)
+      updateData.contactType = body.contactType;
+    if (body.contactValue !== undefined)
+      updateData.contactValue = body.contactValue;
 
-    if (body.contactType !== undefined) updateData.contactType = body.contactType;
-    if (body.contactValue !== undefined) updateData.contactValue = body.contactValue;
+    const { data, error } = await supabaseAdmin
+      .from('Contacts')
+      .update(updateData)
+      .eq('id', contactIdInt)
+      .eq('clientId', accountId)
+      .select()
+      .maybeSingle();
 
-    const updated = await db
-      .update(clientAccountContact)
-      .set(updateData)
-      .where(
-        and(
-          eq(clientAccountContact.id, contactIdInt),
-          eq(clientAccountContact.accountId, accountId)
-        )
-      )
-      .returning();
+    if (error) throw error;
 
-    return NextResponse.json(updated[0]);
+    if (!data) {
+      return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error('Error updating contact:', error);
-    return NextResponse.json({ error: 'Failed to update contact' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update contact' },
+      { status: 500 }
+    );
   }
 }
 
@@ -83,33 +76,32 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
-    const existing = await db
-      .select()
-      .from(clientAccountContact)
-      .where(
-        and(
-          eq(clientAccountContact.id, contactIdInt),
-          eq(clientAccountContact.accountId, accountId)
-        )
-      )
-      .limit(1);
+    const { data: existing, error: fetchError } = await supabaseAdmin
+      .from('Contacts')
+      .select('id')
+      .eq('id', contactIdInt)
+      .eq('clientId', accountId)
+      .maybeSingle();
 
-    if (existing.length === 0) {
+    if (fetchError) throw fetchError;
+    if (!existing) {
       return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
     }
 
-    await db
-      .delete(clientAccountContact)
-      .where(
-        and(
-          eq(clientAccountContact.id, contactIdInt),
-          eq(clientAccountContact.accountId, accountId)
-        )
-      );
+    const { error } = await supabaseAdmin
+      .from('Contacts')
+      .delete()
+      .eq('id', contactIdInt)
+      .eq('clientId', accountId);
+
+    if (error) throw error;
 
     return NextResponse.json({ message: 'Contact deleted successfully' });
   } catch (error) {
     console.error('Error deleting contact:', error);
-    return NextResponse.json({ error: 'Failed to delete contact' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to delete contact' },
+      { status: 500 }
+    );
   }
 }

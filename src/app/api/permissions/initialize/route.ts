@@ -1,25 +1,17 @@
 import { NextResponse } from 'next/server';
-import { initializeDefaultPermissions, requireAuth } from '@/lib/auth-utils';
+import { requireAuth } from '@/lib/auth-utils';
 
-// PUT /api/permissions/initialize - Initialize default permissions
-export async function PUT(request: Request) {
+// PUT /api/permissions/initialize - No-op kept for backwards compatibility.
+// Role permissions are now defined by the in-code matrix in auth-utils, so there
+// is nothing to seed in the database.
+export async function PUT() {
   try {
-    // Require authentication (any authenticated user can initialize)
     await requireAuth();
 
-    const result = await initializeDefaultPermissions();
-
-    if (result.success) {
-      return NextResponse.json({
-        success: true,
-        message: 'Default permissions initialized successfully',
-      });
-    } else {
-      return NextResponse.json(
-        { error: 'Failed to initialize permissions', details: result.error },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json({
+      success: true,
+      message: 'Permissions are managed in code; nothing to initialize.',
+    });
   } catch (error) {
     console.error('Error initializing permissions:', error);
     return NextResponse.json(

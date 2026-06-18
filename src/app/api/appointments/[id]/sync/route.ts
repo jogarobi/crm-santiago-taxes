@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { appointment, clientAccount } from '@/db/migrations/schema';
-import { eq, or } from 'drizzle-orm';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requirePermission, actorFromSession } from '@/lib/auth-utils';
 
 export async function PATCH(
@@ -23,43 +21,44 @@ export async function PATCH(
     }
 
     const numericId = parseInt(id);
-    const updatedAppointment = await db
-      .update(appointment)
-      .set({
-        accountId: body.accountId,
+    const filter = isNaN(numericId)
+      ? `squareId.eq.${id}`
+      : `squareId.eq.${id},id.eq.${numericId}`;
+
+    const { data: updated, error } = await supabaseAdmin
+      .from('Appointments')
+      .update({
+        clientId: body.accountId,
         updatedAt: new Date().toISOString(),
         updatedBy: actor,
       })
-      .where(
-        or(
-          eq(appointment.squareId, id),
-          isNaN(numericId) ? undefined : eq(appointment.id, numericId)
-        )
-      )
-      .returning();
+      .or(filter)
+      .select();
 
-    if (!updatedAppointment || updatedAppointment.length === 0) {
+    if (error) throw error;
+
+    if (!updated || updated.length === 0) {
       return NextResponse.json(
         { error: 'Appointment not found' },
         { status: 404 }
       );
     }
 
-    // If customerId is provided, update the account's squareId
+    // If customerId is provided, update the client's squareId.
     if (body.customerId) {
-      await db
-        .update(clientAccount)
-        .set({
+      await supabaseAdmin
+        .from('Clients')
+        .update({
           squareId: body.customerId,
           updatedAt: new Date().toISOString(),
           updatedBy: actor,
         })
-        .where(eq(clientAccount.id, body.accountId));
+        .eq('id', body.accountId);
     }
 
     return NextResponse.json({
       success: true,
-      appointment: updatedAppointment[0],
+      appointment: updated[0],
     });
   } catch (error) {
     console.error('Error syncing appointment:', error);

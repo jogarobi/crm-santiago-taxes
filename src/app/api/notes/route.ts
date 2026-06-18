@@ -1,8 +1,30 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { note } from '@/db/migrations/schema';
-import { eq, desc, like, and, count, gte, lte } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin, nextId } from '@/lib/supabase/admin';
+
+type NoteRow = {
+  id: number;
+  clientId: number | null;
+  businessId: number | null;
+  content: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+};
+
+function mapNote(r: NoteRow) {
+  return {
+    id: r.id,
+    accountId: r.clientId,
+    businessId: r.businessId,
+    content: r.content,
+    createdAt: r.createdAt,
+    createdBy: r.createdBy,
+    updatedAt: r.updatedAt,
+    updatedBy: r.updatedBy,
+  };
+}
 
 export async function GET(request: Request) {
   try {
@@ -19,61 +41,39 @@ export async function GET(request: Request) {
     if (!accountId && !businessId) {
       return NextResponse.json(
         { error: 'Either accountId or businessId query parameter is required' },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
-    const conditions = [];
+    let query = supabaseAdmin.from('Notes').select('*', { count: 'exact' });
 
     if (accountId) {
       const accountIdInt = parseInt(accountId);
-      if (isNaN(accountIdInt)) {
-        return NextResponse.json(
-          { error: 'Invalid account ID' },
-          { status: 400 },
-        );
-      }
-      conditions.push(eq(note.accountId, accountIdInt));
+      if (isNaN(accountIdInt))
+        return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
+      query = query.eq('clientId', accountIdInt);
     }
 
     if (businessId) {
       const businessIdInt = parseInt(businessId);
-      if (isNaN(businessIdInt)) {
-        return NextResponse.json(
-          { error: 'Invalid business ID' },
-          { status: 400 },
-        );
-      }
-      conditions.push(eq(note.businessId, businessIdInt));
+      if (isNaN(businessIdInt))
+        return NextResponse.json({ error: 'Invalid business ID' }, { status: 400 });
+      query = query.eq('businessId', businessIdInt);
     }
 
-    if (search && search.trim()) {
-      conditions.push(like(note.content, `%${search.trim()}%`));
-    }
-    if (dateFrom) {
-      conditions.push(gte(note.createdAt, dateFrom));
-    }
-    if (dateTo) {
-      conditions.push(lte(note.createdAt, dateTo));
-    }
+    if (search && search.trim())
+      query = query.ilike('content', `%${search.trim()}%`);
+    if (dateFrom) query = query.gte('createdAt', dateFrom);
+    if (dateTo) query = query.lte('createdAt', dateTo);
 
-    const whereClause =
-      conditions.length > 1 ? and(...conditions) : conditions[0];
+    const { data, error, count } = await query
+      .order('createdAt', { ascending: false })
+      .range(offset, offset + limit - 1);
 
-    const totalResult = await db
-      .select({ count: count() })
-      .from(note)
-      .where(whereClause);
+    if (error) throw error;
 
-    const total = totalResult[0]?.count || 0;
-
-    const notes = await db
-      .select()
-      .from(note)
-      .where(whereClause)
-      .orderBy(desc(note.createdAt))
-      .limit(limit)
-      .offset(offset);
+    const notes = (data ?? []).map((r) => mapNote(r as NoteRow));
+    const total = count ?? 0;
 
     return NextResponse.json({
       success: true,
@@ -84,10 +84,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error fetching notes:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch notes' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to fetch notes' }, { status: 500 });
   }
 }
 
@@ -100,48 +97,40 @@ export async function POST(request: Request) {
     if (!body.content || !body.createdBy) {
       return NextResponse.json(
         { error: 'Missing required fields: content, createdBy' },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     if (!body.accountId && !body.businessId) {
       return NextResponse.json(
         { error: 'Either accountId or businessId is required' },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
-    if (body.accountId && isNaN(Number(body.accountId))) {
-      return NextResponse.json(
-        { error: 'Invalid account ID' },
-        { status: 400 },
-      );
-    }
+    if (body.accountId && isNaN(Number(body.accountId)))
+      return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
+    if (body.businessId && isNaN(Number(body.businessId)))
+      return NextResponse.json({ error: 'Invalid business ID' }, { status: 400 });
 
-    if (body.businessId && isNaN(Number(body.businessId))) {
-      return NextResponse.json(
-        { error: 'Invalid business ID' },
-        { status: 400 },
-      );
-    }
-
-    const newNote = await db
-      .insert(note)
-      .values({
-        accountId: body.accountId ? parseInt(body.accountId) : null,
+    const { data, error } = await supabaseAdmin
+      .from('Notes')
+      .insert({
+        id: await nextId('Notes'),
+        clientId: body.accountId ? parseInt(body.accountId) : null,
         businessId: body.businessId ? parseInt(body.businessId) : null,
         content: body.content,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
       })
-      .returning();
+      .select()
+      .single();
 
-    return NextResponse.json(newNote[0], { status: 201 });
+    if (error) throw error;
+
+    return NextResponse.json(mapNote(data as NoteRow), { status: 201 });
   } catch (error) {
     console.error('Error creating note:', error);
-    return NextResponse.json(
-      { error: 'Failed to create note' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to create note' }, { status: 500 });
   }
 }

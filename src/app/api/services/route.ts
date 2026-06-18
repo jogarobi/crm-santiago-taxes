@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { service } from '@/db/migrations/schema';
-import { eq, desc, like, and, count } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin, nextId } from '@/lib/supabase/admin';
 
 export async function GET(request: Request) {
   try {
@@ -14,36 +12,24 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    const conditions = [];
+    let query = supabaseAdmin.from('Services').select('*', { count: 'exact' });
 
     if (isActive !== null && isActive !== undefined && isActive !== '') {
-      conditions.push(eq(service.isActive, isActive === 'true' ? 1 : 0));
+      query = query.eq('isActive', isActive === 'true' ? 1 : 0);
     }
 
     if (search && search.trim()) {
-      conditions.push(like(service.name, `%${search.trim()}%`));
+      query = query.ilike('name', `%${search.trim()}%`);
     }
 
-    const whereClause = conditions.length > 1
-      ? and(...conditions)
-      : conditions.length === 1
-      ? conditions[0]
-      : undefined;
+    const { data, error, count } = await query
+      .order('createdAt', { ascending: false })
+      .range(offset, offset + limit - 1);
 
-    const totalResult = await db
-      .select({ count: count() })
-      .from(service)
-      .where(whereClause);
+    if (error) throw error;
 
-    const total = totalResult[0]?.count || 0;
-
-    const services = await db
-      .select()
-      .from(service)
-      .where(whereClause)
-      .orderBy(desc(service.createdAt))
-      .limit(limit)
-      .offset(offset);
+    const services = data ?? [];
+    const total = count ?? 0;
 
     return NextResponse.json({
       success: true,
@@ -74,23 +60,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const newService = await db
-      .insert(service)
-      .values({
+    const { data, error } = await supabaseAdmin
+      .from('Services')
+      .insert({
+        id: await nextId('Services'),
         name: body.name,
         isActive: 1,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
       })
-      .returning();
+      .select()
+      .single();
 
-    return NextResponse.json(
-      {
-        success: true,
-        service: newService[0],
-      },
-      { status: 201 }
-    );
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, service: data }, { status: 201 });
   } catch (error) {
     console.error('Error creating service:', error);
     return NextResponse.json(

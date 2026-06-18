@@ -1,8 +1,46 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { business, businessAccount, businessEntity, clientAccount } from '@/db/migrations/schema';
-import { eq, or, inArray } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin, nextId } from '@/lib/supabase/admin';
+
+type BusinessRow = {
+  id: number;
+  name: string;
+  establishedAt: string;
+  ein: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  typeId: number;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+  BusinessTypes?: { id: number; name: string } | null;
+};
+
+// Maps a Supabase Businesses row to the shape the frontend expects.
+function mapBusiness(b: BusinessRow, accountId: number) {
+  return {
+    id: b.id,
+    accountId,
+    registeredName: b.name,
+    establishedDate: b.establishedAt,
+    ein: b.ein,
+    address: b.address,
+    city: b.city,
+    state: b.state,
+    zipCode: b.zipCode,
+    entityId: b.typeId,
+    createdAt: b.createdAt,
+    createdBy: b.createdBy,
+    updatedAt: b.updatedAt,
+    updatedBy: b.updatedBy,
+    entity: b.BusinessTypes
+      ? { id: b.BusinessTypes.id, name: b.BusinessTypes.name }
+      : undefined,
+  };
+}
 
 export async function GET(
   _request: Request,
@@ -15,58 +53,31 @@ export async function GET(
     const accountId = parseInt(id);
 
     if (isNaN(accountId)) {
-      return NextResponse.json(
-        { error: 'Invalid account ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
     }
 
-    const accountResult = await db
-      .select()
-      .from(clientAccount)
-      .where(eq(clientAccount.id, accountId))
-      .limit(1);
+    const { data: account, error: accountError } = await supabaseAdmin
+      .from('Clients')
+      .select('id')
+      .eq('id', accountId)
+      .maybeSingle();
 
-    if (accountResult.length === 0) {
+    if (accountError) throw accountError;
+    if (!account) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    // Find business IDs linked via junction table for this account
-    const linkedBusinessIds = await db
-      .select({ businessId: businessAccount.businessId })
-      .from(businessAccount)
-      .where(eq(businessAccount.accountId, accountId));
+    const { data, error } = await supabaseAdmin
+      .from('ClientBusiness')
+      .select('Businesses(*, BusinessTypes(id, name))')
+      .eq('clientId', accountId);
 
-    const linkedIds = linkedBusinessIds.map((r) => r.businessId);
+    if (error) throw error;
 
-    const whereClause = linkedIds.length > 0
-      ? or(eq(business.accountId, accountId.toString()), inArray(business.id, linkedIds))
-      : eq(business.accountId, accountId.toString());
-
-    const businesses = await db
-      .select({
-        id: business.id,
-        accountId: business.accountId,
-        registeredName: business.registeredName,
-        establishedDate: business.establishedDate,
-        ein: business.ein,
-        createdAt: business.createdAt,
-        createdBy: business.createdBy,
-        updatedAt: business.updatedAt,
-        updatedBy: business.updatedBy,
-        address: business.address,
-        city: business.city,
-        state: business.state,
-        zipCode: business.zipCode,
-        entityId: business.entityId,
-        entity: {
-          id: businessEntity.id,
-          name: businessEntity.name,
-        },
-      })
-      .from(business)
-      .leftJoin(businessEntity, eq(business.entityId, businessEntity.id))
-      .where(whereClause);
+    const businesses = (data ?? [])
+      .map((r) => r.Businesses as BusinessRow | null)
+      .filter((b): b is BusinessRow => b !== null)
+      .map((b) => mapBusiness(b, accountId));
 
     return NextResponse.json(businesses);
   } catch (error) {
@@ -90,58 +101,73 @@ export async function POST(
     const body = await request.json();
 
     if (isNaN(accountId)) {
-      return NextResponse.json(
-        { error: 'Invalid account ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
     }
 
     if (!body.registeredName || !body.createdBy) {
       return NextResponse.json(
-        {
-          error: 'Missing required fields: registeredName, createdBy',
-        },
+        { error: 'Missing required fields: registeredName, createdBy' },
         { status: 400 }
       );
     }
 
-    // Check if account exists
-    const accountResult = await db
-      .select()
-      .from(clientAccount)
-      .where(eq(clientAccount.id, accountId))
-      .limit(1);
+    if (body.entityId == null) {
+      return NextResponse.json(
+        { error: 'Missing required field: entityId (business type)' },
+        { status: 400 }
+      );
+    }
 
-    if (accountResult.length === 0) {
+    const { data: account, error: accountError } = await supabaseAdmin
+      .from('Clients')
+      .select('id')
+      .eq('id', accountId)
+      .maybeSingle();
+
+    if (accountError) throw accountError;
+    if (!account) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    const newBusiness = await db
-      .insert(business)
-      .values({
-        accountId: accountId.toString(),
-        registeredName: body.registeredName,
-        establishedDate: body.establishedDate || null,
-        ein: body.ein || null,
-        address: body.address || null,
-        city: body.city || null,
-        state: body.state || null,
-        zipCode: body.zipCode || null,
-        entityId: body.entityId || null,
+    const now = new Date().toISOString();
+
+    const { data: newBusiness, error: createError } = await supabaseAdmin
+      .from('Businesses')
+      .insert({
+        id: await nextId('Businesses'),
+        name: body.registeredName,
+        establishedAt: body.establishedDate || '',
+        ein: body.ein || '',
+        address: body.address || '',
+        city: body.city || '',
+        state: body.state || '',
+        zipCode: body.zipCode != null ? String(body.zipCode) : '',
+        typeId: Number(body.entityId),
         createdBy: body.createdBy,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
       })
-      .returning();
+      .select('*, BusinessTypes(id, name)')
+      .single();
 
-    // Seed junction table with primary owner
-    await db.insert(businessAccount).values({
-      businessId: newBusiness[0].id,
-      accountId: accountId,
-      createdBy: body.createdBy,
-      createdAt: new Date().toISOString(),
-    });
+    if (createError) throw createError;
 
-    return NextResponse.json(newBusiness[0], { status: 201 });
+    // Link the business to the client.
+    const { error: linkError } = await supabaseAdmin
+      .from('ClientBusiness')
+      .insert({
+        id: await nextId('ClientBusiness'),
+        businessId: newBusiness.id,
+        clientId: accountId,
+        createdBy: body.createdBy,
+        createdAt: now,
+      });
+
+    if (linkError) throw linkError;
+
+    return NextResponse.json(
+      mapBusiness(newBusiness as BusinessRow, accountId),
+      { status: 201 }
+    );
   } catch (error) {
     console.error('Error creating business:', error);
     return NextResponse.json(

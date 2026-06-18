@@ -1,8 +1,26 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { business, businessEntity, clientAccount } from '@/db/migrations/schema';
-import { eq, desc, asc, like, or, and, count, isNotNull } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+
+type ClientLite = { id: number; firstName: string; lastName: string };
+
+type BusinessListRow = {
+  id: number;
+  name: string;
+  establishedAt: string;
+  ein: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  typeId: number;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+  BusinessTypes: { id: number; name: string } | null;
+  ClientBusiness: { Clients: ClientLite | null }[] | null;
+};
 
 export async function GET(request: Request) {
   try {
@@ -15,75 +33,90 @@ export async function GET(request: Request) {
     const sortDir = searchParams.get('sortDir') as 'asc' | 'desc' | null;
     const createdBy = searchParams.get('createdBy');
 
-    // Build where conditions
-    const conditions = [];
+    let query = supabaseAdmin
+      .from('Businesses')
+      .select(
+        '*, BusinessTypes(id, name), ClientBusiness(Clients(id, firstName, lastName))',
+        { count: 'exact' }
+      );
 
     if (search && search.trim()) {
-      conditions.push(
-        or(
-          like(business.registeredName, `%${search.trim()}%`),
-          like(business.ein, `%${search.trim()}%`),
-          like(clientAccount.firstName, `%${search.trim()}%`),
-          like(clientAccount.lastName, `%${search.trim()}%`)
-        )
-      );
+      const term = search.trim();
+
+      // Businesses linked to clients whose name matches the search.
+      const { data: clientRows } = await supabaseAdmin
+        .from('Clients')
+        .select('id')
+        .or(`firstName.ilike.%${term}%,lastName.ilike.%${term}%`);
+      const clientIds = (clientRows ?? []).map((c) => c.id);
+
+      let nameLinkedBusinessIds: number[] = [];
+      if (clientIds.length > 0) {
+        const { data: links } = await supabaseAdmin
+          .from('ClientBusiness')
+          .select('businessId')
+          .in('clientId', clientIds);
+        nameLinkedBusinessIds = (links ?? []).map((l) => l.businessId);
+      }
+
+      const orParts = [`name.ilike.%${term}%`, `ein.ilike.%${term}%`];
+      if (nameLinkedBusinessIds.length > 0) {
+        orParts.push(`id.in.(${Array.from(new Set(nameLinkedBusinessIds)).join(',')})`);
+      }
+      query = query.or(orParts.join(','));
     }
 
     if (createdBy) {
-      conditions.push(eq(business.createdBy, createdBy));
+      query = query.eq('createdBy', createdBy);
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    if (sortBy === 'name') {
+      query = query.order('name', { ascending: sortDir !== 'desc' });
+    } else {
+      query = query.order('createdAt', { ascending: false });
+    }
 
-    // Get total count
-    const totalResult = await db
-      .select({ count: count() })
-      .from(business)
-      .leftJoin(clientAccount, eq(business.accountId, clientAccount.id))
-      .where(whereClause);
+    const from = pageIndex * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error, count } = await query.range(from, to);
 
-    const total = totalResult[0]?.count || 0;
+    if (error) throw error;
 
-    // Get paginated businesses
-    const businesses = await db
-      .select({
-        id: business.id,
-        accountId: business.accountId,
-        registeredName: business.registeredName,
-        establishedDate: business.establishedDate,
-        ein: business.ein,
-        address: business.address,
-        city: business.city,
-        state: business.state,
-        zipCode: business.zipCode,
-        createdAt: business.createdAt,
-        createdBy: business.createdBy,
-        updatedAt: business.updatedAt,
-        updatedBy: business.updatedBy,
-        entityId: business.entityId,
-        entity: {
-          id: businessEntity.id,
-          name: businessEntity.name,
-        },
-        account: {
-          id: clientAccount.id,
-          firstName: clientAccount.firstName,
-          lastName: clientAccount.lastName,
-        },
-      })
-      .from(business)
-      .leftJoin(businessEntity, eq(business.entityId, businessEntity.id))
-      .leftJoin(clientAccount, eq(business.accountId, clientAccount.id))
-      .where(whereClause)
-      .orderBy(
-        sortBy === 'name'
-          ? sortDir === 'desc'
-            ? desc(business.registeredName)
-            : asc(business.registeredName)
-          : desc(business.createdAt)
-      )
-      .limit(pageSize)
-      .offset(pageIndex * pageSize);
+    const businesses = (data ?? []).map((row) => {
+      const r = row as BusinessListRow;
+      const firstClient = (r.ClientBusiness ?? [])
+        .map((cb) => cb.Clients)
+        .filter((c): c is ClientLite => c !== null)[0];
+
+      return {
+        id: r.id,
+        accountId: firstClient?.id ?? null,
+        registeredName: r.name,
+        establishedDate: r.establishedAt,
+        ein: r.ein,
+        address: r.address,
+        city: r.city,
+        state: r.state,
+        zipCode: r.zipCode,
+        createdAt: r.createdAt,
+        createdBy: r.createdBy,
+        updatedAt: r.updatedAt,
+        updatedBy: r.updatedBy,
+        entityId: r.typeId,
+        entity: r.BusinessTypes
+          ? { id: r.BusinessTypes.id, name: r.BusinessTypes.name }
+          : undefined,
+        account: firstClient
+          ? {
+              id: firstClient.id,
+              firstName: firstClient.firstName,
+              lastName: firstClient.lastName,
+            }
+          : undefined,
+      };
+    });
+
+    const total = count ?? 0;
 
     return NextResponse.json({
       data: businesses,

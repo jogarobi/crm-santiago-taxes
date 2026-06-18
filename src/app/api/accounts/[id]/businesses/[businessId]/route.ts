@@ -1,8 +1,61 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { business, businessAccount, businessEntity, clientAccount } from '@/db/migrations/schema';
-import { eq, and, sql } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import type { Database } from '@/db/db.types';
+
+type BusinessUpdate = Database['public']['Tables']['Businesses']['Update'];
+
+type BusinessRow = {
+  id: number;
+  name: string;
+  establishedAt: string;
+  ein: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  typeId: number;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+  BusinessTypes?: { id: number; name: string } | null;
+};
+
+function mapBusiness(b: BusinessRow, accountId: number) {
+  return {
+    id: b.id,
+    accountId,
+    registeredName: b.name,
+    establishedDate: b.establishedAt,
+    ein: b.ein,
+    address: b.address,
+    city: b.city,
+    state: b.state,
+    zipCode: b.zipCode,
+    entityId: b.typeId,
+    createdAt: b.createdAt,
+    createdBy: b.createdBy,
+    updatedAt: b.updatedAt,
+    updatedBy: b.updatedBy,
+    entity: b.BusinessTypes
+      ? { id: b.BusinessTypes.id, name: b.BusinessTypes.name }
+      : undefined,
+  };
+}
+
+async function isLinked(
+  businessId: number,
+  accountId: number
+): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from('ClientBusiness')
+    .select('id')
+    .eq('businessId', businessId)
+    .eq('clientId', accountId)
+    .maybeSingle();
+  return !!data;
+}
 
 export async function GET(
   _request: Request,
@@ -22,63 +75,45 @@ export async function GET(
       );
     }
 
-    // Fetch business with entity and account information
-    const result = await db
-      .select({
-        id: business.id,
-        accountId: business.accountId,
-        registeredName: business.registeredName,
-        establishedDate: business.establishedDate,
-        ein: business.ein,
-        address: business.address,
-        city: business.city,
-        state: business.state,
-        zipCode: business.zipCode,
-        createdAt: business.createdAt,
-        createdBy: business.createdBy,
-        updatedAt: business.updatedAt,
-        updatedBy: business.updatedBy,
-        entityId: business.entityId,
-        entity: {
-          id: businessEntity.id,
-          name: businessEntity.name,
-        },
-        account: {
-          id: clientAccount.id,
-          firstName: clientAccount.firstName,
-          lastName: clientAccount.lastName,
-        },
-      })
-      .from(business)
-      .leftJoin(businessEntity, eq(business.entityId, businessEntity.id))
-      .leftJoin(clientAccount, sql`CAST(${business.accountId} AS INTEGER) = ${clientAccount.id}`)
-      .where(
-        and(
-          eq(business.id, businessIdInt),
-          eq(business.accountId, accountId.toString())
-        )
-      )
-      .limit(1);
-
-    if (result.length === 0) {
-      return NextResponse.json(
-        { error: 'Business not found' },
-        { status: 404 }
-      );
+    if (!(await isLinked(businessIdInt, accountId))) {
+      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    // Fetch all associated accounts from junction table
-    const associatedAccounts = await db
-      .select({
-        id: clientAccount.id,
-        firstName: clientAccount.firstName,
-        lastName: clientAccount.lastName,
-      })
-      .from(businessAccount)
-      .innerJoin(clientAccount, eq(businessAccount.accountId, clientAccount.id))
-      .where(eq(businessAccount.businessId, businessIdInt));
+    const { data: business, error } = await supabaseAdmin
+      .from('Businesses')
+      .select('*, BusinessTypes(id, name)')
+      .eq('id', businessIdInt)
+      .maybeSingle();
 
-    return NextResponse.json({ ...result[0], accounts: associatedAccounts });
+    if (error) throw error;
+    if (!business) {
+      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+    }
+
+    // Primary account (the one in the URL) plus all associated accounts.
+    const { data: account } = await supabaseAdmin
+      .from('Clients')
+      .select('id, firstName, lastName')
+      .eq('id', accountId)
+      .maybeSingle();
+
+    const { data: links } = await supabaseAdmin
+      .from('ClientBusiness')
+      .select('Clients(id, firstName, lastName)')
+      .eq('businessId', businessIdInt);
+
+    const accounts = (links ?? [])
+      .map((l) => l.Clients)
+      .filter(
+        (c): c is { id: number; firstName: string; lastName: string } =>
+          c !== null
+      );
+
+    return NextResponse.json({
+      ...mapBusiness(business as BusinessRow, accountId),
+      account: account ?? undefined,
+      accounts,
+    });
   } catch (error) {
     console.error('Error fetching business:', error);
     return NextResponse.json(
@@ -107,43 +142,35 @@ export async function PUT(
       );
     }
 
-    // Check if business exists and belongs to this account
-    const existingBusiness = await db
-      .select()
-      .from(business)
-      .where(
-        and(
-          eq(business.id, businessIdInt),
-          eq(business.accountId, accountId.toString())
-        )
-      )
-      .limit(1);
-
-    if (existingBusiness.length === 0) {
-      return NextResponse.json(
-        { error: 'Business not found' },
-        { status: 404 }
-      );
+    if (!(await isLinked(businessIdInt, accountId))) {
+      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    const updatedBusiness = await db
-      .update(business)
-      .set({
-        registeredName: body.registeredName,
-        establishedDate: body.establishedDate || null,
-        ein: body.ein || null,
-        address: body.address || null,
-        city: body.city || null,
-        state: body.state || null,
-        zipCode: body.zipCode || null,
-        entityId: body.entityId || null,
-        updatedBy: body.updatedBy,
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(business.id, businessIdInt))
-      .returning();
+    const updateData: BusinessUpdate = {
+      updatedBy: body.updatedBy,
+      updatedAt: new Date().toISOString(),
+    };
+    if (body.registeredName !== undefined) updateData.name = body.registeredName;
+    if (body.establishedDate !== undefined)
+      updateData.establishedAt = body.establishedDate || '';
+    if (body.ein !== undefined) updateData.ein = body.ein || '';
+    if (body.address !== undefined) updateData.address = body.address || '';
+    if (body.city !== undefined) updateData.city = body.city || '';
+    if (body.state !== undefined) updateData.state = body.state || '';
+    if (body.zipCode !== undefined)
+      updateData.zipCode = body.zipCode != null ? String(body.zipCode) : '';
+    if (body.entityId !== undefined) updateData.typeId = Number(body.entityId);
 
-    return NextResponse.json(updatedBusiness[0]);
+    const { data: updated, error } = await supabaseAdmin
+      .from('Businesses')
+      .update(updateData)
+      .eq('id', businessIdInt)
+      .select('*, BusinessTypes(id, name)')
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json(mapBusiness(updated as BusinessRow, accountId));
   } catch (error) {
     console.error('Error updating business:', error);
     return NextResponse.json(
@@ -171,26 +198,22 @@ export async function DELETE(
       );
     }
 
-    // Check if business exists and belongs to this account
-    const existingBusiness = await db
-      .select()
-      .from(business)
-      .where(
-        and(
-          eq(business.id, businessIdInt),
-          eq(business.accountId, accountId.toString())
-        )
-      )
-      .limit(1);
-
-    if (existingBusiness.length === 0) {
-      return NextResponse.json(
-        { error: 'Business not found' },
-        { status: 404 }
-      );
+    if (!(await isLinked(businessIdInt, accountId))) {
+      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    await db.delete(business).where(eq(business.id, businessIdInt));
+    // Remove junction links first, then the business itself.
+    await supabaseAdmin
+      .from('ClientBusiness')
+      .delete()
+      .eq('businessId', businessIdInt);
+
+    const { error } = await supabaseAdmin
+      .from('Businesses')
+      .delete()
+      .eq('id', businessIdInt);
+
+    if (error) throw error;
 
     return NextResponse.json({ message: 'Business deleted successfully' });
   } catch (error) {

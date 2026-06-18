@@ -1,15 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import {
-  clientAccount,
-  business,
-  appointment,
-  task,
-  activity,
-  activityType,
-} from '@/db/migrations/schema';
-import { count, eq, sql, and, gte, lte } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export async function GET(request: Request) {
   try {
@@ -18,108 +9,119 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || 'all'; // 'day', 'month', 'year', 'all'
 
-    // Calculate date range based on period
     const now = new Date();
     let startDate: string | null = null;
 
     if (period === 'day') {
-      // Start of today
-      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      startDate = start.toISOString();
+      startDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate()
+      ).toISOString();
     } else if (period === 'month') {
-      // Start of current month
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      startDate = start.toISOString();
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     } else if (period === 'year') {
-      // Start of current year
-      const start = new Date(now.getFullYear(), 0, 1);
-      startDate = start.toISOString();
+      startDate = new Date(now.getFullYear(), 0, 1).toISOString();
     }
 
-    // Get total clients count (all time - cumulative)
-    const clientsResult = await db
-      .select({ count: count() })
-      .from(clientAccount);
-    const totalClients = clientsResult[0]?.count || 0;
+    // Totals (cumulative).
+    const [{ count: totalClients }, { count: totalBusinesses }] =
+      await Promise.all([
+        supabaseAdmin.from('Clients').select('id', { count: 'exact', head: true }),
+        supabaseAdmin
+          .from('Businesses')
+          .select('id', { count: 'exact', head: true }),
+      ]);
 
-    // Get total businesses count (all time - cumulative)
-    const businessesResult = await db
-      .select({ count: count() })
-      .from(business);
-    const totalBusinesses = businessesResult[0]?.count || 0;
+    // Completed tasks (status = done) with optional date filter.
+    let completedTasksQuery = supabaseAdmin
+      .from('Tasks')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'done');
+    if (startDate) completedTasksQuery = completedTasksQuery.gte('createdAt', startDate);
+    const { count: completedTasks } = await completedTasksQuery;
 
-    // Get completed tasks count with date filter
-    const taskConditions = [eq(task.status, 'done')];
-    if (startDate) {
-      taskConditions.push(gte(task.createdAt, startDate));
+    // Businesses due for tax filing this month (by establishedAt month).
+    const currentMonth = now.getMonth() + 1;
+    const { data: allBusinesses } = await supabaseAdmin
+      .from('Businesses')
+      .select('id, name, establishedAt');
+    const businessesDueList = (allBusinesses ?? [])
+      .filter((b) => {
+        if (!b.establishedAt) return false;
+        const d = new Date(b.establishedAt);
+        return !isNaN(d.getTime()) && d.getMonth() + 1 === currentMonth;
+      })
+      .map((b) => ({
+        id: b.id,
+        registeredName: b.name,
+        establishedDate: b.establishedAt,
+      }));
+
+    // Services ranked by appointment count.
+    let apptQuery = supabaseAdmin
+      .from('Appointments')
+      .select('service, createdAt')
+      .not('service', 'is', null)
+      .neq('service', '');
+    if (startDate) apptQuery = apptQuery.gte('createdAt', startDate);
+    const { data: apptRows } = await apptQuery;
+
+    const serviceCounts = new Map<string, number>();
+    for (const row of apptRows ?? []) {
+      if (!row.service) continue;
+      serviceCounts.set(row.service, (serviceCounts.get(row.service) ?? 0) + 1);
+    }
+    const servicesByAppointments = Array.from(serviceCounts.entries())
+      .map(([service, count]) => ({ service, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // Touchpoints grouped by activity type.
+    let activityQuery = supabaseAdmin
+      .from('Activities')
+      .select('typeId, createdAt');
+    if (startDate) activityQuery = activityQuery.gte('createdAt', startDate);
+    const { data: activityRows } = await activityQuery;
+
+    const typeCounts = new Map<number, number>();
+    for (const row of activityRows ?? []) {
+      typeCounts.set(row.typeId, (typeCounts.get(row.typeId) ?? 0) + 1);
     }
 
-    const completedTasksResult = await db
-      .select({ count: count() })
-      .from(task)
-      .where(and(...taskConditions));
-    const completedTasks = completedTasksResult[0]?.count || 0;
-
-    // Get businesses due for tax filing in current month (based on anniversary)
-    const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
-
-    const businessesDueThisMonth = await db
-      .select({
-        id: business.id,
-        registeredName: business.registeredName,
-        establishedDate: business.establishedDate,
-      })
-      .from(business)
-      .where(sql`strftime('%m', ${business.establishedDate}) = ${currentMonth.toString().padStart(2, '0')}`);
-
-    // Get services with appointment counts with date filter
-    const appointmentConditions = sql`${appointment.service} IS NOT NULL AND ${appointment.service} != ''`;
-    const appointmentDateFilter = startDate
-      ? sql`${appointmentConditions} AND ${appointment.createdAt} >= ${startDate}`
-      : appointmentConditions;
-
-    const servicesWithCounts = await db
-      .select({
-        service: appointment.service,
-        count: count(),
-      })
-      .from(appointment)
-      .where(appointmentDateFilter)
-      .groupBy(appointment.service)
-      .orderBy(sql`count(*) DESC`)
-      .limit(10);
-
-    // Get touchpoints (activities) grouped by type, ranked by occurrence with date filter
-    const activityConditions = [];
-    if (startDate) {
-      activityConditions.push(gte(activity.createdAt, startDate));
+    const typeIds = Array.from(typeCounts.keys());
+    const typeInfo = new Map<number, { name: string; icon: string }>();
+    if (typeIds.length > 0) {
+      const { data: types } = await supabaseAdmin
+        .from('ActitityTypes')
+        .select('id, name, icon')
+        .in('id', typeIds);
+      for (const t of types ?? [])
+        typeInfo.set(t.id, { name: t.name, icon: t.icon });
     }
 
-    const touchpointsByType = await db
-      .select({
-        typeName: activityType.name,
-        typeIcon: activityType.icon,
-        count: count(),
-      })
-      .from(activity)
-      .leftJoin(activityType, eq(activity.typeId, activityType.id))
-      .where(activityConditions.length > 0 ? and(...activityConditions) : undefined)
-      .groupBy(activityType.name, activityType.icon)
-      .orderBy(sql`count(*) DESC`);
+    const touchpointsByType = Array.from(typeCounts.entries())
+      .map(([typeId, count]) => ({
+        typeName: typeInfo.get(typeId)?.name ?? null,
+        typeIcon: typeInfo.get(typeId)?.icon ?? null,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count);
 
-    // Get the most popular service (top service by appointments)
     const mostPopularService =
-      servicesWithCounts.length > 0 ? servicesWithCounts[0].service : null;
+      servicesByAppointments.length > 0
+        ? servicesByAppointments[0].service
+        : null;
 
     return NextResponse.json({
       success: true,
       stats: {
-        totalClients,
-        totalBusinesses,
-        completedTasks,
-        businessesDueThisMonth: businessesDueThisMonth.length,
-        businessesDueList: businessesDueThisMonth,
-        servicesByAppointments: servicesWithCounts,
+        totalClients: totalClients ?? 0,
+        totalBusinesses: totalBusinesses ?? 0,
+        completedTasks: completedTasks ?? 0,
+        businessesDueThisMonth: businessesDueList.length,
+        businessesDueList,
+        servicesByAppointments,
         touchpointsByType,
         mostPopularService,
       },

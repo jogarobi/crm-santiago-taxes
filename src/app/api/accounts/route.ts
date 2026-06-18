@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { clientAccount, business } from '@/db/migrations/schema';
-import { or, like, eq, count, sql, asc, desc, gte, lte } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin, nextId } from '@/lib/supabase/admin';
 
+// Collects the set of client ids that are linked to at least one business.
+async function getBusinessClientIds(): Promise<number[]> {
+  const { data } = await supabaseAdmin
+    .from('ClientBusiness')
+    .select('clientId');
+  return Array.from(new Set((data ?? []).map((r) => r.clientId)));
+}
 
 export async function GET(request: Request) {
   try {
@@ -20,131 +25,145 @@ export async function GET(request: Request) {
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
 
-    const offset = pageIndex * pageSize;
-
-    const conditions = [];
+    let query = supabaseAdmin
+      .from('Clients')
+      .select(
+        '*, Contacts(contactType, contactValue, createdAt), ClientBusiness(Businesses(id, name))',
+        { count: 'exact' }
+      );
 
     if (search) {
-      conditions.push(
-        or(
-          like(clientAccount.firstName, `%${search}%`),
-          like(clientAccount.lastName, `%${search}%`),
-          like(
-            sql`${clientAccount.firstName} || ' ' || ${clientAccount.lastName}`,
-            `%${search}%`
-          ),
-          like(clientAccount.ssnLastFour, `%${search}%`),
-          eq(clientAccount.id, isNaN(parseInt(search)) ? -1 : parseInt(search)),
-          sql`EXISTS (
-            SELECT 1 FROM ${business}
-            WHERE ${business.accountId} = CAST(${clientAccount.id} AS TEXT)
-            AND ${business.registeredName} LIKE ${`%${search}%`}
-          )`,
-          sql`EXISTS (
-            SELECT 1 FROM ClientAccountContact
-            WHERE ClientAccountContact.accountId = "ClientAccount"."id"
-            AND ClientAccountContact.contactValue LIKE ${`%${search}%`}
-            AND LOWER(ClientAccountContact.contactType) LIKE '%phone%'
-          )`
-        )
+      // Find related client ids that match by phone or business name.
+      const [{ data: phoneRows }, { data: bizRows }] = await Promise.all([
+        supabaseAdmin
+          .from('Contacts')
+          .select('clientId')
+          .ilike('contactValue', `%${search}%`)
+          .ilike('contactType', '%phone%'),
+        supabaseAdmin
+          .from('Businesses')
+          .select('id')
+          .ilike('name', `%${search}%`),
+      ]);
+
+      const phoneClientIds = (phoneRows ?? [])
+        .map((r) => r.clientId)
+        .filter((id): id is number => id !== null);
+
+      let businessClientIds: number[] = [];
+      const bizIds = (bizRows ?? []).map((r) => r.id);
+      if (bizIds.length > 0) {
+        const { data: links } = await supabaseAdmin
+          .from('ClientBusiness')
+          .select('clientId')
+          .in('businessId', bizIds);
+        businessClientIds = (links ?? []).map((r) => r.clientId);
+      }
+
+      const relatedIds = Array.from(
+        new Set([...phoneClientIds, ...businessClientIds])
       );
+
+      const orParts = [
+        `firstName.ilike.%${search}%`,
+        `lastName.ilike.%${search}%`,
+        `ssnLastFour.ilike.%${search}%`,
+      ];
+      if (!isNaN(parseInt(search))) orParts.push(`id.eq.${parseInt(search)}`);
+      if (relatedIds.length > 0)
+        orParts.push(`id.in.(${relatedIds.join(',')})`);
+
+      query = query.or(orParts.join(','));
     }
 
     if (onlyWithSquareId) {
-      conditions.push(sql`${clientAccount.squareId} IS NOT NULL`);
+      query = query.not('squareId', 'is', null);
     }
 
     if (createdBy) {
-      conditions.push(eq(clientAccount.createdBy, createdBy));
+      query = query.eq('createdBy', createdBy);
     }
 
     if (dateFrom) {
-      conditions.push(gte(clientAccount.createdAt, dateFrom));
+      query = query.gte('createdAt', dateFrom);
     }
 
     if (dateTo) {
-      conditions.push(lte(clientAccount.createdAt, dateTo));
+      query = query.lte('createdAt', dateTo);
     }
 
-    if (accountType === 'clients') {
-      conditions.push(sql`NOT EXISTS (
-        SELECT 1 FROM ${business}
-        WHERE ${business.accountId} = CAST(${clientAccount.id} AS TEXT)
-      )`);
-    } else if (accountType === 'businesses') {
-      conditions.push(sql`EXISTS (
-        SELECT 1 FROM ${business}
-        WHERE ${business.accountId} = CAST(${clientAccount.id} AS TEXT)
-      )`);
+    if (accountType === 'clients' || accountType === 'businesses') {
+      const businessClientIds = await getBusinessClientIds();
+      if (accountType === 'businesses') {
+        if (businessClientIds.length === 0) {
+          return NextResponse.json({
+            data: [],
+            meta: { total: 0, pageSize, pageIndex, totalPages: 0 },
+          });
+        }
+        query = query.in('id', businessClientIds);
+      } else if (businessClientIds.length > 0) {
+        query = query.not('id', 'in', `(${businessClientIds.join(',')})`);
+      }
     }
 
-    const whereClause =
-      conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined;
+    if (sortBy === 'name') {
+      const ascending = sortDir !== 'desc';
+      query = query
+        .order('firstName', { ascending })
+        .order('lastName', { ascending });
+    } else {
+      query = query.order('id', { ascending: true });
+    }
 
-    const totalResult = await db
-      .select({ count: count() })
-      .from(clientAccount)
-      .where(whereClause);
+    const from = pageIndex * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error, count } = await query.range(from, to);
 
-    const total = totalResult[0]?.count || 0;
+    if (error) throw error;
 
-    const dir = sortDir === 'desc' ? desc : asc;
-    const orderBy =
-      sortBy === 'name'
-        ? [dir(clientAccount.firstName), dir(clientAccount.lastName)]
-        : [asc(clientAccount.id)];
+    const accounts = (data ?? []).map((row) => {
+      const contacts = (row.Contacts ?? []) as Array<{
+        contactType: string;
+        contactValue: string;
+        createdAt: string;
+      }>;
+      const phone = contacts
+        .filter((c) => c.contactType?.toLowerCase().includes('phone'))
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0];
 
-    const clientAccounts = await db
-      .select({
-        id: clientAccount.id,
-        firstName: clientAccount.firstName,
-        lastName: clientAccount.lastName,
-        dateOfBirth: clientAccount.dateOfBirth,
-        ssnLastFour: clientAccount.ssnLastFour,
-        address: clientAccount.address,
-        city: clientAccount.city,
-        state: clientAccount.state,
-        zipCode: clientAccount.zipCode,
-        createdBy: clientAccount.createdBy,
-        updatedAt: clientAccount.updatedAt,
-        updatedBy: clientAccount.updatedBy,
-        squareId: clientAccount.squareId,
-        createdAt: clientAccount.createdAt,
-        flag: clientAccount.flag,
-        phoneNumber: sql<string | null>`(
-          SELECT contactValue FROM ClientAccountContact
-          WHERE ClientAccountContact.accountId = "ClientAccount"."id"
-          AND LOWER(ClientAccountContact.contactType) LIKE '%phone%'
-          ORDER BY ClientAccountContact.createdAt DESC
-          LIMIT 1
-        )`,
-      })
-      .from(clientAccount)
-      .where(whereClause)
-      .orderBy(...orderBy)
-      .limit(pageSize)
-      .offset(offset);
+      const businesses = ((row.ClientBusiness ?? []) as Array<{
+        Businesses: { id: number; name: string } | null;
+      }>)
+        .map((cb) => cb.Businesses)
+        .filter((b): b is { id: number; name: string } => b !== null)
+        .map((b) => ({ id: b.id, registeredName: b.name }));
 
-    // Fetch businesses for each account
-    const accountsWithBusinesses = await Promise.all(
-      clientAccounts.map(async (account) => {
-        const accountBusinesses = await db
-          .select({
-            id: business.id,
-            registeredName: business.registeredName,
-          })
-          .from(business)
-          .where(eq(business.accountId, account.id.toString()));
+      return {
+        id: row.id,
+        firstName: row.firstName,
+        lastName: row.lastName,
+        dateOfBirth: row.dateOfBirth,
+        ssnLastFour: row.ssnLastFour,
+        address: row.address,
+        city: row.city,
+        state: row.state,
+        zipCode: row.zipCode != null ? String(row.zipCode) : null,
+        createdBy: row.createdBy,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        updatedBy: row.updatedBy,
+        squareId: row.squareId,
+        flag: row.flag,
+        phoneNumber: phone?.contactValue ?? null,
+        businesses,
+      };
+    });
 
-        return {
-          ...account,
-          businesses: accountBusinesses,
-        };
-      })
-    );
+    const total = count ?? 0;
 
     return NextResponse.json({
-      data: accountsWithBusinesses,
+      data: accounts,
       meta: {
         total,
         pageSize,
@@ -182,24 +201,28 @@ export async function POST(request: Request) {
       );
     }
 
-    const newAccount = await db
-      .insert(clientAccount)
-      .values({
+    const { data, error } = await supabaseAdmin
+      .from('Clients')
+      .insert({
+        id: await nextId('Clients'),
         firstName: body.firstName,
         lastName: body.lastName,
         dateOfBirth: body.dateOfBirth,
-        ssnLastFour: body.ssnLastFour,
-        address: body.address,
-        city: body.city,
-        state: body.state,
-        zipCode: body.zipCode,
+        ssnLastFour: body.ssnLastFour ?? '',
+        address: body.address ?? '',
+        city: body.city ?? '',
+        state: body.state ?? '',
+        zipCode: body.zipCode != null ? Number(body.zipCode) : 0,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
-        squareId: body.squareId,
+        squareId: body.squareId ?? null,
       })
-      .returning();
+      .select()
+      .single();
 
-    return NextResponse.json(newAccount[0], { status: 201 });
+    if (error) throw error;
+
+    return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error('Error creating account:', error);
     return NextResponse.json(

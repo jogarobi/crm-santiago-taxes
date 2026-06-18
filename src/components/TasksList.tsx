@@ -5,7 +5,7 @@ import { useTasks, useUpdateTask, useDeleteTask } from '@/hooks/use-tasks';
 import { useStaff } from '@/hooks/use-staff';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useAllBusinesses } from '@/hooks/use-businesses';
-import { authClient } from '@/app/api/clients';
+import { useSessionUser } from '@/lib/use-session-user';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -105,7 +105,7 @@ export function TasksList({ accountId, businessId, dateFrom, dateTo }: TasksList
   const [linkSearchInput, setLinkSearchInput] = useState('');
   const [debouncedLinkSearch, setDebouncedLinkSearch] = useState('');
 
-  const { data: session } = authClient.useSession();
+  const session = useSessionUser();
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedLinkSearch(linkSearchInput), 400);

@@ -1,9 +1,39 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { clientLogin } from '@/db/migrations/schema';
-import { eq, and } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { encrypt } from '@/lib/encrypt';
+import type { Database } from '@/db/db.types';
+
+type LoginUpdate = Database['public']['Tables']['Logins']['Update'];
+
+type LoginRow = {
+  id: number;
+  clientId: number | null;
+  label: string;
+  username: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+};
+
+function mapLogin(r: LoginRow) {
+  return {
+    id: r.id,
+    accountId: r.clientId,
+    label: r.label,
+    username: r.username,
+    url: null,
+    notes: null,
+    createdAt: r.createdAt,
+    createdBy: r.createdBy,
+    updatedAt: r.updatedAt,
+    updatedBy: r.updatedBy,
+  };
+}
+
+const SELECT =
+  'id, clientId, label, username, createdAt, createdBy, updatedAt, updatedBy';
 
 export async function PUT(
   request: Request,
@@ -25,48 +55,35 @@ export async function PUT(
       return NextResponse.json({ error: 'Missing updatedBy' }, { status: 400 });
     }
 
-    const existing = await db
-      .select({ id: clientLogin.id })
-      .from(clientLogin)
-      .where(and(eq(clientLogin.id, loginIdInt), eq(clientLogin.accountId, accountId)))
-      .limit(1);
-
-    if (existing.length === 0) {
-      return NextResponse.json({ error: 'Login not found' }, { status: 404 });
-    }
-
-    const updateData: Record<string, unknown> = {
+    const updateData: LoginUpdate = {
       updatedBy: body.updatedBy,
       updatedAt: new Date().toISOString(),
     };
-
     if (body.label !== undefined) updateData.label = body.label;
     if (body.username !== undefined) updateData.username = body.username;
-    if (body.password) updateData.encryptedPassword = encrypt(body.password);
-    if (body.url !== undefined) updateData.url = body.url || null;
-    if (body.notes !== undefined) updateData.notes = body.notes || null;
+    if (body.password) updateData.password = encrypt(body.password);
 
-    const updated = await db
-      .update(clientLogin)
-      .set(updateData)
-      .where(eq(clientLogin.id, loginIdInt))
-      .returning({
-        id: clientLogin.id,
-        accountId: clientLogin.accountId,
-        label: clientLogin.label,
-        username: clientLogin.username,
-        url: clientLogin.url,
-        notes: clientLogin.notes,
-        createdAt: clientLogin.createdAt,
-        createdBy: clientLogin.createdBy,
-        updatedAt: clientLogin.updatedAt,
-        updatedBy: clientLogin.updatedBy,
-      });
+    const { data, error } = await supabaseAdmin
+      .from('Logins')
+      .update(updateData)
+      .eq('id', loginIdInt)
+      .eq('clientId', accountId)
+      .select(SELECT)
+      .maybeSingle();
 
-    return NextResponse.json(updated[0]);
+    if (error) throw error;
+
+    if (!data) {
+      return NextResponse.json({ error: 'Login not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(mapLogin(data));
   } catch (error) {
     console.error('Error updating client login:', error);
-    return NextResponse.json({ error: 'Failed to update login' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update login' },
+      { status: 500 }
+    );
   }
 }
 
@@ -85,21 +102,32 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
-    const existing = await db
-      .select({ id: clientLogin.id })
-      .from(clientLogin)
-      .where(and(eq(clientLogin.id, loginIdInt), eq(clientLogin.accountId, accountId)))
-      .limit(1);
+    const { data: existing, error: fetchError } = await supabaseAdmin
+      .from('Logins')
+      .select('id')
+      .eq('id', loginIdInt)
+      .eq('clientId', accountId)
+      .maybeSingle();
 
-    if (existing.length === 0) {
+    if (fetchError) throw fetchError;
+    if (!existing) {
       return NextResponse.json({ error: 'Login not found' }, { status: 404 });
     }
 
-    await db.delete(clientLogin).where(eq(clientLogin.id, loginIdInt));
+    const { error } = await supabaseAdmin
+      .from('Logins')
+      .delete()
+      .eq('id', loginIdInt)
+      .eq('clientId', accountId);
+
+    if (error) throw error;
 
     return NextResponse.json({ message: 'Login deleted successfully' });
   } catch (error) {
     console.error('Error deleting client login:', error);
-    return NextResponse.json({ error: 'Failed to delete login' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to delete login' },
+      { status: 500 }
+    );
   }
 }

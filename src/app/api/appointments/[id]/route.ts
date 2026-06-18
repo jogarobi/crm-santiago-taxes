@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { square } from '@/app/api/clients';
 import { Appointment, AppointmentErrorResponse } from '@/lib/types/appointment';
-import { db } from '@/lib/db';
-import { appointment } from '@/db/migrations/schema';
-import { eq, or } from 'drizzle-orm';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requirePermission } from '@/lib/auth-utils';
 
 export async function GET(
@@ -15,32 +13,16 @@ export async function GET(
 
     const { id } = await params;
 
-    const dbAppointment = await db
-      .select({
-        id: appointment.id,
-        squareId: appointment.squareId,
-        accountSquareId: appointment.accountSquareId,
-        status: appointment.status,
-        startAt: appointment.startAt,
-        endAt: appointment.endAt,
-        durationMinutes: appointment.durationMinutes,
-        accountId: appointment.accountId,
-        accountName: appointment.accountName,
-        service: appointment.service,
-        staffId: appointment.staffId,
-        creatorType: appointment.creatorType,
-        createdBy: appointment.createdBy,
-        createdAt: appointment.createdAt,
-        updatedAt: appointment.updatedAt,
-        updatedBy: appointment.updatedBy,
-      })
-      .from(appointment)
-      .where(
-        or(eq(appointment.squareId, id), eq(appointment.id, parseInt(id) || 0))
-      )
-      .limit(1);
+    const { data: apt, error } = await supabaseAdmin
+      .from('Appointments')
+      .select('*')
+      .or(`squareId.eq.${id},id.eq.${parseInt(id) || 0}`)
+      .limit(1)
+      .maybeSingle();
 
-    if (dbAppointment.length === 0) {
+    if (error) throw error;
+
+    if (!apt) {
       return NextResponse.json(
         {
           success: false,
@@ -51,17 +33,16 @@ export async function GET(
       );
     }
 
-    const apt = dbAppointment[0];
     const serializedAppointment = {
       id: apt.squareId || apt.id?.toString() || '',
       status: apt.status,
       startAt: apt.startAt,
       endAt: apt.endAt,
       durationMinutes: apt.durationMinutes || undefined,
-      accountSquareId: apt.accountSquareId || undefined,
+      accountSquareId: apt.clientSquareId || undefined,
       accountName: apt.accountName || undefined,
       service: apt.service || undefined,
-      customerId: apt.accountSquareId || undefined,
+      customerId: apt.clientSquareId || undefined,
       creatorType: apt.creatorType,
       createdBy: apt.createdBy || undefined,
       createdAt: apt.createdAt || undefined,

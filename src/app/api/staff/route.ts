@@ -1,8 +1,26 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { staff, member, user } from '@/db/migrations/schema';
-import { like, or, desc, sql, eq } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin, nextId } from '@/lib/supabase/admin';
+
+// Builds a userId -> role map from Supabase auth users.
+async function getRoleMap(): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
+  if (error) {
+    console.error('Failed to list users for role map:', error);
+    return map;
+  }
+  for (const user of data.users) {
+    const role =
+      (user.app_metadata?.role as string | undefined) ??
+      (user.user_metadata?.role as string | undefined);
+    if (role) map.set(user.id, role);
+  }
+  return map;
+}
 
 export async function GET(request: Request) {
   try {
@@ -12,53 +30,30 @@ export async function GET(request: Request) {
     const pageIndex = parseInt(searchParams.get('pageIndex') || '0');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
 
-    // Build where conditions
-    const whereConditions = [];
+    let query = supabaseAdmin
+      .from('Staff')
+      .select('*', { count: 'exact' })
+      .order('createdAt', { ascending: false });
 
     if (search) {
-      whereConditions.push(
-        or(
-          like(staff.firstName, `%${search}%`),
-          like(staff.lastName, `%${search}%`),
-          like(staff.title, `%${search}%`),
-          like(sql`CAST(${staff.id} AS TEXT)`, `%${search}%`)
-        )
+      query = query.or(
+        `firstName.ilike.%${search}%,lastName.ilike.%${search}%,title.ilike.%${search}%`
       );
     }
 
-    // Get total count
-    const countResult = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(staff)
-      .where(whereConditions.length > 0 ? or(...whereConditions) : undefined);
+    const from = pageIndex * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error, count } = await query.range(from, to);
 
-    const total = Number(countResult[0]?.count || 0);
+    if (error) throw error;
 
-    // Get paginated staff with role from member table
-    const staffMembers = await db
-      .select({
-        id: staff.id,
-        userId: staff.userId,
-        squareId: staff.squareId,
-        title: staff.title,
-        status: staff.status,
-        firstName: staff.firstName,
-        lastName: staff.lastName,
-        email: staff.email,
-        createdAt: staff.createdAt,
-        createdBy: staff.createdBy,
-        updatedAt: staff.updatedAt,
-        updatedBy: staff.updatedBy,
-        role: member.role,
-      })
-      .from(staff)
-      .leftJoin(user, eq(staff.userId, user.id))
-      .leftJoin(member, eq(user.id, member.userId))
-      .where(whereConditions.length > 0 ? or(...whereConditions) : undefined)
-      .orderBy(desc(staff.createdAt))
-      .limit(pageSize)
-      .offset(pageIndex * pageSize);
+    const roleMap = await getRoleMap();
+    const staffMembers = (data ?? []).map((s) => ({
+      ...s,
+      role: s.userId ? roleMap.get(s.userId) ?? null : null,
+    }));
 
+    const total = count ?? 0;
     const totalPages = Math.ceil(total / pageSize);
 
     return NextResponse.json({
@@ -101,12 +96,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Email, password, and role are now required for all staff members
     if (!body.email) {
-      return NextResponse.json(
-        { error: 'Email is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
     if (!body.password || body.password.length < 8) {
       return NextResponse.json(
@@ -115,73 +106,57 @@ export async function POST(request: Request) {
       );
     }
     if (!body.role) {
-      return NextResponse.json(
-        { error: 'Role is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Role is required' }, { status: 400 });
     }
 
-    let userId = null;
+    // Create the auth user (role stored in app_metadata).
+    const { data: created, error: createError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email: body.email,
+        password: body.password,
+        email_confirm: true,
+        user_metadata: { name: `${body.firstName} ${body.lastName}` },
+        app_metadata: { role: body.role },
+      });
 
-    // Create user account (always required)
-    console.log('Creating user account for staff member:', body.email, 'with role:', body.role);
-    try {
-      const createUserResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/staff/create-user`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            cookie: request.headers.get('cookie') || '',
-          },
-          body: JSON.stringify({
-            name: `${body.firstName} ${body.lastName}`,
-            email: body.email,
-            password: body.password,
-            role: body.role,
-          }),
-        }
-      );
-
-      if (!createUserResponse.ok) {
-        const errorData = await createUserResponse.json();
-        console.error('User creation failed:', errorData);
+    if (createError || !created.user) {
+      console.error('User creation failed:', createError);
+      if (createError?.message?.toLowerCase().includes('already')) {
         return NextResponse.json(
-          { error: errorData.error || 'Failed to create user account' },
-          { status: createUserResponse.status }
+          { error: 'A user with this email already exists' },
+          { status: 409 }
         );
       }
-
-      const userData = await createUserResponse.json();
-      console.log('User created successfully, data:', userData);
-      userId = userData.user?.id || null;
-      console.log('Extracted userId:', userId);
-    } catch (error) {
-      console.error('Error creating user account:', error);
       return NextResponse.json(
-        { error: 'Failed to create user account' },
+        { error: createError?.message || 'Failed to create user account' },
         { status: 500 }
       );
     }
 
-    console.log('Creating staff record with userId:', userId);
-    const newStaff = await db
-      .insert(staff)
-      .values({
+    const { data: newStaff, error: staffError } = await supabaseAdmin
+      .from('Staff')
+      .insert({
+        id: await nextId('Staff'),
         firstName: body.firstName,
         lastName: body.lastName,
         title: body.title,
         status: body.status,
         email: body.email || null,
         squareId: body.squareId || null,
-        userId: userId,
+        userId: created.user.id,
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
       })
-      .returning();
+      .select()
+      .single();
 
-    console.log('Staff member created:', newStaff[0]);
-    return NextResponse.json(newStaff[0], { status: 201 });
+    if (staffError) {
+      // Roll back the auth user so we don't leave an orphaned login.
+      await supabaseAdmin.auth.admin.deleteUser(created.user.id);
+      throw staffError;
+    }
+
+    return NextResponse.json(newStaff, { status: 201 });
   } catch (error) {
     console.error('Error creating staff member:', error);
     return NextResponse.json(

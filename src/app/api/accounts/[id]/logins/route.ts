@@ -1,9 +1,35 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { clientAccount, clientLogin } from '@/db/migrations/schema';
-import { eq } from 'drizzle-orm';
 import { requirePermission } from '@/lib/auth-utils';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { encrypt } from '@/lib/encrypt';
+
+type LoginRow = {
+  id: number;
+  clientId: number | null;
+  label: string;
+  username: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+};
+
+// The Supabase Logins table has no url/notes columns; they are surfaced as null
+// to preserve the existing API shape.
+function mapLogin(r: LoginRow) {
+  return {
+    id: r.id,
+    accountId: r.clientId,
+    label: r.label,
+    username: r.username,
+    url: null,
+    notes: null,
+    createdAt: r.createdAt,
+    createdBy: r.createdBy,
+    updatedAt: r.updatedAt,
+    updatedBy: r.updatedBy,
+  };
+}
 
 export async function GET(
   _request: Request,
@@ -19,26 +45,20 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
     }
 
-    const logins = await db
-      .select({
-        id: clientLogin.id,
-        accountId: clientLogin.accountId,
-        label: clientLogin.label,
-        username: clientLogin.username,
-        url: clientLogin.url,
-        notes: clientLogin.notes,
-        createdAt: clientLogin.createdAt,
-        createdBy: clientLogin.createdBy,
-        updatedAt: clientLogin.updatedAt,
-        updatedBy: clientLogin.updatedBy,
-      })
-      .from(clientLogin)
-      .where(eq(clientLogin.accountId, accountId));
+    const { data, error } = await supabaseAdmin
+      .from('Logins')
+      .select('id, clientId, label, username, createdAt, createdBy, updatedAt, updatedBy')
+      .eq('clientId', accountId);
 
-    return NextResponse.json(logins);
+    if (error) throw error;
+
+    return NextResponse.json((data ?? []).map(mapLogin));
   } catch (error) {
     console.error('Error fetching client logins:', error);
-    return NextResponse.json({ error: 'Failed to fetch logins' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch logins' },
+      { status: 500 }
+    );
   }
 }
 
@@ -59,51 +79,45 @@ export async function POST(
 
     if (!body.label || !body.username || !body.password || !body.createdBy) {
       return NextResponse.json(
-        { error: 'Missing required fields: label, username, password, createdBy' },
+        {
+          error: 'Missing required fields: label, username, password, createdBy',
+        },
         { status: 400 }
       );
     }
 
-    const accountExists = await db
-      .select({ id: clientAccount.id })
-      .from(clientAccount)
-      .where(eq(clientAccount.id, accountId))
-      .limit(1);
+    const { data: account, error: accountError } = await supabaseAdmin
+      .from('Clients')
+      .select('id')
+      .eq('id', accountId)
+      .maybeSingle();
 
-    if (accountExists.length === 0) {
+    if (accountError) throw accountError;
+    if (!account) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    const encryptedPassword = encrypt(body.password);
-
-    const newLogin = await db
-      .insert(clientLogin)
-      .values({
-        accountId,
+    const { data, error } = await supabaseAdmin
+      .from('Logins')
+      .insert({
+        clientId: accountId,
         label: body.label,
         username: body.username,
-        encryptedPassword,
-        url: body.url || null,
-        notes: body.notes || null,
+        password: encrypt(body.password),
         createdBy: body.createdBy,
         createdAt: new Date().toISOString(),
       })
-      .returning({
-        id: clientLogin.id,
-        accountId: clientLogin.accountId,
-        label: clientLogin.label,
-        username: clientLogin.username,
-        url: clientLogin.url,
-        notes: clientLogin.notes,
-        createdAt: clientLogin.createdAt,
-        createdBy: clientLogin.createdBy,
-        updatedAt: clientLogin.updatedAt,
-        updatedBy: clientLogin.updatedBy,
-      });
+      .select('id, clientId, label, username, createdAt, createdBy, updatedAt, updatedBy')
+      .single();
 
-    return NextResponse.json(newLogin[0], { status: 201 });
+    if (error) throw error;
+
+    return NextResponse.json(mapLogin(data), { status: 201 });
   } catch (error) {
     console.error('Error creating client login:', error);
-    return NextResponse.json({ error: 'Failed to create login' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to create login' },
+      { status: 500 }
+    );
   }
 }
