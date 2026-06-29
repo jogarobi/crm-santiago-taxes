@@ -566,6 +566,9 @@ export default function AccountDetailPage({ params }: Props) {
         open={createBusinessDialogOpen}
         onOpenChange={setCreateBusinessDialogOpen}
         accountId={accountId}
+        onSuccess={(businessId) => {
+          window.location.href = `/clients/${accountId}/businesses/${businessId}`;
+        }}
       />
       <EditBusinessDialog
         open={editBusinessDialogOpen}

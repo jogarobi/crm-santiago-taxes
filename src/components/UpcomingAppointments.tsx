@@ -228,7 +228,7 @@ export function UpcomingAppointments() {
   return (
     <>
       <div className='mt-4 flex flex-col gap-5'>
-        {upcomingAppointments.map((appointment) => {
+        {upcomingAppointments.map((appointment, index) => {
           const { date, time } = formatDateTime(
             appointment.startAt || '',
             appointment.endAt
@@ -236,7 +236,7 @@ export function UpcomingAppointments() {
 
           return (
             <div
-              key={appointment.id}
+              key={`${appointment.id}-${index}`}
               onClick={() => handleAppointmentClick(appointment)}
               className='block bg-white border rounded-lg p-4 hover:shadow-xs transition-shadow cursor-pointer'
             >

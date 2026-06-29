@@ -5,8 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
-import { Calendar } from './ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { DateInput } from './ui/date-input';
 import {
   Select,
   SelectContent,
@@ -14,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { Loader2, ChevronDownIcon, InfoIcon } from 'lucide-react';
+import { Loader2, InfoIcon } from 'lucide-react';
 
 const US_STATES = [
   { value: 'AL', label: 'Alabama' },
@@ -70,6 +69,7 @@ const US_STATES = [
   { value: 'DC', label: 'Washington DC' },
 ];
 import { useCreateAccount } from '@/hooks/use-accounts';
+import { useCreateAccountContact } from '@/hooks/use-account-contact';
 import { useCustomer } from '@/hooks/use-customer';
 
 interface CreateClientDialogProps {
@@ -88,6 +88,7 @@ export function CreateClientDialog({
   onSuccess,
 }: CreateClientDialogProps) {
   const createAccount = useCreateAccount();
+  const createContact = useCreateAccountContact();
   const { data: customer, isLoading: isLoadingCustomer } = useCustomer(
     customerId || ''
   ); // Pass empty string if undefined to avoid query running or handle in hook if possible, but hook likely expects string.
@@ -103,12 +104,13 @@ export function CreateClientDialog({
   // Looking at original: `customerId?: string;`. Yes. So it was already handling it.
 
   const [error, setError] = useState<string | null>(null);
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [isFormInitialized, setIsFormInitialized] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    email: '',
+    phone: '',
     ssnLastFour: '',
     address: '',
     city: '',
@@ -125,6 +127,8 @@ export function CreateClientDialog({
       setFormData({
         firstName: customer.givenName || '',
         lastName: customer.familyName || '',
+        email: customer.emailAddress || '',
+        phone: customer.phoneNumber || '',
         ssnLastFour: '',
         address: customer.address?.addressLine1 || '',
         city: customer.address?.locality || '',
@@ -154,12 +158,44 @@ export function CreateClientDialog({
     }
 
     try {
+      const { email, phone, ...accountData } = formData;
+
       const newAccount = await createAccount.mutateAsync({
-        ...formData,
+        ...accountData,
         dateOfBirth: dateOfBirth.toISOString().split('T')[0],
         squareId: customerId,
         createdBy: 'system',
       });
+
+      // Create email/phone contacts for the new client, if provided.
+      // A contact failure shouldn't block navigating to the profile, where
+      // the user can re-add them.
+      const contactsToCreate: Array<{
+        contactType: 'email' | 'phone';
+        contactValue: string;
+      }> = [];
+      if (email.trim()) {
+        contactsToCreate.push({ contactType: 'email', contactValue: email.trim() });
+      }
+      if (phone.trim()) {
+        contactsToCreate.push({ contactType: 'phone', contactValue: phone.trim() });
+      }
+
+      if (newAccount.id && contactsToCreate.length > 0) {
+        try {
+          await Promise.all(
+            contactsToCreate.map((contact) =>
+              createContact.mutateAsync({
+                accountId: newAccount.id,
+                createdBy: 'system',
+                ...contact,
+              })
+            )
+          );
+        } catch (contactErr) {
+          console.error('Error creating client contacts:', contactErr);
+        }
+      }
 
       if (onSuccess && newAccount.id) {
         onSuccess(newAccount.id);
@@ -170,6 +206,8 @@ export function CreateClientDialog({
       setFormData({
         firstName: '',
         lastName: '',
+        email: '',
+        phone: '',
         ssnLastFour: '',
         address: '',
         city: '',
@@ -266,6 +304,42 @@ export function CreateClientDialog({
               </div>
             </div>
 
+            <div className='grid grid-cols-2 gap-5'>
+              <div className='flex flex-col gap-2'>
+                <Label
+                  htmlFor='email'
+                  className='text-sm font-medium text-neutral-700'
+                >
+                  Email
+                </Label>
+                <Input
+                  id='email'
+                  type='email'
+                  value={formData.email}
+                  className='p-2'
+                  onChange={(e) => handleChange('email', e.target.value)}
+                  placeholder='john@example.com'
+                />
+              </div>
+
+              <div className='flex flex-col gap-2'>
+                <Label
+                  htmlFor='phone'
+                  className='text-sm font-medium text-neutral-700'
+                >
+                  Phone Number
+                </Label>
+                <Input
+                  id='phone'
+                  type='tel'
+                  value={formData.phone}
+                  className='p-2'
+                  onChange={(e) => handleChange('phone', e.target.value)}
+                  placeholder='(555) 123-4567'
+                />
+              </div>
+            </div>
+
             <div className='flex flex-col gap-2'>
               <Label
                 htmlFor='dateOfBirth'
@@ -273,36 +347,13 @@ export function CreateClientDialog({
               >
                 Date of Birth <span className='text-red-500'>*</span>
               </Label>
-              <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant='outline'
-                    id='dateOfBirth'
-                    className='justify-between font-normal'
-                  >
-                    {dateOfBirth
-                      ? dateOfBirth.toLocaleDateString()
-                      : 'Select date'}
-                    <ChevronDownIcon />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className='w-auto overflow-hidden p-0'
-                  align='start'
-                >
-                  <Calendar
-                    mode='single'
-                    selected={dateOfBirth}
-                    captionLayout='dropdown'
-                    startMonth={new Date(1900, 0)}
-                    disabled={{ after: new Date() }}
-                    onSelect={(date) => {
-                      setDateOfBirth(date);
-                      setDatePickerOpen(false);
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
+              <DateInput
+                id='dateOfBirth'
+                value={dateOfBirth}
+                onChange={setDateOfBirth}
+                startMonth={new Date(1900, 0)}
+                disabled={{ after: new Date() }}
+              />
             </div>
 
             <div className='flex flex-col gap-2'>

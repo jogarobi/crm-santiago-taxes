@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useStats, type StatsPeriod } from '@/hooks/use-stats';
 import { useAccounts } from '@/hooks/use-accounts';
 import {
@@ -236,54 +237,62 @@ export default function ReportsPage() {
       </div>
 
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
-        <Card className='bg-white shadow-none'>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>Total Clients</CardTitle>
-            <Users className='h-4 w-4 text-muted-foreground' />
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold text-purple'>
-              {stats.totalClients.toLocaleString()}
-            </div>
-            <p className='text-xs text-muted-foreground mt-1'>
-              Active clients in the system
-            </p>
-          </CardContent>
-        </Card>
+        <Link href='/clients' className='group block'>
+          <Card className='bg-white shadow-none hover:shadow-xs transition-shadow'>
+            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+              <CardTitle className='text-sm font-medium group-hover:underline'>
+                Total Clients
+              </CardTitle>
+              <Users className='h-4 w-4 text-muted-foreground' />
+            </CardHeader>
+            <CardContent>
+              <div className='text-2xl font-bold text-purple'>
+                {stats.totalClients.toLocaleString()}
+              </div>
+              <p className='text-xs text-muted-foreground mt-1'>
+                Active clients in the system
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className='bg-white shadow-none'>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>
-              Total Businesses
-            </CardTitle>
-            <Building2 className='h-4 w-4 text-muted-foreground' />
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold text-purple'>
-              {stats.totalBusinesses.toLocaleString()}
-            </div>
-            <p className='text-xs text-muted-foreground mt-1'>
-              Registered businesses
-            </p>
-          </CardContent>
-        </Card>
+        <Link href='/businesses' className='group block'>
+          <Card className='bg-white shadow-none hover:shadow-xs transition-shadow'>
+            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+              <CardTitle className='text-sm font-medium group-hover:underline'>
+                Total Businesses
+              </CardTitle>
+              <Building2 className='h-4 w-4 text-muted-foreground' />
+            </CardHeader>
+            <CardContent>
+              <div className='text-2xl font-bold text-purple'>
+                {stats.totalBusinesses.toLocaleString()}
+              </div>
+              <p className='text-xs text-muted-foreground mt-1'>
+                Registered businesses
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className='bg-white shadow-none'>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>
-              Completed Tasks
-            </CardTitle>
-            <CheckCircle2 className='h-4 w-4 text-muted-foreground' />
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold text-purple'>
-              {stats.completedTasks.toLocaleString()}
-            </div>
-            <p className='text-xs text-muted-foreground mt-1'>
-              Successfully finished
-            </p>
-          </CardContent>
-        </Card>
+        <Link href='/tasks' className='group block'>
+          <Card className='bg-white shadow-none hover:shadow-xs transition-shadow'>
+            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+              <CardTitle className='text-sm font-medium group-hover:underline'>
+                Completed Tasks
+              </CardTitle>
+              <CheckCircle2 className='h-4 w-4 text-muted-foreground' />
+            </CardHeader>
+            <CardContent>
+              <div className='text-2xl font-bold text-purple'>
+                {stats.completedTasks.toLocaleString()}
+              </div>
+              <p className='text-xs text-muted-foreground mt-1'>
+                Successfully finished
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
         <Card className='bg-white shadow-none'>
           <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>

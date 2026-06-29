@@ -49,9 +49,12 @@ export default function Home() {
       </div>
 
       <div className='flex items-center gap-7'>
-        <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
+        <Link
+          href='/clients'
+          className='group w-full border p-4 rounded-md flex flex-col gap-2 bg-white hover:shadow-xs transition-shadow'
+        >
           <div className='flex items-center justify-between'>
-            <p className='text-[15px] text-neutral-600'>Total clients</p>
+            <p className='text-[15px] text-neutral-600 group-hover:underline'>Total clients</p>
           </div>
           <p className='font-bold text-[22px] text-purple'>
             {isLoading ? (
@@ -60,10 +63,13 @@ export default function Home() {
               accountCount?.count?.toLocaleString() || '0'
             )}
           </p>
-        </div>
-        <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
+        </Link>
+        <Link
+          href='/businesses'
+          className='group w-full border p-4 rounded-md flex flex-col gap-2 bg-white hover:shadow-xs transition-shadow'
+        >
           <div className='flex items-center justify-between'>
-            <p className='text-[15px] text-neutral-600'>Businesses</p>
+            <p className='text-[15px] text-neutral-600 group-hover:underline'>Businesses</p>
           </div>
           <p className='font-bold text-[22px] text-purple'>
             {isLoadingStats ? (
@@ -72,10 +78,13 @@ export default function Home() {
               stats?.totalBusinesses?.toLocaleString() || '0'
             )}
           </p>
-        </div>
-        <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
+        </Link>
+        <Link
+          href='/appointments'
+          className='group w-full border p-4 rounded-md flex flex-col gap-2 bg-white hover:shadow-xs transition-shadow'
+        >
           <div className='flex items-center justify-between'>
-            <p className='text-[15px] text-neutral-600'>Appointments</p>
+            <p className='text-[15px] text-neutral-600 group-hover:underline'>Appointments</p>
           </div>
           <p className='font-bold text-[22px] text-purple'>
             {isLoadingAppointmentCount ? (
@@ -84,11 +93,14 @@ export default function Home() {
               appointmentCount?.count?.toLocaleString() || '0'
             )}
           </p>
-        </div>
+        </Link>
 
-        <div className='w-full border p-4 rounded-md flex flex-col gap-2 bg-white'>
+        <Link
+          href='/services'
+          className='group w-full border p-4 rounded-md flex flex-col gap-2 bg-white hover:shadow-xs transition-shadow'
+        >
           <div className='flex items-center justify-between'>
-            <p className='text-[15px] text-neutral-600'>Most popular service</p>
+            <p className='text-[15px] text-neutral-600 group-hover:underline'>Most popular service</p>
           </div>
           <p className='font-bold text-xl text-purple'>
             {isLoadingStats ? (
@@ -99,7 +111,7 @@ export default function Home() {
               'N/A'
             )}
           </p>
-        </div>
+        </Link>
       </div>
 
       <div className='flex gap-14'>

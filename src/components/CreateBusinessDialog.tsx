@@ -5,8 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Calendar } from './ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { DateInput } from './ui/date-input';
 import {
   Select,
   SelectContent,
@@ -14,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { Loader2, ChevronDownIcon } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useCreateBusiness } from '@/hooks/use-businesses';
 import { useBusinessEntities } from '@/hooks/use-business-entities';
 
@@ -22,18 +21,19 @@ interface CreateBusinessDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   accountId: number;
+  onSuccess?: (businessId: number) => void;
 }
 
 export function CreateBusinessDialog({
   open,
   onOpenChange,
   accountId,
+  onSuccess,
 }: CreateBusinessDialogProps) {
   const createBusiness = useCreateBusiness();
   const { data: businessEntities, isLoading: entitiesLoading } =
     useBusinessEntities();
   const [error, setError] = useState<string | null>(null);
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     registeredName: '',
@@ -59,7 +59,7 @@ export function CreateBusinessDialog({
       // Strip hyphens from EIN before submitting
       const cleanedEin = formData.ein ? formData.ein.replace(/-/g, '') : undefined;
 
-      await createBusiness.mutateAsync({
+      const newBusiness = await createBusiness.mutateAsync({
         accountId,
         data: {
           registeredName: formData.registeredName,
@@ -72,6 +72,10 @@ export function CreateBusinessDialog({
           createdBy: 'system', // TODO: Replace with actual user
         },
       });
+
+      if (onSuccess && newBusiness?.id) {
+        onSuccess(newBusiness.id);
+      }
 
       onOpenChange(false);
       setFormData({
@@ -173,37 +177,13 @@ export function CreateBusinessDialog({
             >
               Established Date
             </Label>
-            <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant='outline'
-                  id='establishedDate'
-                  className='justify-between font-normal'
-                  type='button'
-                >
-                  {establishedDate
-                    ? establishedDate.toLocaleDateString()
-                    : 'Select date'}
-                  <ChevronDownIcon />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className='w-auto overflow-hidden p-0'
-                align='start'
-              >
-                <Calendar
-                  mode='single'
-                  selected={establishedDate}
-                  captionLayout='dropdown'
-                  startMonth={new Date(1900, 0)}
-                  disabled={{ after: new Date() }}
-                  onSelect={(date) => {
-                    setEstablishedDate(date);
-                    setDatePickerOpen(false);
-                  }}
-                />
-              </PopoverContent>
-            </Popover>
+            <DateInput
+              id='establishedDate'
+              value={establishedDate}
+              onChange={setEstablishedDate}
+              startMonth={new Date(1900, 0)}
+              disabled={{ after: new Date() }}
+            />
           </div>
 
           <div className='flex flex-col gap-2'>

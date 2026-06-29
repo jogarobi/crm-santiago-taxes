@@ -394,6 +394,9 @@ export default function ClientsPage() {
       <CreateClientDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
+        onSuccess={(accountId) => {
+          window.location.href = `/clients/${accountId}`;
+        }}
       />
     </div>
   );
