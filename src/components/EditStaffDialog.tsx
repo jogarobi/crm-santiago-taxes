@@ -13,7 +13,12 @@ import {
   SelectValue,
 } from './ui/select';
 import { Loader2 } from 'lucide-react';
-import { useUpdateStaff, type Staff } from '@/hooks/use-staff';
+import {
+  useUpdateStaff,
+  useChangeStaffPassword,
+  type Staff,
+} from '@/hooks/use-staff';
+import { useCurrentUser } from '@/hooks/use-current-user';
 
 interface EditStaffDialogProps {
   open: boolean;
@@ -29,7 +34,18 @@ export function EditStaffDialog({
   onUpdateSuccess,
 }: EditStaffDialogProps) {
   const updateStaff = useUpdateStaff();
+  const changePassword = useChangeStaffPassword();
+  const { data: currentUser } = useCurrentUser();
   const [error, setError] = useState<string | null>(null);
+
+  const canChangePassword =
+    (currentUser?.role === 'owner' || currentUser?.role === 'admin') &&
+    !!staffMember?.userId;
+
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -51,6 +67,10 @@ export function EditStaffDialog({
         email: staffMember.email || '',
         squareId: staffMember.squareId || '',
       });
+      setPassword('');
+      setConfirmPassword('');
+      setPasswordError(null);
+      setPasswordSuccess(false);
     }
   }, [staffMember]);
 
@@ -89,6 +109,42 @@ export function EditStaffDialog({
     }
   };
 
+  const handlePasswordChange = async () => {
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    if (!staffMember) {
+      setPasswordError('No staff member selected');
+      return;
+    }
+
+    if (!password || !confirmPassword) {
+      setPasswordError('Please fill in both password fields');
+      return;
+    }
+
+    if (password.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+
+    try {
+      await changePassword.mutateAsync({ id: staffMember.id, password });
+      setPassword('');
+      setConfirmPassword('');
+      setPasswordSuccess(true);
+    } catch (err) {
+      setPasswordError(
+        err instanceof Error ? err.message : 'Failed to change password'
+      );
+    }
+  };
+
   const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -96,6 +152,10 @@ export function EditStaffDialog({
   const handleDialogOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       setError(null);
+      setPassword('');
+      setConfirmPassword('');
+      setPasswordError(null);
+      setPasswordSuccess(false);
     }
     onOpenChange(newOpen);
   };
@@ -231,6 +291,89 @@ export function EditStaffDialog({
               placeholder='Optional Square ID'
             />
           </div>
+
+          {canChangePassword && (
+            <div className='flex flex-col gap-4 pt-4 border-t'>
+              <div>
+                <h3 className='text-sm font-semibold text-neutral-800'>
+                  Change Password
+                </h3>
+                <p className='text-xs text-neutral-500 mt-1'>
+                  Set a new password for this staff member&apos;s account
+                </p>
+              </div>
+
+              {passwordError && (
+                <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
+                  <p className='text-red-800 text-sm'>{passwordError}</p>
+                </div>
+              )}
+
+              {passwordSuccess && (
+                <div className='bg-green-50 border border-green-200 rounded-lg p-3'>
+                  <p className='text-green-800 text-sm'>
+                    Password updated successfully
+                  </p>
+                </div>
+              )}
+
+              <div className='grid grid-cols-2 gap-4'>
+                <div className='flex flex-col gap-2'>
+                  <Label
+                    htmlFor='newPassword'
+                    className='text-sm font-medium text-neutral-700'
+                  >
+                    New Password
+                  </Label>
+                  <Input
+                    id='newPassword'
+                    type='password'
+                    value={password}
+                    className='p-2'
+                    autoComplete='new-password'
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder='••••••••'
+                  />
+                </div>
+
+                <div className='flex flex-col gap-2'>
+                  <Label
+                    htmlFor='confirmPassword'
+                    className='text-sm font-medium text-neutral-700'
+                  >
+                    Confirm Password
+                  </Label>
+                  <Input
+                    id='confirmPassword'
+                    type='password'
+                    value={confirmPassword}
+                    className='p-2'
+                    autoComplete='new-password'
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder='••••••••'
+                  />
+                </div>
+              </div>
+
+              <div className='flex justify-end'>
+                <Button
+                  type='button'
+                  variant='outline'
+                  onClick={handlePasswordChange}
+                  disabled={changePassword.isPending}
+                >
+                  {changePassword.isPending ? (
+                    <>
+                      <Loader2 className='w-4 h-4 animate-spin mr-2' />
+                      Updating...
+                    </>
+                  ) : (
+                    'Change Password'
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className='flex gap-3 justify-end mt-4 pt-4 border-t'>
             <Button

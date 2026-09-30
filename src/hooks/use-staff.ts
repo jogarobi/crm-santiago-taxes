@@ -116,6 +116,26 @@ async function updateStaff(id: number, data: UpdateStaffInput): Promise<Staff> {
   return response.json();
 }
 
+async function changeStaffPassword(
+  id: number,
+  password: string
+): Promise<void> {
+  const response = await fetch(`/api/staff/${id}/password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ password }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to change password');
+  }
+
+  return response.json();
+}
+
 async function deleteStaff(id: number): Promise<void> {
   const response = await fetch(`/api/staff/${id}`, {
     method: 'DELETE',
@@ -170,6 +190,13 @@ export function useUpdateStaff() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: staffKeys.lists() });
     },
+  });
+}
+
+export function useChangeStaffPassword() {
+  return useMutation({
+    mutationFn: ({ id, password }: { id: number; password: string }) =>
+      changeStaffPassword(id, password),
   });
 }
 
