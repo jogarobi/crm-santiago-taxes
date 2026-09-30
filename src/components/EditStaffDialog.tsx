@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronDown } from 'lucide-react';
 import {
   useUpdateStaff,
   useChangeStaffPassword,
@@ -47,6 +47,9 @@ export function EditStaffDialog({
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
+  const [showDetails, setShowDetails] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -71,6 +74,8 @@ export function EditStaffDialog({
       setConfirmPassword('');
       setPasswordError(null);
       setPasswordSuccess(false);
+      setShowDetails(true);
+      setShowPassword(false);
     }
   }, [staffMember]);
 
@@ -167,13 +172,32 @@ export function EditStaffDialog({
           <DialogTitle className='text-xl'>Edit Staff Member</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className='flex flex-col gap-6 mt-4'>
+        <form
+          onSubmit={handleSubmit}
+          className='flex flex-col gap-4 mt-4 max-h-[70vh] overflow-y-auto pr-1'
+        >
           {error && (
             <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
               <p className='text-red-800 text-sm'>{error}</p>
             </div>
           )}
 
+          <button
+            type='button'
+            onClick={() => setShowDetails((v) => !v)}
+            className='flex items-center justify-between w-full text-left'
+          >
+            <span className='text-sm font-semibold text-neutral-800'>
+              Staff Details
+            </span>
+            <ChevronDown
+              className={`w-4 h-4 text-neutral-500 transition-transform ${
+                showDetails ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+
+          <div className={`flex-col gap-6 ${showDetails ? 'flex' : 'hidden'}`}>
           <div className='grid grid-cols-2 gap-4'>
             <div className='flex flex-col gap-2'>
               <Label
@@ -291,18 +315,35 @@ export function EditStaffDialog({
               placeholder='Optional Square ID'
             />
           </div>
+          </div>
 
           {canChangePassword && (
             <div className='flex flex-col gap-4 pt-4 border-t'>
-              <div>
-                <h3 className='text-sm font-semibold text-neutral-800'>
-                  Change Password
-                </h3>
-                <p className='text-xs text-neutral-500 mt-1'>
-                  Set a new password for this staff member&apos;s account
-                </p>
-              </div>
+              <button
+                type='button'
+                onClick={() => setShowPassword((v) => !v)}
+                className='flex items-center justify-between w-full text-left'
+              >
+                <div>
+                  <h3 className='text-sm font-semibold text-neutral-800'>
+                    Change Password
+                  </h3>
+                  <p className='text-xs text-neutral-500 mt-1'>
+                    Set a new password for this staff member&apos;s account
+                  </p>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-neutral-500 transition-transform ${
+                    showPassword ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
 
+              <div
+                className={`flex-col gap-4 ${
+                  showPassword ? 'flex' : 'hidden'
+                }`}
+              >
               {passwordError && (
                 <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
                   <p className='text-red-800 text-sm'>{passwordError}</p>
@@ -371,6 +412,7 @@ export function EditStaffDialog({
                     'Change Password'
                   )}
                 </Button>
+              </div>
               </div>
             </div>
           )}
