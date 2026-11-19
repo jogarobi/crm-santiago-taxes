@@ -21,7 +21,6 @@ export type Stats = {
     typeIcon: string | null;
     count: number;
   }>;
-  mostPopularService: string | null;
 };
 
 export type StatsResponse = {

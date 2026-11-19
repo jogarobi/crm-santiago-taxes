@@ -22,9 +22,7 @@ export type CreateAccountRelationshipInput = {
   accountId: number;
   relatedAccountId: number;
   relationship: string;
-  createdBy: string;
 };
 
-export type UpdateAccountRelationshipInput = Partial<CreateAccountRelationshipInput> & {
-  updatedBy: string;
-};
+export type UpdateAccountRelationshipInput =
+  Partial<CreateAccountRelationshipInput>;

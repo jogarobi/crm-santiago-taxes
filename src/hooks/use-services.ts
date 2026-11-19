@@ -183,11 +183,11 @@ async function fetchClientServices(accountId: number): Promise<ClientServiceEntr
   return res.json();
 }
 
-async function addClientService(accountId: number, serviceId: number, createdBy: string) {
+async function addClientService(accountId: number, serviceId: number) {
   const res = await fetch(`/api/accounts/${accountId}/services`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ serviceId, createdBy }),
+    body: JSON.stringify({ serviceId }),
   });
   if (!res.ok) throw new Error('Failed to assign service');
   return res.json();
@@ -212,8 +212,8 @@ export function useClientServices(accountId: number) {
 export function useAddClientService() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ accountId, serviceId, createdBy }: { accountId: number; serviceId: number; createdBy: string }) =>
-      addClientService(accountId, serviceId, createdBy),
+    mutationFn: ({ accountId, serviceId }: { accountId: number; serviceId: number }) =>
+      addClientService(accountId, serviceId),
     onSuccess: (_, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: serviceKeys.clientServices(accountId) });
     },

@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { useAppointments, useSyncAppointment } from '@/hooks/use-appointments';
+import { dedupeBySquareId } from '@/lib/utils/appointmentUtils';
 import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
+import { fmtDateTime } from '@/lib/dates';
 import {
   Empty,
   EmptyHeader,
@@ -33,6 +35,7 @@ import {
 } from './ui/dropdown-menu';
 import { CreateClientDialog } from './CreateClientDialog';
 import { LinkClientDialog } from './LinkClientDialog';
+import { StaffName } from './StaffName';
 
 export function UpcomingAppointments() {
   const [selectedAppointment, setSelectedAppointment] =
@@ -68,7 +71,7 @@ export function UpcomingAppointments() {
 
   const upcomingAppointments = useMemo(() => {
     if (!appointments) return [];
-    return appointments
+    return dedupeBySquareId(appointments)
       .filter((appointment) => !appointment.status?.includes('CANCELLED'))
       .slice(0, 3);
   }, [appointments]);
@@ -425,12 +428,12 @@ export function UpcomingAppointments() {
 
               <div className='border-t pt-6 mt-3 text-sm text-neutral-500 flex flex-col gap-2'>
                 {selectedAppointment.createdBy && (
-                  <p>Booked by: {selectedAppointment.createdBy}</p>
+                  <p>Booked by: <StaffName id={selectedAppointment.createdBy} /></p>
                 )}
                 {selectedAppointment.createdAt && (
                   <p>
                     Created on:{' '}
-                    {new Date(selectedAppointment.createdAt).toLocaleString()}
+                    {fmtDateTime(selectedAppointment.createdAt)}
                   </p>
                 )}
               </div>

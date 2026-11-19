@@ -8,7 +8,10 @@ import {
   useDateRangeAvailability,
 } from '@/hooks/use-appointments';
 import { useCatalogList } from '@/hooks/use-catalog';
-import { transformAppointmentsToCalendarEvents } from '@/lib/utils/appointmentUtils';
+import {
+  transformAppointmentsToCalendarEvents,
+  dedupeBySquareId,
+} from '@/lib/utils/appointmentUtils';
 import {
   endOfDay,
   endOfWeek,
@@ -67,6 +70,8 @@ import {
 } from '@/components/ui/select';
 import { useStaff } from '@/hooks/use-staff';
 import { useCurrentUser } from '@/hooks/use-current-user';
+import { fmtDateTime } from '@/lib/dates';
+import { StaffName } from '@/components/StaffName';
 
 const STAFF_COLORS = [
   '#7c3aed',
@@ -225,7 +230,7 @@ export default function Appointments() {
 
   // Appointments narrowed to the selected staff member (or all).
   const filteredAppointments = useMemo(() => {
-    const list = appointments || [];
+    const list = dedupeBySquareId(appointments || []);
     if (selectedStaffId === 'all') return list;
     const staffMember = staffWithSquareId.find(
       (s) => s.squareId === selectedStaffId,
@@ -890,12 +895,12 @@ export default function Appointments() {
 
               <div className='border-t pt-6 mt-3 text-sm text-neutral-500 flex flex-col gap-2'>
                 {selectedAppointment.createdBy && (
-                  <p>Booked by: {selectedAppointment.createdBy}</p>
+                  <p>Booked by: <StaffName id={selectedAppointment.createdBy} /></p>
                 )}
                 {selectedAppointment.createdAt && (
                   <p>
                     Created on:{' '}
-                    {format(new Date(selectedAppointment.createdAt), 'PPP p')}
+                    {fmtDateTime(selectedAppointment.createdAt)}
                   </p>
                 )}
               </div>
@@ -1137,14 +1142,12 @@ export default function Appointments() {
 
                   <div className='border-t pt-6 mt-3 text-sm text-neutral-500 flex flex-col gap-2'>
                     {selectedAppointment.createdBy && (
-                      <p>Booked by: {selectedAppointment.createdBy}</p>
+                      <p>Booked by: <StaffName id={selectedAppointment.createdBy} /></p>
                     )}
                     {selectedAppointment.createdAt && (
                       <p>
                         Created on:{' '}
-                        {new Date(
-                          selectedAppointment.createdAt,
-                        ).toLocaleString()}
+                        {fmtDateTime(selectedAppointment.createdAt)}
                       </p>
                     )}
                   </div>

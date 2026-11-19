@@ -1,6 +1,23 @@
 import { Appointment } from '@/lib/types/appointment';
 import { CalendarEvent } from '@/components/Calendar/types';
 
+/**
+ * Safety net for duplicate appointments arriving from Square (webhook + sync
+ * can both insert the same booking before the backend upsert-on-squareId fix
+ * ships). The API maps each row's `id` to its squareId when present
+ * (`apt.squareId || apt.id`), so duplicates of the same booking share an `id`.
+ * Keeps the first occurrence per id.
+ */
+export function dedupeBySquareId(appointments: Appointment[]): Appointment[] {
+  const seen = new Set<string>();
+  return appointments.filter((apt) => {
+    if (!apt.id) return true;
+    if (seen.has(apt.id)) return false;
+    seen.add(apt.id);
+    return true;
+  });
+}
+
 export function transformAppointmentsToCalendarEvents(
   appointments: Appointment[],
   getColor?: (appointment: Appointment) => string

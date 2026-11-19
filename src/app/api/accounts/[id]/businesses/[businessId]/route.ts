@@ -128,7 +128,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string; businessId: string }> }
 ) {
   try {
-    await requirePermission({ business: ['update'] });
+    const { session } = await requirePermission({ business: ['update'] });
 
     const { id, businessId } = await params;
     const accountId = parseInt(id);
@@ -147,7 +147,7 @@ export async function PUT(
     }
 
     const updateData: BusinessUpdate = {
-      updatedBy: body.updatedBy,
+      updatedBy: session.user.id,
       updatedAt: new Date().toISOString(),
     };
     if (body.registeredName !== undefined) updateData.name = body.registeredName;

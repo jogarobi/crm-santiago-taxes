@@ -164,7 +164,6 @@ export function CreateClientDialog({
         ...accountData,
         dateOfBirth: dateOfBirth.toISOString().split('T')[0],
         squareId: customerId,
-        createdBy: 'system',
       });
 
       // Create email/phone contacts for the new client, if provided.
@@ -187,7 +186,6 @@ export function CreateClientDialog({
             contactsToCreate.map((contact) =>
               createContact.mutateAsync({
                 accountId: newAccount.id,
-                createdBy: 'system',
                 ...contact,
               })
             )
@@ -438,6 +436,10 @@ export function CreateClientDialog({
                 <Input
                   id='zipCode'
                   className='p-2'
+                  type='text'
+                  inputMode='numeric'
+                  autoComplete='postal-code'
+                  placeholder='02746'
                   value={formData.zipCode}
                   onChange={(e) => handleChange('zipCode', e.target.value)}
                   maxLength={10}

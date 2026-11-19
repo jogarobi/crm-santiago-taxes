@@ -3,6 +3,7 @@
 import { Note } from '@/lib/types/note';
 import { ClockIcon, UserIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { StaffName } from '@/components/StaffName';
 
 interface NotesGridProps {
   notes: Note[];
@@ -36,7 +37,7 @@ export function NotesGrid({ notes, onNoteClick }: NotesGridProps) {
             <div className='flex flex-col gap-2 text-[13px] text-gray-600 mt-auto'>
               <div className='flex items-center gap-1.5'>
                 <UserIcon size={14} strokeWidth={2.5} />
-                <span className='font-medium truncate'>{note.createdBy}</span>
+                <StaffName id={note.createdBy} className='font-medium truncate' />
               </div>
 
               <div className='flex items-center gap-1.5'>

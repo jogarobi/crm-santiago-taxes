@@ -13,11 +13,9 @@ export type CreateAccountContactInput = {
   accountId: number;
   contactType: 'email' | 'phone';
   contactValue: string;
-  createdBy: string;
 };
 
 export type UpdateAccountContactInput = {
   contactType?: 'email' | 'phone';
   contactValue?: string;
-  updatedBy: string;
 };

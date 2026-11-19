@@ -6,6 +6,7 @@ import { CustomerName } from '@/components/CustomerName';
 import { ServiceName } from '@/components/ServiceName';
 import { TeamMemberName } from '@/components/TeamMemberName';
 import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
+import { fmtDateTime } from '@/lib/dates';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -381,7 +382,7 @@ export default function AppointmentDetailPage({
             <div>
               <p className='text-neutral-600'>Created</p>
               <p className='font-medium'>
-                {new Date(appointment.createdAt).toLocaleString()}
+                {fmtDateTime(appointment.createdAt)}
               </p>
             </div>
           )}
@@ -389,7 +390,7 @@ export default function AppointmentDetailPage({
             <div>
               <p className='text-neutral-600'>Last Updated</p>
               <p className='font-medium'>
-                {new Date(appointment.updatedAt).toLocaleString()}
+                {fmtDateTime(appointment.updatedAt)}
               </p>
             </div>
           )}

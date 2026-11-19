@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -14,7 +14,7 @@ import {
 import { Label } from './ui/label';
 import { Loader2 } from 'lucide-react';
 import { useCreateTouchpoint } from '@/hooks/use-touchpoints';
-import { useServices } from '@/hooks/use-services';
+import { useServices, useClientServices } from '@/hooks/use-services';
 import type { TouchpointType } from '@/lib/types/touchpoint';
 
 interface LogTouchpointDialogProps {
@@ -37,15 +37,37 @@ export function LogTouchpointDialog({
   accountId,
   businessId,
 }: LogTouchpointDialogProps) {
+  const NONE = 'none';
   const createTouchpoint = useCreateTouchpoint();
   const { data: servicesData } = useServices({ isActive: true });
+  const { data: clientServicesData } = useClientServices(accountId ?? 0);
 
   const [type, setType] = useState<TouchpointType | ''>('');
   const [note, setNote] = useState('');
   const [serviceId, setServiceId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
-  const activeServices = servicesData?.services || [];
+  // Prefer the client's provided services (most recent first). Fall back to all
+  // active services when there is no client context (e.g. a business touchpoint).
+  // TODO (Pieza 1): switch the source to the client's open cases and preselect
+  // the open case when there is exactly one.
+  const serviceOptions = useMemo(() => {
+    if (accountId && clientServicesData && clientServicesData.length > 0) {
+      return [...clientServicesData]
+        .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
+        .map((e) => ({ id: e.serviceId, name: e.service.name }));
+    }
+    return (servicesData?.services ?? []).map((s) => ({ id: s.id, name: s.name }));
+  }, [accountId, clientServicesData, servicesData]);
+
+  // Effective selection: until the user picks something (serviceId === ''),
+  // default to the most recent service, or "Ninguno" when there are none.
+  const effectiveServiceId =
+    serviceId !== ''
+      ? serviceId
+      : serviceOptions[0]
+        ? String(serviceOptions[0].id)
+        : NONE;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,8 +89,8 @@ export function LogTouchpointDialog({
         businessId,
         type: type as TouchpointType,
         note: note.trim(),
-        serviceId: serviceId ? parseInt(serviceId) : undefined,
-        createdBy: 'system', // TODO: Replace with actual user
+        serviceId:
+          effectiveServiceId !== NONE ? parseInt(effectiveServiceId) : undefined,
       });
 
       onOpenChange(false);
@@ -140,13 +162,14 @@ export function LogTouchpointDialog({
           </div>
 
           <div className='flex flex-col gap-3'>
-            <Label htmlFor='service'>Service (Optional)</Label>
-            <Select value={serviceId} onValueChange={setServiceId}>
+            <Label htmlFor='service'>Servicio (Opcional)</Label>
+            <Select value={effectiveServiceId} onValueChange={setServiceId}>
               <SelectTrigger className='w-full'>
-                <SelectValue placeholder='Select a service' />
+                <SelectValue placeholder='Seleccionar servicio' />
               </SelectTrigger>
               <SelectContent>
-                {activeServices.map((service) => (
+                <SelectItem value={NONE}>Ninguno</SelectItem>
+                {serviceOptions.map((service) => (
                   <SelectItem key={service.id} value={service.id.toString()}>
                     {service.name}
                   </SelectItem>

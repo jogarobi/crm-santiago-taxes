@@ -69,7 +69,6 @@ export function CreateBusinessDialog({
           ein: cleanedEin,
           address: formData.address || undefined,
           entityId: formData.entityId ? parseInt(formData.entityId) : undefined,
-          createdBy: 'system', // TODO: Replace with actual user
         },
       });
 

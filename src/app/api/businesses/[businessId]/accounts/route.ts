@@ -60,7 +60,7 @@ export async function POST(
   { params }: { params: Promise<{ businessId: string }> }
 ) {
   try {
-    await requirePermission({ business: ['update'] });
+    const { session } = await requirePermission({ business: ['update'] });
 
     const { businessId } = await params;
     const businessIdInt = parseInt(businessId);
@@ -70,9 +70,9 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid business ID' }, { status: 400 });
     }
 
-    if (!body.accountId || !body.createdBy) {
+    if (!body.accountId) {
       return NextResponse.json(
-        { error: 'Missing required fields: accountId, createdBy' },
+        { error: 'Missing required field: accountId' },
         { status: 400 }
       );
     }
@@ -120,7 +120,7 @@ export async function POST(
         id: await nextId('ClientBusiness'),
         businessId: businessIdInt,
         clientId: accountIdInt,
-        createdBy: body.createdBy,
+        createdBy: session.user.id,
         createdAt: new Date().toISOString(),
       })
       .select()

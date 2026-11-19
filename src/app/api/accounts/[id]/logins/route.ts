@@ -71,7 +71,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission({ client: ['create'] });
+    const { session } = await requirePermission({ client: ['create'] });
 
     const { id } = await params;
     const accountId = parseInt(id);
@@ -81,10 +81,10 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
     }
 
-    if (!body.label || !body.username || !body.password || !body.createdBy) {
+    if (!body.label || !body.username || !body.password) {
       return NextResponse.json(
         {
-          error: 'Missing required fields: label, username, password, createdBy',
+          error: 'Missing required fields: label, username, password',
         },
         { status: 400 }
       );
@@ -110,7 +110,7 @@ export async function POST(
         password: encrypt(body.password),
         url: body.url || null,
         note: body.notes || null,
-        createdBy: body.createdBy,
+        createdBy: session.user.id,
         createdAt: new Date().toISOString(),
       })
       .select(SELECT)

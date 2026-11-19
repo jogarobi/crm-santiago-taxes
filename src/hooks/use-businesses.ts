@@ -148,13 +148,12 @@ async function fetchBusinessAccounts(businessId: number): Promise<BusinessAccoun
 
 async function addBusinessAccount(
   businessId: number,
-  accountId: number,
-  createdBy: string
+  accountId: number
 ): Promise<BusinessAccountLink> {
   const response = await fetch(`/api/businesses/${businessId}/accounts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ accountId, createdBy }),
+    body: JSON.stringify({ accountId }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -295,12 +294,10 @@ export function useAddBusinessAccount() {
     mutationFn: ({
       businessId,
       accountId,
-      createdBy,
     }: {
       businessId: number;
       accountId: number;
-      createdBy: string;
-    }) => addBusinessAccount(businessId, accountId, createdBy),
+    }) => addBusinessAccount(businessId, accountId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: businessKeys.accounts(variables.businessId),

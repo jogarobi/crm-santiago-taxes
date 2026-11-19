@@ -8,7 +8,8 @@ import { Textarea } from './ui/textarea';
 import { Loader2, Edit2Icon, TrashIcon, XIcon, CheckIcon } from 'lucide-react';
 import { useUpdateNote, useDeleteNote } from '@/hooks/use-notes';
 import { Note } from '@/lib/types/note';
-import { format } from 'date-fns';
+import { fmtDateTime } from '@/lib/dates';
+import { StaffName } from '@/components/StaffName';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,7 +69,6 @@ export function NoteDetailDialog({
         accountId: note.accountId || undefined,
         data: {
           content: content.trim(),
-          updatedBy: 'system', // TODO: Replace with actual user
         },
       });
 
@@ -172,8 +172,8 @@ export function NoteDetailDialog({
                 </div>
 
                 <div className='border-t pt-6 mt-3 text-sm text-neutral-500 flex flex-col gap-2'>
-                  <p>Created by: {note.createdBy}</p>
-                  <p>Created on: {format(new Date(note.createdAt), 'PPP p')}</p>
+                  <p>Created by: <StaffName id={note.createdBy} /></p>
+                  <p>Created on: {fmtDateTime(note.createdAt)}</p>
                 </div>
               </div>
             )}

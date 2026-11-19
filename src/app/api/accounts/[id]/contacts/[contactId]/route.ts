@@ -10,7 +10,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string; contactId: string }> }
 ) {
   try {
-    await requirePermission({ client: ['update'] });
+    const { session } = await requirePermission({ client: ['update'] });
 
     const { id, contactId } = await params;
     const accountId = parseInt(id);
@@ -21,15 +21,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
-    if (!body.updatedBy) {
-      return NextResponse.json(
-        { error: 'Missing required field: updatedBy' },
-        { status: 400 }
-      );
-    }
-
     const updateData: ContactUpdate = {
-      updatedBy: body.updatedBy,
+      updatedBy: session.user.id,
       updatedAt: new Date().toISOString(),
     };
     if (body.contactType !== undefined)

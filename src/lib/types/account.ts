@@ -30,11 +30,9 @@ export type CreateAccountInput = {
   city?: string;
   state?: string;
   zipCode?: string;
-  createdBy: string;
   squareId?: string;
 };
 
 export type UpdateAccountInput = Partial<CreateAccountInput> & {
-  updatedBy: string;
   flag?: string | null;
 };

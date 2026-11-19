@@ -10,13 +10,11 @@ export type Service = {
 
 export type CreateServiceInput = {
   name: string;
-  createdBy: string;
 };
 
 export type UpdateServiceInput = {
   name?: string;
   isActive?: boolean;
-  updatedBy: string;
 };
 
 export type ServicesResponse = {

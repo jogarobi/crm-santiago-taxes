@@ -103,7 +103,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission({ client: ['create'] });
+    const { session } = await requirePermission({ client: ['create'] });
 
     const { id } = await params;
     const accountId = parseInt(id);
@@ -113,11 +113,10 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
     }
 
-    if (!body.relatedAccountId || !body.relationship || !body.createdBy) {
+    if (!body.relatedAccountId || !body.relationship) {
       return NextResponse.json(
         {
-          error:
-            'Missing required fields: relatedAccountId, relationship, createdBy',
+          error: 'Missing required fields: relatedAccountId, relationship',
         },
         { status: 400 }
       );
@@ -147,7 +146,7 @@ export async function POST(
         clientId: accountId,
         relatedClientId: Number(body.relatedAccountId),
         relationship: body.relationship,
-        createdBy: body.createdBy,
+        createdBy: session.user.id,
         createdAt: new Date().toISOString(),
       })
       .select()

@@ -37,6 +37,8 @@ import { EditStaffDialog } from '@/components/EditStaffDialog';
 import { DeleteStaffDialog } from '@/components/DeleteStaffDialog';
 import { Pencil, Trash2 } from 'lucide-react';
 import type { Staff } from '@/hooks/use-staff';
+import { fmtDate as formatDate } from '@/lib/dates';
+import { StaffName } from '@/components/StaffName';
 
 export default function StaffPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,14 +111,6 @@ export default function StaffPage() {
 
   const handleUpdateSuccess = () => {
     refetch();
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -254,7 +248,7 @@ export default function StaffPage() {
                     {formatDate(member.createdAt)}
                   </TableCell>
                   <TableCell className='p-4 text-neutral-600'>
-                    {member.createdBy}
+                    <StaffName id={member.createdBy} />
                   </TableCell>
                   <TableCell className='p-4'>
                     <div className='flex gap-2'>

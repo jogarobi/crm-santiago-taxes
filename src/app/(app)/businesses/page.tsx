@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useAllBusinesses, useBusinessCreators } from '@/hooks/use-businesses';
+import { fmtDate as formatDate } from '@/lib/dates';
+import { StaffName } from '@/components/StaffName';
 import {
   Table,
   TableBody,
@@ -98,14 +100,6 @@ export default function BusinessesPage() {
 
   const businesses = response?.data || [];
   const meta = response?.meta;
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
 
   return (
     <div className='flex flex-col gap-6'>
@@ -266,7 +260,7 @@ export default function BusinessesPage() {
                     {formatDate(business.createdAt)}
                   </TableCell>
                   <TableCell className='p-4 text-neutral-600'>
-                    {business.createdBy}
+                    <StaffName id={business.createdBy} />
                   </TableCell>
                 </TableRow>
               ))}

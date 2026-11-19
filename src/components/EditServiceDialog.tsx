@@ -59,7 +59,6 @@ export function EditServiceDialog({
         data: {
           name: formData.name.trim(),
           isActive: formData.isActive,
-          updatedBy: 'system', // TODO: Replace with actual user
         },
       });
 

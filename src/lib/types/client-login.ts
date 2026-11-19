@@ -17,7 +17,6 @@ export interface CreateClientLoginInput {
   password: string;
   url?: string;
   notes?: string;
-  createdBy: string;
 }
 
 export interface UpdateClientLoginInput {
@@ -26,5 +25,4 @@ export interface UpdateClientLoginInput {
   password?: string;
   url?: string;
   notes?: string;
-  updatedBy: string;
 }

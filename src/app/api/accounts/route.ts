@@ -182,20 +182,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requirePermission({ client: ['create'] });
+    const { session } = await requirePermission({ client: ['create'] });
 
     const body = await request.json();
 
-    if (
-      !body.firstName ||
-      !body.lastName ||
-      !body.dateOfBirth ||
-      !body.createdBy
-    ) {
+    if (!body.firstName || !body.lastName || !body.dateOfBirth) {
       return NextResponse.json(
         {
-          error:
-            'Missing required fields: firstName, lastName, dateOfBirth, createdBy',
+          error: 'Missing required fields: firstName, lastName, dateOfBirth',
         },
         { status: 400 }
       );
@@ -213,7 +207,7 @@ export async function POST(request: Request) {
         city: body.city ?? '',
         state: body.state ?? '',
         zipCode: body.zipCode != null ? Number(body.zipCode) : 0,
-        createdBy: body.createdBy,
+        createdBy: session.user.id,
         createdAt: new Date().toISOString(),
         squareId: body.squareId ?? null,
       })

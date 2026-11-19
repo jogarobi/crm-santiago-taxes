@@ -43,7 +43,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string; loginId: string }> }
 ) {
   try {
-    await requirePermission({ client: ['update'] });
+    const { session } = await requirePermission({ client: ['update'] });
 
     const { id, loginId } = await params;
     const accountId = parseInt(id);
@@ -54,12 +54,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
-    if (!body.updatedBy) {
-      return NextResponse.json({ error: 'Missing updatedBy' }, { status: 400 });
-    }
-
     const updateData: LoginUpdate = {
-      updatedBy: body.updatedBy,
+      updatedBy: session.user.id,
       updatedAt: new Date().toISOString(),
     };
     if (body.label !== undefined) updateData.label = body.label;

@@ -94,7 +94,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string; relationshipId: string }> }
 ) {
   try {
-    await requirePermission({ client: ['update'] });
+    const { session } = await requirePermission({ client: ['update'] });
 
     const { id, relationshipId } = await params;
     const accountId = parseInt(id);
@@ -104,13 +104,6 @@ export async function PUT(
     if (isNaN(accountId) || isNaN(relationshipIdInt)) {
       return NextResponse.json(
         { error: 'Invalid account ID or relationship ID' },
-        { status: 400 }
-      );
-    }
-
-    if (!body.updatedBy) {
-      return NextResponse.json(
-        { error: 'Missing required field: updatedBy' },
         { status: 400 }
       );
     }
@@ -133,7 +126,7 @@ export async function PUT(
     }
 
     const updateData: RelationUpdate = {
-      updatedBy: body.updatedBy,
+      updatedBy: session.user.id,
       updatedAt: new Date().toISOString(),
     };
     if (body.relatedAccountId !== undefined)

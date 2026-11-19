@@ -29,6 +29,8 @@ import { CreateServiceDialog } from '@/components/CreateServiceDialog';
 import { EditServiceDialog } from '@/components/EditServiceDialog';
 import { DeleteServiceDialog } from '@/components/DeleteServiceDialog';
 import type { Service } from '@/lib/types/service';
+import { fmtDate as formatDate } from '@/lib/dates';
+import { StaffName } from '@/components/StaffName';
 
 export default function ServicesPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,14 +71,6 @@ export default function ServicesPage() {
   const handleDeleteClick = (service: Service) => {
     setSelectedService(service);
     setIsDeleteDialogOpen(true);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
   };
 
   const getStatusBadge = (isActive: boolean) => {
@@ -183,7 +177,7 @@ export default function ServicesPage() {
                     {formatDate(service.createdAt)}
                   </TableCell>
                   <TableCell className='p-4'>
-                    {service.createdBy}
+                    <StaffName id={service.createdBy} />
                   </TableCell>
                   <TableCell className='p-4'>
                     <div className='flex gap-2'>

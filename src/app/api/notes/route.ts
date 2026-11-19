@@ -90,13 +90,13 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requirePermission({ note: ['create'] });
+    const { session } = await requirePermission({ note: ['create'] });
 
     const body = await request.json();
 
-    if (!body.content || !body.createdBy) {
+    if (!body.content) {
       return NextResponse.json(
-        { error: 'Missing required fields: content, createdBy' },
+        { error: 'Missing required field: content' },
         { status: 400 }
       );
     }
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
         clientId: body.accountId ? parseInt(body.accountId) : null,
         businessId: body.businessId ? parseInt(body.businessId) : null,
         content: body.content,
-        createdBy: body.createdBy,
+        createdBy: session.user.id,
         createdAt: new Date().toISOString(),
       })
       .select()

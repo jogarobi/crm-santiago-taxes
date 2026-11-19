@@ -45,7 +45,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission({ service: ['update'] });
+    const { session } = await requirePermission({ service: ['update'] });
 
     const { id } = await params;
     const serviceId = parseInt(id);
@@ -55,15 +55,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Invalid service ID' }, { status: 400 });
     }
 
-    if (!body.updatedBy) {
-      return NextResponse.json(
-        { error: 'Missing required field: updatedBy' },
-        { status: 400 }
-      );
-    }
-
     const updateData: ServiceUpdate = {
-      updatedBy: body.updatedBy,
+      updatedBy: session.user.id,
       updatedAt: new Date().toISOString(),
     };
     if (body.name !== undefined) updateData.name = body.name;

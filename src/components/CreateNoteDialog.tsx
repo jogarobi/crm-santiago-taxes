@@ -93,7 +93,6 @@ export function CreateNoteDialog({
         accountId: targetAccountId,
         data: {
           content: content.trim(),
-          createdBy: 'system', // TODO: Replace with actual user
           businessId: businessId,
         },
       });

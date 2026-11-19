@@ -21,7 +21,6 @@ export type CreateTaskInput = {
   content: string;
   status?: TaskStatus;
   assignedTo?: string;
-  createdBy: string;
 };
 
 export type UpdateTaskInput = {
@@ -30,7 +29,6 @@ export type UpdateTaskInput = {
   assignedTo?: string;
   accountId?: number | null;
   businessId?: number | null;
-  updatedBy: string;
 };
 
 export type TasksResponse = {

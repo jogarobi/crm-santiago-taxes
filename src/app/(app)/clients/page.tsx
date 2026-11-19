@@ -45,6 +45,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { CreateClientDialog } from '@/components/CreateClientDialog';
+import { StaffName } from '@/components/StaffName';
 
 export default function ClientsPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -298,7 +299,7 @@ export default function ClientsPage() {
                     {formatDate(account.createdAt)}
                   </TableCell>
                   <TableCell className='p-4 text-neutral-600'>
-                    {account.createdBy}
+                    <StaffName id={account.createdBy} />
                   </TableCell>
                 </TableRow>
               ))}

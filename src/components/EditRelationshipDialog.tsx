@@ -126,7 +126,6 @@ export function EditRelationshipDialog({
         data: {
           relatedAccountId: selectedAccount.id,
           relationship: relationshipType,
-          updatedBy: 'system',
         },
       });
 

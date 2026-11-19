@@ -93,7 +93,6 @@ export function EditBusinessDialog({
           ein: cleanedEin,
           address: formData.address || undefined,
           entityId: formData.entityId ? parseInt(formData.entityId) : undefined,
-          updatedBy: 'system', // TODO: Replace with actual user
         },
       });
 

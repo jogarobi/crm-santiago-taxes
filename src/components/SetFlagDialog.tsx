@@ -46,7 +46,7 @@ export function SetFlagDialog({
     try {
       await updateAccount.mutateAsync({
         id: accountId,
-        data: { flag: comment.trim(), updatedBy: session?.user?.id ?? 'system' },
+        data: { flag: comment.trim() },
       });
       onOpenChange(false);
     } catch {

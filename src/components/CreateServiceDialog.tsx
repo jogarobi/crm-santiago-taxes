@@ -37,7 +37,6 @@ export function CreateServiceDialog({
     try {
       await createService.mutateAsync({
         name: formData.name.trim(),
-        createdBy: 'system', // TODO: Replace with actual user
       });
 
       onOpenChange(false);

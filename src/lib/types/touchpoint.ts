@@ -20,5 +20,4 @@ export type CreateTouchpointInput = {
   type: TouchpointType;
   note: string;
   serviceId?: number;
-  createdBy: string;
 };

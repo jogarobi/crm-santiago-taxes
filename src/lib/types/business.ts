@@ -60,7 +60,6 @@ export interface CreateBusinessInput {
   state?: string;
   zipCode?: string;
   entityId?: number;
-  createdBy: string;
 }
 
 export interface UpdateBusinessInput {
@@ -72,5 +71,4 @@ export interface UpdateBusinessInput {
   state?: string;
   zipCode?: string;
   entityId?: number;
-  updatedBy: string;
 }

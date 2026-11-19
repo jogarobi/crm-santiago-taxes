@@ -6,6 +6,7 @@ import { useStaff } from '@/hooks/use-staff';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useAllBusinesses } from '@/hooks/use-businesses';
 import { useSessionUser } from '@/lib/use-session-user';
+import { fmtDate } from '@/lib/dates';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -282,12 +283,7 @@ function TaskCard({
           <div className='flex items-center gap-1'>
             <ClockIcon className='w-4 text-neutral-500' strokeWidth={2} />
             <p className='text-sm text-neutral-500'>
-              Created on{' '}
-              {new Date(task.createdAt).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
+              Created on {fmtDate(task.createdAt)}
             </p>
           </div>
         </CardContent>
@@ -481,7 +477,6 @@ export default function TasksPage() {
           assignedTo: assignedToValue,
           accountId,
           businessId,
-          updatedBy: session.user.id,
         },
       },
       {

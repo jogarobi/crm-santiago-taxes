@@ -32,7 +32,6 @@ import {
 
 interface Props {
   accountId: number;
-  createdBy: string;
 }
 
 interface LoginFormState {
@@ -364,7 +363,7 @@ function LoginRow({
   );
 }
 
-export function LoginsTab({ accountId, createdBy }: Props) {
+export function LoginsTab({ accountId }: Props) {
   const { data: logins, isLoading } = useClientLogins(accountId);
   const createLogin = useCreateClientLogin();
   const updateLogin = useUpdateClientLogin();
@@ -383,7 +382,7 @@ export function LoginsTab({ accountId, createdBy }: Props) {
   const handleAddSubmit = () => {
     if (!form.label || !form.username || !form.password) return;
     createLogin.mutate(
-      { accountId, data: { ...form, createdBy } },
+      { accountId, data: { ...form } },
       {
         onSuccess: () => {
           setAddOpen(false);
@@ -416,7 +415,6 @@ export function LoginsTab({ accountId, createdBy }: Props) {
           password: form.password || undefined,
           url: form.url,
           notes: form.notes,
-          updatedBy: createdBy,
         },
       },
       {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePayments } from '@/hooks/use-payments';
+import { fmtDateTime } from '@/lib/dates';
 import { useCustomer } from '@/hooks/use-customer';
 import {
   Table,
@@ -30,13 +31,7 @@ function formatCurrency(amount: bigint, currency: string): string {
 }
 
 function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return fmtDateTime(dateString);
 }
 
 function getStatusColor(status: string): string {

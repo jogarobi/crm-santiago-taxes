@@ -94,24 +94,6 @@ export default function Home() {
             )}
           </p>
         </Link>
-
-        <Link
-          href='/services'
-          className='group w-full border p-4 rounded-md flex flex-col gap-2 bg-white hover:shadow-xs transition-shadow'
-        >
-          <div className='flex items-center justify-between'>
-            <p className='text-[15px] text-neutral-600 group-hover:underline'>Most popular service</p>
-          </div>
-          <p className='font-bold text-xl text-purple'>
-            {isLoadingStats ? (
-              <Loader2 className='animate-spin text-purple' />
-            ) : stats?.mostPopularService ? (
-              stats.mostPopularService
-            ) : (
-              'N/A'
-            )}
-          </p>
-        </Link>
       </div>
 
       <div className='flex gap-14'>

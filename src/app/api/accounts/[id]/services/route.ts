@@ -59,7 +59,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission({ client: ['update'] });
+    const { session } = await requirePermission({ client: ['update'] });
 
     const { id } = await params;
     const accountId = parseInt(id);
@@ -67,9 +67,9 @@ export async function POST(
 
     if (isNaN(accountId))
       return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
-    if (!body.serviceId || !body.createdBy)
+    if (!body.serviceId)
       return NextResponse.json(
-        { error: 'Missing serviceId or createdBy' },
+        { error: 'Missing serviceId' },
         { status: 400 }
       );
 
@@ -94,7 +94,7 @@ export async function POST(
       .insert({
         clientId: accountId,
         serviceId: serviceIdInt,
-        createdBy: body.createdBy,
+        createdBy: session.user.id,
         createdAt: new Date().toISOString(),
       })
       .select()

@@ -100,13 +100,6 @@ export async function PUT(
       return NextResponse.json({ error: 'Invalid task ID' }, { status: 400 });
     }
 
-    if (!body.updatedBy) {
-      return NextResponse.json(
-        { error: 'Missing required field: updatedBy' },
-        { status: 400 }
-      );
-    }
-
     const { data: existing, error: fetchError } = await supabaseAdmin
       .from('Tasks')
       .select('*')
@@ -129,7 +122,7 @@ export async function PUT(
     }
 
     const updateData: TaskUpdate = {
-      updatedBy: body.updatedBy,
+      updatedBy: session.user.id,
       updatedAt: new Date().toISOString(),
     };
     if (body.content !== undefined) updateData.content = body.content;

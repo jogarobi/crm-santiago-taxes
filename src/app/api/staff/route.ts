@@ -76,21 +76,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requirePermission({ staff: ['create'] });
+    const { session } = await requirePermission({ staff: ['create'] });
 
     const body = await request.json();
 
-    if (
-      !body.firstName ||
-      !body.lastName ||
-      !body.title ||
-      !body.status ||
-      !body.createdBy
-    ) {
+    if (!body.firstName || !body.lastName || !body.title || !body.status) {
       return NextResponse.json(
         {
-          error:
-            'Missing required fields: firstName, lastName, title, status, createdBy',
+          error: 'Missing required fields: firstName, lastName, title, status',
         },
         { status: 400 }
       );
@@ -144,7 +137,7 @@ export async function POST(request: Request) {
         email: body.email || null,
         squareId: body.squareId || null,
         userId: created.user.id,
-        createdBy: body.createdBy,
+        createdBy: session.user.id,
         createdAt: new Date().toISOString(),
       })
       .select()

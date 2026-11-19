@@ -23,7 +23,6 @@ export interface CreateStaffInput {
   status: string;
   email?: string;
   squareId?: string;
-  createdBy: string;
   createAccount?: boolean;
   password?: string;
   role?: string;
@@ -37,7 +36,6 @@ export interface UpdateStaffInput {
   status?: string;
   email?: string;
   squareId?: string;
-  updatedBy: string;
 }
 
 export interface StaffResponse {

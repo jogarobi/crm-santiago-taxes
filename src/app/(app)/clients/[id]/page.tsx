@@ -65,7 +65,6 @@ function getTimeUntilAnniversary(establishedDate: string): string {
   }
 }
 import { useAccount, useUpdateAccount } from '@/hooks/use-accounts';
-import { useSessionUser } from '@/lib/use-session-user';
 import { useAccountContacts } from '@/hooks/use-account-contact';
 import { useAccountRelationships } from '@/hooks/use-account-relationships';
 import { useNotes } from '@/hooks/use-notes';
@@ -92,8 +91,10 @@ import {
   ChevronDownIcon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { capitalizeFirst, getRelativeDate } from '@/lib/utils/string';
+import { capitalizeFirst, getRelativeDate, toTitleCase } from '@/lib/utils/string';
 import { format } from 'date-fns';
+import { fmtDate, fmtDateTime } from '@/lib/dates';
+import { StaffName } from '@/components/StaffName';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { NotesGrid } from '@/components/NotesGrid';
@@ -280,7 +281,6 @@ export default function AccountDetailPage({ params }: Props) {
   const [deleteClientDialogOpen, setDeleteClientDialogOpen] = useState(false);
   const [flagDialogOpen, setFlagDialogOpen] = useState(false);
   const updateAccount = useUpdateAccount();
-  const session = useSessionUser();
 
   const { data: clientServices } = useClientServices(accountId);
   const { data: allServicesData } = useServices({ isActive: true, limit: 100 });
@@ -384,16 +384,7 @@ export default function AccountDetailPage({ params }: Props) {
   const lastTouchpointDate = touchpointsLoading
     ? '...'
     : touchpoints?.touchpoints?.[0]?.createdAt
-      ? new Date(touchpoints.touchpoints[0].createdAt).toLocaleDateString(
-          'en-US',
-          {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-          },
-        )
+      ? fmtDateTime(touchpoints.touchpoints[0].createdAt)
       : 'Never';
 
   if (isLoading) {
@@ -441,7 +432,7 @@ export default function AccountDetailPage({ params }: Props) {
             onClick={async () => {
               await updateAccount.mutateAsync({
                 id: accountId,
-                data: { flag: null, updatedBy: session?.user?.id ?? 'system' },
+                data: { flag: null },
               });
             }}
             className='text-red-500 hover:text-red-700 text-xs font-medium shrink-0'
@@ -457,7 +448,7 @@ export default function AccountDetailPage({ params }: Props) {
 
         <div className='flex flex-col gap-3'>
           <h1 className='text-2xl font-bold'>
-            {account.firstName} {account.lastName}
+            {toTitleCase(`${account.firstName} ${account.lastName}`)}
           </h1>
 
           <div className='flex items-center gap-8'>
@@ -636,19 +627,19 @@ export default function AccountDetailPage({ params }: Props) {
         accountId={accountId}
       />
 
-      <Tabs defaultValue='touchpoints' className='w-full'>
+      <Tabs defaultValue='activity-overview' className='w-full'>
         <TabsList className='mb-5 py-7 px-2 gap-2 w-full'>
-          <TabsTrigger className='py-5 cursor-pointer' value='touchpoints'>
-            Touchpoints
-          </TabsTrigger>
-          <TabsTrigger className='py-5 cursor-pointer' value='notes'>
-            Notes
-          </TabsTrigger>
           <TabsTrigger
             className='py-5 cursor-pointer'
             value='activity-overview'
           >
             Overview
+          </TabsTrigger>
+          <TabsTrigger className='py-5 cursor-pointer' value='touchpoints'>
+            Touchpoints
+          </TabsTrigger>
+          <TabsTrigger className='py-5 cursor-pointer' value='notes'>
+            Notes
           </TabsTrigger>
           <TabsTrigger className='py-5 cursor-pointer' value='logins'>
             Logins
@@ -775,7 +766,9 @@ export default function AccountDetailPage({ params }: Props) {
                 {account.zipCode && (
                   <div className='min-w-0'>
                     <label className='text-sm text-neutral-500'>Zip Code</label>
-                    <p className='font-medium text-[15px] break-words'>{account.zipCode}</p>
+                    {/* padStart guard: legacy rows stored zip as a number, dropping
+                        the leading zero ("2746"). Remove once the DB backfill lands. */}
+                    <p className='font-medium text-[15px] break-words'>{String(account.zipCode).padStart(5, '0')}</p>
                   </div>
                 )}
 
@@ -816,30 +809,30 @@ export default function AccountDetailPage({ params }: Props) {
 
                 <div className='min-w-0'>
                   <label className='text-sm text-neutral-500'>Date of Birth</label>
-                  <p className='font-medium text-[15px] break-words'>{account.dateOfBirth}</p>
+                  <p className='font-medium text-[15px] break-words'>{fmtDate(account.dateOfBirth)}</p>
                 </div>
 
                 <div className='min-w-0'>
                   <label className='text-sm text-neutral-500'>Created At</label>
-                  <p className='font-medium text-[15px] break-words'>{new Date(account.createdAt).toLocaleDateString()}</p>
+                  <p className='font-medium text-[15px] break-words'>{fmtDate(account.createdAt)}</p>
                 </div>
 
                 <div className='min-w-0'>
                   <label className='text-sm text-neutral-500'>Created By</label>
-                  <p className='font-medium text-[15px] break-words'>{account.createdBy}</p>
+                  <p className='font-medium text-[15px] break-words'><StaffName id={account.createdBy} /></p>
                 </div>
 
                 {account.updatedAt && (
                   <div className='min-w-0'>
                     <label className='text-sm text-neutral-500'>Updated At</label>
-                    <p className='font-medium text-[15px] break-words'>{new Date(account.updatedAt).toLocaleDateString()}</p>
+                    <p className='font-medium text-[15px] break-words'>{fmtDate(account.updatedAt)}</p>
                   </div>
                 )}
 
                 {account.updatedBy && (
                   <div className='min-w-0'>
                     <label className='text-sm text-neutral-500'>Updated By</label>
-                    <p className='font-medium text-[15px] break-words'>{account.updatedBy}</p>
+                    <p className='font-medium text-[15px] break-words'><StaffName id={account.updatedBy} /></p>
                   </div>
                 )}
               </div>
@@ -875,7 +868,6 @@ export default function AccountDetailPage({ params }: Props) {
                                 addClientService.mutate({
                                   accountId,
                                   serviceId: s.id,
-                                  createdBy: session?.user?.name ?? 'unknown',
                                 });
                                 setServiceDropdownOpen(false);
                               }}
@@ -1147,14 +1139,7 @@ export default function AccountDetailPage({ params }: Props) {
                         <div className='flex items-center gap-1.5 text-neutral-500'>
                           <Building2Icon size={19} strokeWidth={2.3} />
                           <p className='text-start text-[15px]'>
-                            Incorporated{' '}
-                            {new Date(
-                              business.establishedDate,
-                            ).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                            })}
+                            Incorporated {fmtDate(business.establishedDate)}
                           </p>
                         </div>
                       )}
@@ -1247,23 +1232,14 @@ export default function AccountDetailPage({ params }: Props) {
                         )}
                       </div>
                       <span className='text-sm text-neutral-500'>
-                        {new Date(touchpoint.createdAt).toLocaleDateString(
-                          'en-US',
-                          {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          },
-                        )}
+                        {fmtDateTime(touchpoint.createdAt)}
                       </span>
                     </div>
                     <p className='text-[15px] text-neutral-700'>
                       {touchpoint.title}
                     </p>
                     <div className='flex items-center gap-2 text-sm text-neutral-500'>
-                      <span>Created by {touchpoint.createdBy}</span>
+                      <span>Created by <StaffName id={touchpoint.createdBy} /></span>
                     </div>
                   </div>
                 ))}
@@ -1387,10 +1363,7 @@ export default function AccountDetailPage({ params }: Props) {
         </TabsContent>
 
         <TabsContent value='logins'>
-          <LoginsTab
-            accountId={accountId}
-            createdBy={session?.user?.name ?? 'unknown'}
-          />
+          <LoginsTab accountId={accountId} />
         </TabsContent>
       </Tabs>
     </div>

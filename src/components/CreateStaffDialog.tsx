@@ -70,7 +70,6 @@ export function CreateStaffDialog({
         status: formData.status,
         email: formData.email,
         squareId: formData.squareId || undefined,
-        createdBy: 'system', // TODO: Replace with actual user
         createAccount: true,
         password: formData.password,
         role: formData.role,

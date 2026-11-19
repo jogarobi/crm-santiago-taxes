@@ -157,7 +157,6 @@ export function CreateTaskDialog({
         content: content.trim(),
         status: 'todo',
         assignedTo: assignedTo.trim() || undefined,
-        createdBy: session.user.id,
         accountId: finalAccountId,
         businessId: finalBusinessId,
       });

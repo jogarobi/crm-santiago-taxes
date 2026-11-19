@@ -137,7 +137,6 @@ export function EditClientDialog({
         data: {
           ...formData,
           dateOfBirth: dateOfBirth.toISOString().split('T')[0],
-          updatedBy: 'system', // TODO: Replace with actual user
         },
       });
 
@@ -330,6 +329,10 @@ export function EditClientDialog({
               <Input
                 id='zipCode'
                 className='p-2'
+                type='text'
+                inputMode='numeric'
+                autoComplete='postal-code'
+                placeholder='02746'
                 value={formData.zipCode}
                 onChange={(e) => handleChange('zipCode', e.target.value)}
                 maxLength={10}

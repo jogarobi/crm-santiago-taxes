@@ -94,7 +94,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission({ business: ['create'] });
+    const { session } = await requirePermission({ business: ['create'] });
 
     const { id } = await params;
     const accountId = parseInt(id);
@@ -104,9 +104,9 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
     }
 
-    if (!body.registeredName || !body.createdBy) {
+    if (!body.registeredName) {
       return NextResponse.json(
-        { error: 'Missing required fields: registeredName, createdBy' },
+        { error: 'Missing required field: registeredName' },
         { status: 400 }
       );
     }
@@ -143,7 +143,7 @@ export async function POST(
         state: body.state || '',
         zipCode: body.zipCode != null ? String(body.zipCode) : '',
         typeId: Number(body.entityId),
-        createdBy: body.createdBy,
+        createdBy: session.user.id,
         createdAt: now,
       })
       .select('*, BusinessTypes(id, name)')
@@ -158,7 +158,7 @@ export async function POST(
         id: await nextId('ClientBusiness'),
         businessId: newBusiness.id,
         clientId: accountId,
-        createdBy: body.createdBy,
+        createdBy: session.user.id,
         createdAt: now,
       });
 

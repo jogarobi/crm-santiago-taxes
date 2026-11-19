@@ -103,7 +103,6 @@ export function EditStaffDialog({
           status: formData.status,
           email: formData.email || undefined,
           squareId: formData.squareId || undefined,
-          updatedBy: 'system', // TODO: Replace with actual user
         },
       });
 

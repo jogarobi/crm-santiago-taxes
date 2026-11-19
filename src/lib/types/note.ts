@@ -11,11 +11,9 @@ export type Note = {
 
 export type CreateNoteInput = {
   content: string;
-  createdBy: string;
   businessId?: number;
 };
 
 export type UpdateNoteInput = {
   content?: string;
-  updatedBy: string;
 };

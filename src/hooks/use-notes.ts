@@ -77,7 +77,6 @@ async function fetchNote(noteId: number): Promise<Note> {
 async function createNote(accountId: number | null, data: CreateNoteInput): Promise<Note> {
   const payload: any = {
     content: data.content,
-    createdBy: data.createdBy,
   };
 
   if (accountId) {

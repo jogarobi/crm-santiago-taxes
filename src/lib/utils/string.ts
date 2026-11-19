@@ -11,6 +11,40 @@ export function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
 
+// Name particles that stay lowercase when they are not the first word
+// (e.g. "Juan de la Cruz"). Covers common Spanish/Portuguese/Dutch/German ones.
+const NAME_PARTICLES = new Set([
+  'de', 'del', 'de la', 'la', 'las', 'los', 'y', 'da', 'das', 'do', 'dos',
+  'e', 'van', 'von', 'di', 'della', 'der', 'den',
+]);
+
+function capitalizeWord(word: string): string {
+  if (!word) return word;
+  return word.charAt(0).toLocaleUpperCase() + word.slice(1);
+}
+
+/**
+ * Converts a (possibly all-caps) name to Title Case without mangling the data.
+ *
+ * Handles hyphenated surnames ("Pérez-Gómez") and keeps connective particles
+ * lowercase when they are not the first word ("de la Cruz"). Unicode-aware so
+ * accented characters cap correctly.
+ *
+ * @example toTitleCase("JUAN DE LA CRUZ")   // "Juan de la Cruz"
+ * @example toTitleCase("PÉREZ-GÓMEZ")       // "Pérez-Gómez"
+ */
+export function toTitleCase(input: string | null | undefined): string {
+  if (!input) return '';
+  return input
+    .toLocaleLowerCase()
+    .split(/\s+/)
+    .map((word, i) => {
+      if (i !== 0 && NAME_PARTICLES.has(word)) return word;
+      return word.split('-').map(capitalizeWord).join('-');
+    })
+    .join(' ');
+}
+
 /**
  * Gets a relative date string (e.g., "Today", "Tomorrow", "In 3 days", "In 2 weeks")
  * @param dateString - The date string to format

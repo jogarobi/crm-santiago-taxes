@@ -5,7 +5,6 @@ import { useBusiness, useBusinessAccounts, useAddBusinessAccount, useRemoveBusin
 import { useAccounts } from '@/hooks/use-accounts';
 import { useNotes } from '@/hooks/use-notes';
 import { useTouchpoints } from '@/hooks/use-touchpoints';
-import { useSessionUser } from '@/lib/use-session-user';
 import {
   Building2Icon,
   ClockIcon,
@@ -39,6 +38,8 @@ import { LogTouchpointDialog } from '@/components/LogTouchpointDialog';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import { TasksList } from '@/components/TasksList';
 import type { Note } from '@/lib/types/note';
+import { fmtDate, fmtDateTime } from '@/lib/dates';
+import { StaffName } from '@/components/StaffName';
 
 type DatePreset = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -196,7 +197,6 @@ export default function BusinessDetailPage({ params }: Props) {
   const accountId = parseInt(id);
   const businessIdInt = parseInt(businessId);
 
-  const session = useSessionUser();
 
   const {
     data: business,
@@ -350,11 +350,7 @@ export default function BusinessDetailPage({ params }: Props) {
                   className='inline-block text-neutral-500'
                 />
                 <span className='text-[16px] text-neutral-600'>
-                  Incorporated{' '}
-                  {new Date(business.establishedDate).toLocaleDateString(
-                    'en-US',
-                    { year: 'numeric', month: 'long', day: 'numeric' }
-                  )}
+                  Incorporated {fmtDate(business.establishedDate)}
                 </span>
               </div>
             )}
@@ -479,7 +475,6 @@ export default function BusinessDetailPage({ params }: Props) {
                         {
                           businessId: businessIdInt,
                           accountId: acct.id,
-                          createdBy: session?.user?.name ?? 'unknown',
                         },
                         {
                           onSuccess: () => setAddAccountDialogOpen(false),
@@ -732,19 +727,13 @@ export default function BusinessDetailPage({ params }: Props) {
                         </div>
                       </div>
                       <span className='text-sm text-neutral-500'>
-                        {new Date(touchpoint.createdAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })}
+                        {fmtDateTime(touchpoint.createdAt)}
                       </span>
                     </div>
                     <p className='text-[15px] text-neutral-700'>{touchpoint.title}</p>
                     <div className='flex items-center gap-2 text-xs text-neutral-500'>
                       <UserIcon size={12} />
-                      <span>Logged by {touchpoint.createdBy}</span>
+                      <span>Logged by <StaffName id={touchpoint.createdBy} /></span>
                     </div>
                   </div>
                 ))}
@@ -845,10 +834,7 @@ export default function BusinessDetailPage({ params }: Props) {
                     Established Date
                   </label>
                   <p className='font-medium text-[15px]'>
-                    {new Date(business.establishedDate).toLocaleDateString(
-                      'en-US',
-                      { year: 'numeric', month: 'long', day: 'numeric' }
-                    )}
+                    {fmtDate(business.establishedDate)}
                   </p>
                 </div>
               )}
@@ -856,20 +842,20 @@ export default function BusinessDetailPage({ params }: Props) {
               <div>
                 <label className='text-sm text-neutral-500'>Created At</label>
                 <p className='font-medium text-[15px]'>
-                  {new Date(business.createdAt).toLocaleDateString()}
+                  {fmtDate(business.createdAt)}
                 </p>
               </div>
 
               <div>
                 <label className='text-sm text-neutral-500'>Created By</label>
-                <p className='font-medium text-[15px]'>{business.createdBy}</p>
+                <p className='font-medium text-[15px]'><StaffName id={business.createdBy} /></p>
               </div>
 
               {business.updatedAt && (
                 <div>
                   <label className='text-sm text-neutral-500'>Updated At</label>
                   <p className='font-medium text-[15px]'>
-                    {new Date(business.updatedAt).toLocaleDateString()}
+                    {fmtDate(business.updatedAt)}
                   </p>
                 </div>
               )}
@@ -878,7 +864,7 @@ export default function BusinessDetailPage({ params }: Props) {
                 <div>
                   <label className='text-sm text-neutral-500'>Updated By</label>
                   <p className='font-medium text-[15px]'>
-                    {business.updatedBy}
+                    <StaffName id={business.updatedBy} />
                   </p>
                 </div>
               )}

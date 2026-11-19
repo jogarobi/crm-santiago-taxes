@@ -49,13 +49,13 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requirePermission({ service: ['create'] });
+    const { session } = await requirePermission({ service: ['create'] });
 
     const body = await request.json();
 
-    if (!body.name || !body.createdBy) {
+    if (!body.name) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, createdBy' },
+        { error: 'Missing required field: name' },
         { status: 400 }
       );
     }
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
         id: await nextId('Services'),
         name: body.name,
         isActive: 1,
-        createdBy: body.createdBy,
+        createdBy: session.user.id,
         createdAt: new Date().toISOString(),
       })
       .select()

@@ -113,20 +113,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requirePermission({ note: ['create'] });
+    const { session } = await requirePermission({ note: ['create'] });
 
     const body = await request.json();
 
-    if (
-      (!body.accountId && !body.businessId) ||
-      !body.type ||
-      !body.note ||
-      !body.createdBy
-    ) {
+    if ((!body.accountId && !body.businessId) || !body.type || !body.note) {
       return NextResponse.json(
         {
           error:
-            'Missing required fields: (accountId or businessId), type, note, createdBy',
+            'Missing required fields: (accountId or businessId), type, note',
         },
         { status: 400 }
       );
@@ -156,7 +151,7 @@ export async function POST(request: Request) {
         title: body.note,
         entity: body.serviceId ? 'service' : null,
         entityId: body.serviceId ? parseInt(body.serviceId) : null,
-        createdBy: body.createdBy,
+        createdBy: session.user.id,
         createdAt: new Date().toISOString(),
       })
       .select()

@@ -49,7 +49,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission({ client: ['create'] });
+    const { session } = await requirePermission({ client: ['create'] });
 
     const { id } = await params;
     const accountId = parseInt(id);
@@ -59,11 +59,10 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid account ID' }, { status: 400 });
     }
 
-    if (!body.createdBy || !body.contactType || !body.contactValue) {
+    if (!body.contactType || !body.contactValue) {
       return NextResponse.json(
         {
-          error:
-            'Missing required fields: contactType, contactValue, createdBy',
+          error: 'Missing required fields: contactType, contactValue',
         },
         { status: 400 }
       );
@@ -94,7 +93,7 @@ export async function POST(
         clientId: accountId,
         contactType: body.contactType,
         contactValue: body.contactValue,
-        createdBy: body.createdBy,
+        createdBy: session.user.id,
         createdAt: new Date().toISOString(),
       })
       .select()

@@ -90,7 +90,6 @@ export function AddRelationshipDialog({
         accountId,
         relatedAccountId: selectedAccount.id,
         relationship: relationshipType,
-        createdBy: 'system',
       });
 
       onOpenChange(false);

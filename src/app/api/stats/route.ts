@@ -108,11 +108,6 @@ export async function GET(request: Request) {
       }))
       .sort((a, b) => b.count - a.count);
 
-    const mostPopularService =
-      servicesByAppointments.length > 0
-        ? servicesByAppointments[0].service
-        : null;
-
     return NextResponse.json({
       success: true,
       stats: {
@@ -123,7 +118,6 @@ export async function GET(request: Request) {
         businessesDueList,
         servicesByAppointments,
         touchpointsByType,
-        mostPopularService,
       },
     });
   } catch (error) {
