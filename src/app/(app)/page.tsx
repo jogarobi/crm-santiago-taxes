@@ -1,52 +1,23 @@
 'use client';
 
-import { useState } from 'react';
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
-import { ArrowUpRightIcon, CheckCheckIcon, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { UpcomingAppointments } from '@/components/UpcomingAppointments';
+import { TodaysWork } from '@/components/TodaysWork';
 import { SearchAccounts } from '@/components/SearchAccounts';
 import { useAccountCount } from '@/hooks/use-accounts';
 import { useAppointmentCount } from '@/hooks/use-appointments';
-import { useStats, type StatsPeriod } from '@/hooks/use-stats';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { useStats } from '@/hooks/use-stats';
 
 export default function Home() {
-  const [period, setPeriod] = useState<StatsPeriod>('all');
   const { data: accountCount, isLoading } = useAccountCount();
   const { data: appointmentCount, isLoading: isLoadingAppointmentCount } =
     useAppointmentCount();
-  const { data: stats, isLoading: isLoadingStats } = useStats({ period });
+  const { data: stats, isLoading: isLoadingStats } = useStats({ period: 'all' });
 
   return (
     <div className='flex flex-col gap-10'>
       <SearchAccounts />
-
-      <div className='flex items-center justify-between'>
-        <h2 className='text-xl font-semibold'>Overview</h2>
-        <Select value={period} onValueChange={(value: StatsPeriod) => setPeriod(value)}>
-          <SelectTrigger className='w-[180px]'>
-            <SelectValue placeholder='Select period' />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value='day'>Today</SelectItem>
-            <SelectItem value='month'>This Month</SelectItem>
-            <SelectItem value='year'>This Year</SelectItem>
-            <SelectItem value='all'>All Time</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
       <div className='flex items-center gap-7'>
         <Link
@@ -97,43 +68,10 @@ export default function Home() {
       </div>
 
       <div className='flex gap-14'>
-        <div className='w-full'>
-          <div className='flex items-center justify-between mb-5'>
-            <h3 className='font-semibold text-[17px]'>Upcoming appointments</h3>
-            <span className='text-neutral-600 text-[15px]'>Next 2 weeks</span>
-          </div>
+        <TodaysWork />
 
+        <div className='w-full min-w-0'>
           <UpcomingAppointments />
-        </div>
-
-        <div className='w-full'>
-          <div className='flex items-center justify-between'>
-            <h3 className='font-semibold text-[17px]'>Pending tasks</h3>
-            <span className='text-neutral-500 text-[15px]'></span>
-          </div>
-
-          <div>
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia
-                  variant='default'
-                  className='py-2 px-3 border rounded-md'
-                >
-                  <CheckCheckIcon className='w-5 stroke-neutral-500' />
-                </EmptyMedia>
-                <EmptyTitle className='text-[16px] text-neutral-500 font-normal'>
-                  No pending tasks
-                </EmptyTitle>
-                <Link
-                  className='text-purple text-[15px] hover:underline mt-1'
-                  href='/appointments'
-                >
-                  Create task
-                  <ArrowUpRightIcon className='w-4 inline-block ml-1' />
-                </Link>
-              </EmptyHeader>
-            </Empty>
-          </div>
         </div>
       </div>
     </div>

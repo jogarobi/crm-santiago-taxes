@@ -37,6 +37,60 @@ import { CreateClientDialog } from './CreateClientDialog';
 import { LinkClientDialog } from './LinkClientDialog';
 import { StaffName } from './StaffName';
 
+// Service families and their accent color. The vertical bar on each row and
+// the legend at the bottom are driven from this single list.
+const SERVICE_CATEGORIES: Array<{
+  label: string;
+  color: string;
+  test: RegExp;
+}> = [
+  { label: 'Taxes', color: 'bg-violet-600', test: /tax/i },
+  { label: 'Real estate', color: 'bg-emerald-600', test: /real estate|realty/i },
+  { label: 'Notary', color: 'bg-orange-500', test: /notar/i },
+  {
+    label: 'Translations',
+    color: 'bg-pink-600',
+    test: /transl|traduc|certificate/i,
+  },
+  { label: 'Bookkeeping', color: 'bg-blue-600', test: /book/i },
+];
+
+function serviceColor(service?: string | null): string {
+  const s = service ?? '';
+  return SERVICE_CATEGORIES.find((c) => c.test.test(s))?.color ?? 'bg-neutral-300';
+}
+
+function Legend() {
+  return (
+    <div className='mt-4 pt-4 border-t flex items-center gap-4 flex-wrap'>
+      {SERVICE_CATEGORIES.map((c) => (
+        <div key={c.label} className='flex items-center gap-1.5'>
+          <span className={clsx('w-2.5 h-2.5 rounded-sm', c.color)} />
+          <span className='text-sm text-neutral-600'>{c.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Panel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className='border rounded-lg bg-white p-5'>
+      <div className='flex items-center justify-between mb-4'>
+        <h3 className='font-semibold text-[17px]'>Upcoming appointments</h3>
+        <Link
+          href='/appointments'
+          className='text-purple text-[15px] hover:underline'
+        >
+          View all
+        </Link>
+      </div>
+      {children}
+      <Legend />
+    </div>
+  );
+}
+
 export function UpcomingAppointments() {
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
@@ -135,30 +189,55 @@ export function UpcomingAppointments() {
     }
   };
 
+  const statusBadge = (
+    status?: string
+  ): { label: string; cls: string } | null => {
+    switch (status) {
+      case 'ACCEPTED':
+        return { label: 'Confirmed', cls: 'bg-green-100 text-green-700' };
+      case 'PENDING':
+        return { label: 'Unconfirmed', cls: 'bg-amber-100 text-amber-700' };
+      case 'CANCELLED':
+        return { label: 'Cancelled', cls: 'bg-red-100 text-red-700' };
+      case 'DECLINED':
+        return { label: 'Declined', cls: 'bg-red-100 text-red-700' };
+      case 'NO_SHOW':
+        return { label: 'No show', cls: 'bg-gray-100 text-gray-700' };
+      default:
+        return status
+          ? { label: capitalizeFirst(status), cls: 'bg-blue-100 text-blue-700' }
+          : null;
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className='flex items-center justify-center py-8'>
-        <Loader2 className='w-6 h-6 animate-spin text-purple' />
-        <span className='ml-2 text-neutral-600 text-sm'>
-          Loading appointments...
-        </span>
-      </div>
+      <Panel>
+        <div className='flex items-center justify-center py-8'>
+          <Loader2 className='w-6 h-6 animate-spin text-purple' />
+          <span className='ml-2 text-neutral-600 text-sm'>
+            Loading appointments...
+          </span>
+        </div>
+      </Panel>
     );
   }
 
   if (error) {
     return (
-      <div className='bg-red-50 border border-red-200 rounded-lg p-4 mt-4'>
-        <p className='text-red-800 text-sm'>
-          Failed to load appointments. Please try again later.
-        </p>
-      </div>
+      <Panel>
+        <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
+          <p className='text-red-800 text-sm'>
+            Failed to load appointments. Please try again later.
+          </p>
+        </div>
+      </Panel>
     );
   }
 
   if (!upcomingAppointments || upcomingAppointments.length === 0) {
     return (
-      <div className='mt-4'>
+      <Panel>
         <Empty>
           <EmptyHeader>
             <EmptyMedia
@@ -179,7 +258,7 @@ export function UpcomingAppointments() {
             </Link>
           </EmptyHeader>
         </Empty>
-      </div>
+      </Panel>
     );
   }
 
@@ -230,84 +309,78 @@ export function UpcomingAppointments() {
 
   return (
     <>
-      <div className='mt-4 flex flex-col gap-5'>
-        {upcomingAppointments.map((appointment, index) => {
-          const { date, time } = formatDateTime(
-            appointment.startAt || '',
-            appointment.endAt
-          );
+      <Panel>
+        <div className='divide-y'>
+          {upcomingAppointments.map((appointment, index) => {
+            const { date, time } = formatDateTime(
+              appointment.startAt || '',
+              appointment.endAt
+            );
+            const badge = statusBadge(appointment.status);
 
-          return (
-            <div
-              key={`${appointment.id}-${index}`}
-              onClick={() => handleAppointmentClick(appointment)}
-              className='block bg-white border rounded-lg p-4 hover:shadow-xs transition-shadow cursor-pointer'
-            >
-              <div className='flex items-start justify-between'>
-                <div className='flex-1'>
-                  <div className='flex items-center gap-3 justify-between mb-2'>
-                    <div className='flex items-center gap-2'>
-                      {appointment.service && (
-                        <div className='font-semibold text-neutral-900'>
-                          {appointment.service}
-                        </div>
-                      )}
-                      {!appointment.accountId && (
-                        <div className='flex items-center gap-1 text-amber-600'>
-                          <AlertTriangleIcon className='w-4 h-4' />
-                        </div>
-                      )}
-                    </div>
-
-                    {appointment.status && (
-                      <Badge
-                        variant='secondary'
-                        className={clsx(
-                          getStatusColor(appointment.status),
-                          'text-[13px] font-medium mb-2'
-                        )}
-                      >
-                        {capitalizeFirst(appointment.status)}
-                      </Badge>
-                    )}
+            return (
+              <button
+                type='button'
+                key={`${appointment.id}-${index}`}
+                onClick={() => handleAppointmentClick(appointment)}
+                className='w-full text-left flex items-center gap-4 py-3 first:pt-0 last:pb-0 hover:bg-neutral-50 transition-colors cursor-pointer'
+              >
+                <div className='w-20 shrink-0'>
+                  <div className='text-sm font-medium text-neutral-700'>
+                    {time}
                   </div>
-
-                  <div className='mb-3 flex items-center gap-2 flex-wrap'>
-                    {appointment.accountName && (
-                      <span className='text-[15px] text-neutral-700'>
-                        {appointment.accountName}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-2'>
-                      <CalendarIcon className='w-4 h-4 text-neutral-500' />
-                      <span className='text-sm font-medium text-neutral-500'>
-                        {date}
-                      </span>
-                    </div>
-                    <div className='flex items-center gap-2'>
-                      <ClockIcon className='w-4 h-4 text-neutral-500' />
-                      <span className='text-sm text-neutral-600'>{time}</span>
-                    </div>
-                  </div>
+                  <div className='text-xs text-neutral-500 truncate'>{date}</div>
                 </div>
-              </div>
-            </div>
-          );
-        })}
 
-        {upcomingAppointments.length > 0 && (
-          <Link
-            href='/appointments'
-            className='block text-center text-purple text-[15px] font-normal hover:underline pt-2'
-          >
-            View all appointments
-            <ArrowUpRightIcon className='w-4 inline-block ml-1' />
-          </Link>
+                <span
+                  className={clsx(
+                    'w-1 h-9 rounded-full shrink-0',
+                    serviceColor(appointment.service)
+                  )}
+                />
+
+                <div className='flex-1 min-w-0'>
+                  <div className='flex items-center gap-1.5'>
+                    <span className='font-semibold text-neutral-900 truncate'>
+                      {appointment.accountName || 'Unknown client'}
+                    </span>
+                    {!appointment.accountId && (
+                      <AlertTriangleIcon className='w-4 h-4 text-amber-600 shrink-0' />
+                    )}
+                  </div>
+                  {appointment.service && (
+                    <div className='text-sm text-neutral-500 truncate'>
+                      {appointment.service}
+                    </div>
+                  )}
+                </div>
+
+                {badge && (
+                  <Badge
+                    variant='secondary'
+                    className={clsx(
+                      badge.cls,
+                      'text-[13px] font-medium rounded-full shrink-0'
+                    )}
+                  >
+                    {badge.label}
+                  </Badge>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {upcomingAppointments.filter((a) => !a.accountId).length > 1 && (
+          <div className='mt-4 flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 p-3'>
+            <AlertTriangleIcon className='w-4 h-4 text-amber-600 shrink-0 mt-0.5' />
+            <p className='text-sm text-amber-800'>
+              Several appointments have unsynced clients. Sync them to keep Square
+              and the CRM in sync.
+            </p>
+          </div>
         )}
-      </div>
+      </Panel>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className='max-w-2xl'>

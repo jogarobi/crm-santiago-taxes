@@ -46,3 +46,45 @@ export function useActivities(accountId: number, limit?: number) {
     enabled: !!accountId,
   });
 }
+
+export type RecentActivity = Activity & {
+  clientId: number | null;
+  accountName: string | null;
+};
+
+type RecentActivitiesResponse = {
+  success: boolean;
+  activities: RecentActivity[];
+  count: number;
+};
+
+async function fetchRecentActivities(params: {
+  limit?: number;
+  since?: string;
+  until?: string;
+}): Promise<RecentActivity[]> {
+  const search = new URLSearchParams();
+  if (params.limit) search.append('limit', params.limit.toString());
+  if (params.since) search.append('since', params.since);
+  if (params.until) search.append('until', params.until);
+
+  const response = await fetch(`/api/activities/recent?${search.toString()}`);
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch recent activities');
+  }
+
+  const data: RecentActivitiesResponse = await response.json();
+  return data.activities;
+}
+
+export function useRecentActivities(params: {
+  limit?: number;
+  since?: string;
+  until?: string;
+} = {}) {
+  return useQuery({
+    queryKey: ['activities', 'recent', params],
+    queryFn: () => fetchRecentActivities(params),
+  });
+}

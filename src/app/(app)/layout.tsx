@@ -12,7 +12,7 @@ export default async function AppLayout({
     <>
       <Sidebar />
 
-      <main className='w-full'>
+      <main className='w-full min-w-0'>
         <AppHeader />
         <section className='px-10 pt-2 pb-10'>{children}</section>
       </main>
