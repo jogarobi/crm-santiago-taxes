@@ -77,7 +77,7 @@ export default function ClientsPage() {
     search: debouncedSearch || undefined,
     pageSize,
     pageIndex,
-    accountType: 'clients',
+    accountType: 'all',
     sortBy: 'name',
     sortDir,
     createdBy: createdByFilter || undefined,
