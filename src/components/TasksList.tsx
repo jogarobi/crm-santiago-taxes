@@ -39,6 +39,7 @@ import {
   Building2Icon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
 import type { Task, TaskStatus } from '@/lib/types/task';
 
 type LinkType = 'none' | 'client' | 'business';
@@ -319,9 +320,18 @@ export function TasksList({ accountId, businessId, dateFrom, dateTo }: TasksList
                           className='w-4 h-4 text-neutral-500'
                           strokeWidth={2}
                         />
-                        <p className='text-sm text-neutral-600 font-medium'>
-                          {task.businessName}
-                        </p>
+                        {task.businessAccountId && task.businessId ? (
+                          <Link
+                            href={`/clients/${task.businessAccountId}/businesses/${task.businessId}`}
+                            className='text-sm text-neutral-600 font-medium hover:text-purple hover:underline'
+                          >
+                            {task.businessName}
+                          </Link>
+                        ) : (
+                          <p className='text-sm text-neutral-600 font-medium'>
+                            {task.businessName}
+                          </p>
+                        )}
                       </div>
                     )}
                     {!task.businessName && task.accountName && (
@@ -330,9 +340,18 @@ export function TasksList({ accountId, businessId, dateFrom, dateTo }: TasksList
                           className='w-4 h-4 text-neutral-500'
                           strokeWidth={2}
                         />
-                        <p className='text-sm text-neutral-600 font-medium'>
-                          {task.accountName}
-                        </p>
+                        {task.accountId ? (
+                          <Link
+                            href={`/clients/${task.accountId}`}
+                            className='text-sm text-neutral-600 font-medium hover:text-purple hover:underline'
+                          >
+                            {task.accountName}
+                          </Link>
+                        ) : (
+                          <p className='text-sm text-neutral-600 font-medium'>
+                            {task.accountName}
+                          </p>
+                        )}
                       </div>
                     )}
                     {assignedStaff && (

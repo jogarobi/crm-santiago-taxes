@@ -14,7 +14,10 @@ type TaskRow = {
   updatedAt: string | null;
   updatedBy: string | null;
   Clients?: { firstName: string; lastName: string } | null;
-  Businesses?: { name: string } | null;
+  Businesses?: {
+    name: string;
+    ClientBusiness?: { clientId: number }[] | null;
+  } | null;
 };
 
 function mapTask(r: TaskRow) {
@@ -33,6 +36,9 @@ function mapTask(r: TaskRow) {
       ? `${r.Clients.firstName} ${r.Clients.lastName}`
       : null,
     businessName: r.Businesses?.name ?? null,
+    // Owning client of the linked business, so the UI can build the nested
+    // /clients/{accountId}/businesses/{businessId} profile link.
+    businessAccountId: r.Businesses?.ClientBusiness?.[0]?.clientId ?? null,
   };
 }
 
@@ -53,9 +59,12 @@ export async function GET(request: Request) {
 
     let query = supabaseAdmin
       .from('Tasks')
-      .select('*, Clients(firstName, lastName), Businesses(name)', {
-        count: 'exact',
-      });
+      .select(
+        '*, Clients(firstName, lastName), Businesses(name, ClientBusiness(clientId))',
+        {
+          count: 'exact',
+        }
+      );
 
     // Non-owners only see tasks assigned to their staff record.
     if (role !== 'owner' && session?.user?.email) {

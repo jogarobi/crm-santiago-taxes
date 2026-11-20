@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useTasks, useUpdateTask, useDeleteTask } from '@/hooks/use-tasks';
 import { useStaff } from '@/hooks/use-staff';
 import { useAccounts } from '@/hooks/use-accounts';
@@ -250,9 +251,18 @@ function TaskCard({
                 className='w-4 h-4 text-neutral-500'
                 strokeWidth={2}
               />
-              <p className='text-sm text-neutral-600 font-medium'>
-                {task.businessName}
-              </p>
+              {task.businessAccountId && task.businessId ? (
+                <Link
+                  href={`/clients/${task.businessAccountId}/businesses/${task.businessId}`}
+                  className='text-sm text-neutral-600 font-medium hover:text-purple hover:underline'
+                >
+                  {task.businessName}
+                </Link>
+              ) : (
+                <p className='text-sm text-neutral-600 font-medium'>
+                  {task.businessName}
+                </p>
+              )}
             </div>
           )}
           {!task.businessName && task.accountName && (
@@ -261,9 +271,18 @@ function TaskCard({
                 className='w-4 h-4 text-neutral-500'
                 strokeWidth={2}
               />
-              <p className='text-sm text-neutral-600 font-medium'>
-                {task.accountName}
-              </p>
+              {task.accountId ? (
+                <Link
+                  href={`/clients/${task.accountId}`}
+                  className='text-sm text-neutral-600 font-medium hover:text-purple hover:underline'
+                >
+                  {task.accountName}
+                </Link>
+              ) : (
+                <p className='text-sm text-neutral-600 font-medium'>
+                  {task.accountName}
+                </p>
+              )}
             </div>
           )}
           {assignedStaff && (
@@ -337,31 +356,33 @@ function TaskColumn({
   staffMembers: Array<{ id: number; firstName: string; lastName: string }>;
 }) {
   return (
-    <div className='flex-1 min-w-0'>
-      <div className='bg-neutral-50 rounded-lg h-full'>
-        <div className='mb-4'>
-          <div className='flex items-center gap-3 mb-3'>
-            <Badge
-              variant='outline'
-              className={`text-sm font-semibold px-3 py-1 ${colorClass}`}
-            >
-              {title}
-            </Badge>
-            <span className='text-[13px] text-neutral-400'>
-              {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
-            </span>
-          </div>
+    <div className='flex flex-col min-w-0 h-full'>
+      <div className='flex flex-col bg-neutral-50 rounded-lg h-full overflow-hidden'>
+        <div className='flex items-center gap-3 p-3 shrink-0'>
+          <Badge
+            variant='outline'
+            className={`text-sm font-semibold px-3 py-1 ${colorClass}`}
+          >
+            {title}
+          </Badge>
+          <span className='text-[13px] text-neutral-400'>
+            {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+          </span>
         </div>
-        <div className='space-y-0'>
-          {tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onDelete={onDelete}
-              onEdit={onEdit}
-              staffMembers={staffMembers}
-            />
-          ))}
+        <div className='flex-1 overflow-y-auto px-3 pb-3 space-y-0'>
+          {tasks.length === 0 ? (
+            <p className='text-sm text-neutral-400 px-1 py-2'>No tasks</p>
+          ) : (
+            tasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onDelete={onDelete}
+                onEdit={onEdit}
+                staffMembers={staffMembers}
+              />
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -583,7 +604,7 @@ export default function TasksPage() {
       )}
 
       {!isLoading && !error && (
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6'>
+        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 xl:h-[calc(100vh-13rem)] xl:min-h-[400px]'>
           {TASK_COLUMNS.map((column) => (
             <TaskColumn
               key={column.status}

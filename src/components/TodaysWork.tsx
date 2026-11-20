@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { createElement, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { DateInput } from '@/components/ui/date-input';
 import {
@@ -9,6 +9,19 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   ActivityIcon,
   ArrowUpRightIcon,
@@ -68,6 +81,11 @@ function colorFor(item: FeedItem): string {
   return 'text-neutral-600';
 }
 
+// Human label used both for the row's type pill and the type filter options.
+function typeLabel(item: FeedItem): string {
+  return item.kind === 'task' ? 'Task' : item.typeName ?? 'Activity';
+}
+
 function formatTime(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleTimeString('en-US', {
@@ -85,8 +103,59 @@ function isSameDay(a: Date, b: Date): boolean {
   );
 }
 
+function FeedItemCard({ item }: { item: FeedItem }) {
+  const color = colorFor(item);
+  const target = item.accountId ? `/clients/${item.accountId}` : null;
+
+  const body = (
+    <div className='flex items-start gap-3'>
+      <div className='py-2 px-2 border rounded-md shrink-0'>
+        {createElement(iconFor(item), { className: `w-4 h-4 ${color}` })}
+      </div>
+      <div className='flex-1 min-w-0'>
+        <div className='flex items-start justify-between gap-3 min-w-0'>
+          <p className='font-medium text-neutral-900 text-[15px] truncate min-w-0'>
+            {item.title}
+          </p>
+          <span className='text-sm text-neutral-500 shrink-0'>
+            {formatTime(item.createdAt)}
+          </span>
+        </div>
+        <div className='mt-1 flex items-center gap-2 flex-wrap text-sm text-neutral-600'>
+          <span className={`font-medium ${color}`}>{typeLabel(item)}</span>
+          {(item.accountName || item.businessName) && (
+            <>
+              <span className='text-neutral-300'>·</span>
+              <span className='truncate'>
+                {item.accountName ?? item.businessName}
+              </span>
+            </>
+          )}
+          <span className='text-neutral-300'>·</span>
+          <StaffName id={item.createdBy} className='text-neutral-600' />
+        </div>
+      </div>
+    </div>
+  );
+
+  return target ? (
+    <Link
+      href={target}
+      className='block bg-white border rounded-lg p-4 hover:shadow-xs transition-shadow'
+    >
+      {body}
+    </Link>
+  ) : (
+    <div className='block bg-white border rounded-lg p-4'>{body}</div>
+  );
+}
+
+const INLINE_LIMIT = 6;
+
 export function TodaysWork() {
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const isToday = isSameDay(selectedDate, new Date());
 
@@ -102,18 +171,19 @@ export function TodaysWork() {
     data: activities,
     isLoading: loadingActivities,
     error: activitiesError,
-  } = useRecentActivities({ since: range.since, until: range.until, limit: 20 });
+  } = useRecentActivities({ since: range.since, until: range.until, limit: 100 });
 
   const {
     data: tasksData,
     isLoading: loadingTasks,
     error: tasksError,
-  } = useTasks({ dateFrom: range.since, dateTo: range.until, limit: 20 });
+  } = useTasks({ dateFrom: range.since, dateTo: range.until, limit: 100 });
 
   const isLoading = loadingActivities || loadingTasks;
   const error = activitiesError || tasksError;
 
-  const items = useMemo<FeedItem[]>(() => {
+  // Full merged + sorted feed for the selected day (unfiltered, unsliced).
+  const allItems = useMemo<FeedItem[]>(() => {
     const feed: FeedItem[] = [];
 
     for (const a of activities ?? []) {
@@ -144,13 +214,34 @@ export function TodaysWork() {
       });
     }
 
-    return feed
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
-      .slice(0, 6);
+    return feed.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
   }, [activities, tasksData]);
+
+  // Distinct type labels present in the day, for the filter dropdown.
+  const typeOptions = useMemo(() => {
+    const labels = new Set<string>();
+    for (const item of allItems) labels.add(typeLabel(item));
+    return Array.from(labels).sort();
+  }, [allItems]);
+
+  const filteredItems = useMemo(
+    () =>
+      typeFilter === 'all'
+        ? allItems
+        : allItems.filter((item) => typeLabel(item) === typeFilter),
+    [allItems, typeFilter]
+  );
+
+  const inlineItems = filteredItems.slice(0, INLINE_LIMIT);
+
+  const dateLabel = selectedDate.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 
   let content: React.ReactNode;
 
@@ -169,7 +260,7 @@ export function TodaysWork() {
         </p>
       </div>
     );
-  } else if (items.length === 0) {
+  } else if (inlineItems.length === 0) {
     content = (
       <div className='mt-4'>
         <Empty>
@@ -178,7 +269,11 @@ export function TodaysWork() {
               <CheckCheckIcon className='w-5 stroke-neutral-500' />
             </EmptyMedia>
             <EmptyTitle className='text-[16px] text-neutral-500 font-normal'>
-              {isToday ? 'No activity yet today' : 'No activity on this day'}
+              {typeFilter !== 'all'
+                ? `No ${typeFilter.toLowerCase()} activity on this day`
+                : isToday
+                  ? 'No activity yet today'
+                  : 'No activity on this day'}
             </EmptyTitle>
             <Link
               className='text-purple text-[15px] hover:underline mt-1'
@@ -193,93 +288,82 @@ export function TodaysWork() {
     );
   } else {
     content = (
-    <div className='mt-4 flex flex-col gap-5'>
-      {items.map((item) => {
-        const Icon = iconFor(item);
-        const color = colorFor(item);
-        const target = item.accountId ? `/clients/${item.accountId}` : null;
+      <div className='mt-4 flex flex-col gap-5'>
+        {inlineItems.map((item) => (
+          <FeedItemCard key={item.key} item={item} />
+        ))}
 
-        const body = (
-          <>
-            <div className='flex items-start gap-3'>
-              <div className='py-2 px-2 border rounded-md shrink-0'>
-                <Icon className={`w-4 h-4 ${color}`} />
-              </div>
-              <div className='flex-1 min-w-0'>
-                <div className='flex items-start justify-between gap-3 min-w-0'>
-                  <p className='font-medium text-neutral-900 text-[15px] truncate min-w-0'>
-                    {item.title}
-                  </p>
-                  <span className='text-sm text-neutral-500 shrink-0'>
-                    {formatTime(item.createdAt)}
-                  </span>
-                </div>
-                <div className='mt-1 flex items-center gap-2 flex-wrap text-sm text-neutral-600'>
-                  <span className={`font-medium ${color}`}>
-                    {item.kind === 'task'
-                      ? 'Task'
-                      : item.typeName ?? 'Activity'}
-                  </span>
-                  {(item.accountName || item.businessName) && (
-                    <>
-                      <span className='text-neutral-300'>·</span>
-                      <span className='truncate'>
-                        {item.accountName ?? item.businessName}
-                      </span>
-                    </>
-                  )}
-                  <span className='text-neutral-300'>·</span>
-                  <StaffName id={item.createdBy} className='text-neutral-600' />
-                </div>
-              </div>
-            </div>
-          </>
-        );
-
-        return target ? (
-          <Link
-            key={item.key}
-            href={target}
-            className='block bg-white border rounded-lg p-4 hover:shadow-xs transition-shadow'
-          >
-            {body}
-          </Link>
-        ) : (
-          <div
-            key={item.key}
-            className='block bg-white border rounded-lg p-4'
-          >
-            {body}
-          </div>
-        );
-      })}
-
-      <Link
-        href='/tasks'
-        className='block text-center text-purple text-[15px] font-normal hover:underline pt-2'
-      >
-        View all tasks
-        <ArrowUpRightIcon className='w-4 inline-block ml-1' />
-      </Link>
-    </div>
+        <button
+          type='button'
+          onClick={() => setDialogOpen(true)}
+          className='block text-center text-purple text-[15px] font-normal hover:underline pt-2 cursor-pointer'
+        >
+          View all activity
+          {filteredItems.length > INLINE_LIMIT && ` (${filteredItems.length})`}
+          <ArrowUpRightIcon className='w-4 inline-block ml-1' />
+        </button>
+      </div>
     );
   }
 
   return (
     <div className='w-full min-w-0'>
-      <div className='flex items-center justify-between gap-3 mb-5'>
+      <div className='flex items-center justify-between gap-3 mb-5 flex-wrap'>
         <h3 className='font-semibold text-[17px] shrink-0'>
           {isToday ? "Today's activity" : 'Activity'}
         </h3>
-        <div className='w-[170px] bg-white rounded-md'>
-          <DateInput
-            value={selectedDate}
-            onChange={(date) => date && setSelectedDate(date)}
-            disabled={{ after: new Date() }}
-          />
+        <div className='flex items-center gap-2'>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className='w-[140px] bg-white'>
+              <SelectValue placeholder='All types' />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='all'>All types</SelectItem>
+              {typeOptions.map((label) => (
+                <SelectItem key={label} value={label}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className='w-[150px] bg-white rounded-md'>
+            <DateInput
+              value={selectedDate}
+              onChange={(date) => date && setSelectedDate(date)}
+              disabled={{ after: new Date() }}
+            />
+          </div>
         </div>
       </div>
       {content}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className='max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle className='text-xl'>
+              Activity · {isToday ? 'Today' : dateLabel}
+              {typeFilter !== 'all' && (
+                <span className='text-neutral-500 font-normal'>
+                  {' '}
+                  — {typeFilter}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {filteredItems.length === 0 ? (
+            <p className='text-neutral-500 text-sm py-6 text-center'>
+              No activity to show.
+            </p>
+          ) : (
+            <div className='mt-2 flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1'>
+              {filteredItems.map((item) => (
+                <FeedItemCard key={item.key} item={item} />
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

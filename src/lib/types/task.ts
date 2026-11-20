@@ -13,6 +13,7 @@ export type Task = {
   updatedBy: string | null;
   accountName?: string | null;
   businessName?: string | null;
+  businessAccountId?: number | null;
 };
 
 export type CreateTaskInput = {
